@@ -658,6 +658,96 @@ select {
   color: var(--text-muted);
 }
 
+/* ---- Plan / Ideator ---- */
+
+.plan-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.plan-section h2 {
+  font-size: 1.05rem;
+  margin: 0 0 12px;
+}
+
+.segmented {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stepper__btn {
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.stepper__value {
+  min-width: 2ch;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.prompt-fallback {
+  width: 100%;
+  min-height: 160px;
+  margin-top: 10px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.8rem;
+}
+
+.conflict-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.conflict-row__names {
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.conflict-row__existing {
+  color: var(--text-muted);
+}
+
+.week-summary__group {
+  margin-bottom: 16px;
+}
+
+.week-summary__group h3 {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0 0 6px;
+}
+
+.week-summary__counts {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
