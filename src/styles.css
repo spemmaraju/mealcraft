@@ -748,6 +748,288 @@ select {
   margin-bottom: 16px;
 }
 
+/* ---- Week view (Phase 4 planner) ---- */
+
+.week-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.week-view__weekof {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.plan-empty-state ol {
+  margin: 8px 0;
+  padding-left: 1.4em;
+}
+
+.link-btn {
+  min-height: 44px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---- Run sheet ---- */
+
+.run-sheet__progress {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.run-sheet__bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.run-sheet__bar-fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.run-sheet__group {
+  margin-bottom: 16px;
+}
+
+.run-sheet__station {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0 0 6px;
+}
+
+.run-sheet__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+}
+
+.run-sheet__row--done {
+  opacity: 0.6;
+}
+
+.run-sheet__row--done .run-sheet__action {
+  text-decoration: line-through;
+}
+
+.run-sheet__check {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent-contrast);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.run-sheet__check--active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.run-sheet__time {
+  flex: none;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  min-width: 3.5ch;
+}
+
+.run-sheet__action {
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+.run-sheet__component {
+  color: var(--text-muted);
+}
+
+/* ---- Assembly cards ---- */
+
+.assembly-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.assembly-card--selected {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+
+.assembly-card--swap-target {
+  border-style: dashed;
+}
+
+.assembly-card--refresh {
+  background: var(--bg);
+}
+
+.assembly-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.assembly-card__header h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.assembly-card__swap-btn {
+  min-height: 40px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.assembly-card__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+}
+
+.assembly-card__component {
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  background: none;
+  text-align: left;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.assembly-card__component--static {
+  cursor: default;
+}
+
+.assembly-card__x {
+  flex: none;
+  min-height: 40px;
+  min-width: 40px;
+  border: none;
+  background: none;
+  color: var(--danger);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.assembly-card__remove-confirm {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.assembly-card__empty {
+  padding: 8px 0;
+}
+
+.assembly-card__note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 8px 0;
+}
+
+.assembly-card__steps {
+  font-size: 0.9rem;
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+}
+
+/* ---- Component picker sheet ---- */
+
+.picker-sheet__chips {
+  margin-bottom: 12px;
+}
+
+.picker-sheet__list {
+  max-height: 45vh;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+.picker-sheet__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  text-align: left;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.picker-sheet__name {
+  flex: 1;
+}
+
+/* ---- Grocery list ---- */
+
+.grocery-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+}
+
+.grocery-row__check {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent-contrast);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.grocery-row__check--active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.grocery-row__label {
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+.grocery-row__label--dismissed {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
