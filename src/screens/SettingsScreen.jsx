@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as storage from '../storage.js'
+import ByokSettings from '../components/ByokSettings.jsx'
 
 function todayStamp() {
   return new Date().toISOString().slice(0, 10)
@@ -188,6 +189,8 @@ export default function SettingsScreen() {
 
         {importMsg && !preview && <div className={`message message--${importMsg.type}`}>{importMsg.text}</div>}
       </section>
+
+      <ByokSettings />
 
       <section className="settings-section">
         <h2>Nutrition lookups</h2>

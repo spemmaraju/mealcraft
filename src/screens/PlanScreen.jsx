@@ -4,6 +4,7 @@ import * as weekOps from '../weekOps.js'
 import GenerateWeekForm from '../components/GenerateWeekForm.jsx'
 import WeekImportBox from '../components/WeekImportBox.jsx'
 import WeekView from '../components/WeekView.jsx'
+import ImportReview from '../components/ImportReview.jsx'
 
 export default function PlanScreen() {
   const [pantry, setPantry] = useState([])
@@ -12,6 +13,7 @@ export default function PlanScreen() {
   const [feedback, setFeedback] = useState([])
   const [settings, setSettings] = useState(null)
   const [showGenerate, setShowGenerate] = useState(false)
+  const [generateResult, setGenerateResult] = useState(null)
 
   async function reload() {
     const [p, c, w, f, s] = await Promise.all([
@@ -37,10 +39,19 @@ export default function PlanScreen() {
     await storage.set('components', applied.components)
     await storage.set('weeks', applied.weeks)
     setShowGenerate(false)
+    setGenerateResult(null)
   }
 
   async function handleCommitWeek(nextWeek) {
     await storage.set('weeks', weekOps.replaceWeek(weeks, nextWeek))
+  }
+
+  async function handleCopyRawResponse() {
+    try {
+      await navigator.clipboard.writeText(generateResult.rawText)
+    } catch {
+      // clipboard unavailable — the raw response is still selectable in the textarea
+    }
   }
 
   if (!settings) return null
@@ -70,12 +81,59 @@ export default function PlanScreen() {
           )}
           {latestWeek && (
             <div className="button-row">
-              <button type="button" className="btn" onClick={() => setShowGenerate(false)}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setShowGenerate(false)
+                  setGenerateResult(null)
+                }}
+              >
                 ← Back to this week
               </button>
             </div>
           )}
-          <GenerateWeekForm state={{ pantry, components, feedback, settings }} />
+          <GenerateWeekForm state={{ pantry, components, feedback, settings }} onGenerated={setGenerateResult} />
+
+          {generateResult && generateResult.ok && (
+            <div className="plan-section">
+              <h2>Review generated week</h2>
+              <ImportReview
+                payload={generateResult.payload}
+                components={components}
+                weeks={weeks}
+                onConfirm={handleImported}
+                onCancel={() => setGenerateResult(null)}
+              />
+            </div>
+          )}
+
+          {generateResult && !generateResult.ok && (
+            <div className="plan-section">
+              <div className="message message--error">
+                {generateResult.errors.map((err) => (
+                  <div key={err}>{err}</div>
+                ))}
+              </div>
+              {generateResult.rawText && (
+                <details>
+                  <summary>Raw response</summary>
+                  <textarea className="prompt-fallback" readOnly value={generateResult.rawText} onFocus={(e) => e.target.select()} />
+                  <div className="button-row">
+                    <button type="button" className="btn" onClick={handleCopyRawResponse}>
+                      Copy raw response
+                    </button>
+                  </div>
+                </details>
+              )}
+              <div className="button-row">
+                <button type="button" className="btn" onClick={() => setGenerateResult(null)}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
           <WeekImportBox components={components} weeks={weeks} onImported={handleImported} />
         </>
       )}

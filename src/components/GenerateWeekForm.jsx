@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { compileWeekPrompt, nextSundayISO } from '../promptCompiler.js'
+import { generateWeekViaApi } from '../byok.js'
 
-export default function GenerateWeekForm({ state }) {
+const BUSY_ASKING = 'Asking Claude… this can take a minute'
+const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
+
+export default function GenerateWeekForm({ state, onGenerated }) {
   const [servings, setServings] = useState(5)
   const [cookSunday, setCookSunday] = useState(true)
   const [wedRefresh, setWedRefresh] = useState(true)
@@ -10,6 +14,10 @@ export default function GenerateWeekForm({ state }) {
   const [prompt, setPrompt] = useState(null)
   const [copyMsg, setCopyMsg] = useState(null)
   const [showFallback, setShowFallback] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [busyMsg, setBusyMsg] = useState(BUSY_ASKING)
+
+  const byokActive = state.settings.apiMode === 'byok' && !!state.settings.apiKey
 
   async function handleCopy() {
     const text = compileWeekPrompt(state, { servings, cookSunday, wedRefresh, notes, weekOf })
@@ -22,6 +30,22 @@ export default function GenerateWeekForm({ state }) {
       setCopyMsg({ type: 'error', text: 'Clipboard unavailable — copy from the box below.' })
       setShowFallback(true)
     }
+  }
+
+  async function handleGenerate() {
+    const text = compileWeekPrompt(state, { servings, cookSunday, wedRefresh, notes, weekOf })
+    setGenerating(true)
+    setBusyMsg(BUSY_ASKING)
+    const result = await generateWeekViaApi({
+      provider: state.settings.provider,
+      apiKey: state.settings.apiKey,
+      prompt: text,
+      onProgress: (stage) => {
+        if (stage === 'retrying') setBusyMsg(BUSY_RETRYING)
+      },
+    })
+    setGenerating(false)
+    onGenerated?.(result)
   }
 
   return (
@@ -78,7 +102,12 @@ export default function GenerateWeekForm({ state }) {
       </div>
 
       <div className="button-row">
-        <button type="button" className="btn btn--primary" onClick={handleCopy}>
+        {byokActive && (
+          <button type="button" className="btn btn--primary" onClick={handleGenerate} disabled={generating}>
+            {generating ? busyMsg : 'Generate week'}
+          </button>
+        )}
+        <button type="button" className={`btn${byokActive ? '' : ' btn--primary'}`} onClick={handleCopy} disabled={generating}>
           Copy prompt
         </button>
       </div>
