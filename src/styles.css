@@ -41,6 +41,33 @@ body {
   padding-bottom: 24px;
 }
 
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding: calc(10px + env(safe-area-inset-top, 0)) 16px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.app-header__title {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.app-header__help {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .screen h1 {
   font-size: 1.4rem;
   margin: 4px 0 12px;
@@ -347,6 +374,27 @@ textarea, input[type="text"] {
 .sheet__danger-row {
   margin-top: 8px;
   align-items: center;
+}
+
+.help-sheet .help-section {
+  margin-bottom: 18px;
+}
+
+.help-sheet .help-section h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.help-sheet .help-section p,
+.help-sheet .help-section li {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.help-sheet .help-section ol,
+.help-sheet .help-section ul {
+  margin: 6px 0;
+  padding-left: 20px;
 }
 
 .sheet__confirm-text {
