@@ -1,12 +1,19 @@
 import { useState } from 'react'
+import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 
-export default function PantryItemEditor({ item, categories, onSave, onDelete, onCancel }) {
+export default function PantryItemEditor({ item, categories, fdcKey, onSave, onDelete, onSaveNutrition, onCancel }) {
   const [name, setName] = useState(item.name)
   const [category, setCategory] = useState(item.category)
   const [role, setRole] = useState(item.role)
   const [onHand, setOnHand] = useState(item.onHand)
   const [roughQty, setRoughQty] = useState(item.roughQty ?? '')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [editingNutrition, setEditingNutrition] = useState(false)
+
+  function handleSaveNutrition(nutrition) {
+    onSaveNutrition(item.id, nutrition)
+    setEditingNutrition(false)
+  }
 
   function handleSave() {
     const trimmedName = name.trim()
@@ -80,6 +87,23 @@ export default function PantryItemEditor({ item, categories, onSave, onDelete, o
           />
         </div>
 
+        <div className="field">
+          <span>Nutrition</span>
+          {item.nutrition ? (
+            <div className="nutrition-summary">
+              <span className="provenance-tag">{item.nutrition.source}</span>
+              <span>
+                {item.nutrition.perServing.kcal} kcal — {item.nutrition.servingDesc || 'per serving'}
+              </span>
+            </div>
+          ) : (
+            <p className="placeholder">No nutrition data yet.</p>
+          )}
+          <button type="button" className="btn" onClick={() => setEditingNutrition(true)}>
+            {item.nutrition ? 'Edit nutrition' : 'Add nutrition'}
+          </button>
+        </div>
+
         <div className="button-row">
           <button type="button" className="btn btn--primary" onClick={handleSave} disabled={!name.trim()}>
             Save
@@ -106,6 +130,16 @@ export default function PantryItemEditor({ item, categories, onSave, onDelete, o
             </>
           )}
         </div>
+
+        {editingNutrition && (
+          <NutritionInfoEditor
+            itemName={item.name}
+            nutrition={item.nutrition}
+            fdcKey={fdcKey}
+            onSave={handleSaveNutrition}
+            onCancel={() => setEditingNutrition(false)}
+          />
+        )}
       </div>
     </div>
   )

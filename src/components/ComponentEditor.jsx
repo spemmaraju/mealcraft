@@ -1,14 +1,23 @@
 import { useState } from 'react'
 import { COMPONENT_TYPES, STATIONS, ORIGINS } from '../schema.js'
+import * as nutritionOps from '../nutritionOps.js'
 import IngredientListEditor from './IngredientListEditor.jsx'
 import StepListEditor from './StepListEditor.jsx'
+import MacroSectionEditor from './MacroSectionEditor.jsx'
 
 function toIntOrZero(text) {
   const n = parseInt(text, 10)
   return Number.isNaN(n) ? 0 : n
 }
 
-export default function ComponentEditor({ component, isNew, onSave, onDelete, onCancel }) {
+// Macro grams (unlike kcal) can carry a decimal from Derive — parseInt would
+// silently truncate 5.5g to 5g.
+function toNumOrZero(text) {
+  const n = parseFloat(text)
+  return Number.isNaN(n) ? 0 : n
+}
+
+export default function ComponentEditor({ component, isNew, pantry, onSave, onDelete, onCancel }) {
   const [name, setName] = useState(component.name)
   const [type, setType] = useState(component.type)
   const [cuisineTagsText, setCuisineTagsText] = useState(component.cuisineTags.join(', '))
@@ -19,17 +28,37 @@ export default function ComponentEditor({ component, isNew, onSave, onDelete, on
   const [passiveMin, setPassiveMin] = useState(String(component.passiveMin))
   const [storageText, setStorageText] = useState(component.storage)
   const [station, setStation] = useState(component.station)
+  const [servings, setServings] = useState(component.servings != null ? String(component.servings) : '')
   const [hasMacros, setHasMacros] = useState(component.macrosPerServing !== null)
   const [kcal, setKcal] = useState(String(component.macrosPerServing?.kcal ?? 0))
   const [protein, setProtein] = useState(String(component.macrosPerServing?.protein_g ?? 0))
   const [carbs, setCarbs] = useState(String(component.macrosPerServing?.carbs_g ?? 0))
   const [fat, setFat] = useState(String(component.macrosPerServing?.fat_g ?? 0))
-  const [macroSource, setMacroSource] = useState(
-    component.macroSource === 'ai_estimate' ? 'ai_estimate' : 'manual',
-  )
+  const [macroSource, setMacroSource] = useState(component.macroSource)
+  const [deriveError, setDeriveError] = useState(null)
   const [origin, setOrigin] = useState(component.origin)
   const [archived, setArchived] = useState(component.archived)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  function handleDerive() {
+    const draft = {
+      ...component,
+      servings: servings.trim() ? toIntOrZero(servings) : null,
+      ingredients: ingredients.filter((row) => row.name.trim()),
+    }
+    const result = nutritionOps.deriveComponentMacros(draft, pantry)
+    if (result.ok) {
+      setHasMacros(true)
+      setKcal(String(result.macrosPerServing.kcal))
+      setProtein(String(result.macrosPerServing.protein_g))
+      setCarbs(String(result.macrosPerServing.carbs_g))
+      setFat(String(result.macrosPerServing.fat_g))
+      setMacroSource('derived')
+      setDeriveError(null)
+    } else {
+      setDeriveError(result.unresolved)
+    }
+  }
 
   function handleSave() {
     const trimmedName = name.trim()
@@ -48,12 +77,13 @@ export default function ComponentEditor({ component, isNew, onSave, onDelete, on
       station,
       activeMin: toIntOrZero(activeMin),
       passiveMin: toIntOrZero(passiveMin),
+      servings: servings.trim() ? toIntOrZero(servings) : null,
       macrosPerServing: hasMacros
         ? {
             kcal: toIntOrZero(kcal),
-            protein_g: toIntOrZero(protein),
-            carbs_g: toIntOrZero(carbs),
-            fat_g: toIntOrZero(fat),
+            protein_g: toNumOrZero(protein),
+            carbs_g: toNumOrZero(carbs),
+            fat_g: toNumOrZero(fat),
           }
         : null,
       macroSource: hasMacros ? macroSource : 'manual',
@@ -146,50 +176,24 @@ export default function ComponentEditor({ component, isNew, onSave, onDelete, on
           </select>
         </div>
 
-        <div className="field">
-          <label className="checkbox-field">
-            <input type="checkbox" checked={hasMacros} onChange={(e) => setHasMacros(e.target.checked)} />
-            Macros per serving
-          </label>
-          {hasMacros && (
-            <>
-              <div className="button-row">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={kcal}
-                  onChange={(e) => setKcal(e.target.value)}
-                  placeholder="kcal"
-                />
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={protein}
-                  onChange={(e) => setProtein(e.target.value)}
-                  placeholder="protein g"
-                />
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={carbs}
-                  onChange={(e) => setCarbs(e.target.value)}
-                  placeholder="carbs g"
-                />
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={fat}
-                  onChange={(e) => setFat(e.target.value)}
-                  placeholder="fat g"
-                />
-              </div>
-              <select value={macroSource} onChange={(e) => setMacroSource(e.target.value)}>
-                <option value="manual">manual</option>
-                <option value="ai_estimate">ai_estimate</option>
-              </select>
-            </>
-          )}
-        </div>
+        <MacroSectionEditor
+          servings={servings}
+          onServingsChange={setServings}
+          hasMacros={hasMacros}
+          onHasMacrosChange={setHasMacros}
+          kcal={kcal}
+          onKcalChange={setKcal}
+          protein={protein}
+          onProteinChange={setProtein}
+          carbs={carbs}
+          onCarbsChange={setCarbs}
+          fat={fat}
+          onFatChange={setFat}
+          macroSource={macroSource}
+          onMacroSourceChange={setMacroSource}
+          onDerive={handleDerive}
+          deriveError={deriveError}
+        />
 
         <div className="field">
           <label htmlFor="component-origin">Origin</label>

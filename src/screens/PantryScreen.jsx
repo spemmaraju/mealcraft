@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as storage from '../storage.js'
 import * as pantryOps from '../pantryOps.js'
+import * as nutritionOps from '../nutritionOps.js'
 import PantryItemRow from '../components/PantryItemRow.jsx'
 import PantryItemEditor from '../components/PantryItemEditor.jsx'
 import CategoryManager from '../components/CategoryManager.jsx'
@@ -13,6 +14,8 @@ const ROLE_CHIPS = [
 export default function PantryScreen() {
   const [pantry, setPantry] = useState([])
   const [categories, setCategories] = useState([])
+  const [components, setComponents] = useState([])
+  const [settings, setSettings] = useState(null)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState(null)
   const [onHandOnly, setOnHandOnly] = useState(false)
@@ -22,9 +25,16 @@ export default function PantryScreen() {
   const [addText, setAddText] = useState('')
 
   async function reload() {
-    const [p, c] = await Promise.all([storage.get('pantry'), storage.get('categories')])
+    const [p, c, comps, s] = await Promise.all([
+      storage.get('pantry'),
+      storage.get('categories'),
+      storage.get('components'),
+      storage.get('settings'),
+    ])
     setPantry(p)
     setCategories(c)
+    setComponents(comps)
+    setSettings(s)
   }
 
   useEffect(() => {
@@ -51,6 +61,15 @@ export default function PantryScreen() {
     setEditingItemId(null)
   }
 
+  // Nutrition writes/deletes can change what a 'derived' component resolves
+  // to, so every save here re-derives across the board before persisting.
+  async function handleSaveNutrition(itemId, nutrition) {
+    const nextPantry = pantryOps.updateItem(pantry, itemId, { nutrition })
+    await storage.set('pantry', nextPantry)
+    const { changed, components: nextComponents } = nutritionOps.resyncDerivedMacros(components, nextPantry)
+    if (changed) await storage.set('components', nextComponents)
+  }
+
   function handleCategoryChange(nextCategories, nextPantry) {
     persist(nextPantry, nextCategories)
   }
@@ -66,7 +85,8 @@ export default function PantryScreen() {
       setAddingIn(null)
       return
     }
-    persist(pantryOps.addItem(pantry, { name, category, onHand: true, role: 'rotating' }))
+    const nutrition = nutritionOps.findSeedForName(name)
+    persist(pantryOps.addItem(pantry, { name, category, onHand: true, role: 'rotating', nutrition }))
     setAddText('')
   }
 
@@ -148,8 +168,10 @@ export default function PantryScreen() {
         <PantryItemEditor
           item={editingItem}
           categories={categories}
+          fdcKey={settings?.fdcKey ?? null}
           onSave={handleSaveItem}
           onDelete={handleDeleteItem}
+          onSaveNutrition={handleSaveNutrition}
           onCancel={() => setEditingItemId(null)}
         />
       )}

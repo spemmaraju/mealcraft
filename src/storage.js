@@ -3,9 +3,10 @@
 
 import { validate, createSettings, COLLECTION_SHAPES } from './schema.js'
 import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
+import { findSeedForName } from './nutritionOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 const COLLECTIONS = ['pantry', 'components', 'weeks', 'logs', 'feedback']
 
 function describe(v) {
@@ -37,7 +38,10 @@ function defaultState() {
 
 // v1 -> v2: adds `categories`, derived from the defaults plus any custom
 // category names already referenced by the state's own pantry items
-// (default order preserved, extras appended). Mutates and returns `state`.
+// (default order preserved, extras appended).
+// v2 -> v3: adds `Settings.fdcKey`, `Component.servings`, and backfills seed
+// nutrition onto pantry items whose `nutrition === null` (never overwrites
+// existing nutrition). Mutates and returns `state`; chains v1 through v3.
 function migrate(state) {
   if (state.schemaVersion === 1) {
     const pantryItems = Array.isArray(state.pantry) ? state.pantry : []
@@ -51,6 +55,19 @@ function migrate(state) {
     state.categories = [...DEFAULT_CATEGORIES, ...extras]
     state.schemaVersion = 2
   }
+  if (state.schemaVersion === 2) {
+    if (state.settings) state.settings.fdcKey ??= null
+    for (const component of Array.isArray(state.components) ? state.components : []) {
+      component.servings ??= null
+    }
+    for (const item of Array.isArray(state.pantry) ? state.pantry : []) {
+      if (item.nutrition == null) {
+        const seeded = findSeedForName(item.name)
+        if (seeded) item.nutrition = seeded
+      }
+    }
+    state.schemaVersion = 3
+  }
   return state
 }
 
@@ -59,9 +76,9 @@ function readRaw() {
   if (!raw) return defaultState()
   try {
     const merged = { ...defaultState(), ...JSON.parse(raw) }
-    const wasV1 = merged.schemaVersion === 1
+    const wasOld = merged.schemaVersion < SCHEMA_VERSION
     const state = migrate(merged)
-    if (wasV1) writeRaw(state)
+    if (wasOld) writeRaw(state)
     return state
   } catch {
     return defaultState()
@@ -121,7 +138,7 @@ function parseAndValidate(jsonString) {
   if (!isPlainObject(parsed)) {
     return { ok: false, errors: [`(root): expected object, got ${describe(parsed)}`] }
   }
-  if (parsed.schemaVersion === 1) migrate(parsed)
+  if (parsed.schemaVersion < SCHEMA_VERSION) migrate(parsed)
   if (parsed.schemaVersion !== SCHEMA_VERSION) {
     return { ok: false, errors: [`schemaVersion: expected ${SCHEMA_VERSION}, got ${describe(parsed.schemaVersion)}`] }
   }

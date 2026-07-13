@@ -117,20 +117,20 @@ try {
     assert.equal(result.ok, true, `import failed: ${JSON.stringify(result.errors)}`)
 
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 2)
+    assert.equal(state.schemaVersion, 3)
     assert.ok(state.categories.includes('Homemade Sauces'))
     assert.ok(DEFAULT_CATEGORIES.every((c) => state.categories.includes(c)))
   })
 
   // ---- storage.js: v2 export -> wipe -> import round trip ----
 
-  await check('v2 export -> wipe -> import round trip stays deep-equal', async () => {
+  await check('export -> wipe -> import round trip stays deep-equal', async () => {
     await storage.resetState()
     await storage.set('pantry', [schema.createPantryItem({ name: 'Paneer', category: 'Dairy', onHand: true })])
     await storage.set('categories', ['Dairy', 'Custom'])
 
     const before = await storage.getFullState()
-    assert.equal(before.schemaVersion, 2)
+    assert.equal(before.schemaVersion, 3)
     const exported = await storage.exportState()
 
     await storage.resetState()

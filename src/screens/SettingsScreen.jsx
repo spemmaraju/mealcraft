@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as storage from '../storage.js'
 
 function todayStamp() {
@@ -26,6 +26,32 @@ export default function SettingsScreen() {
   const [preview, setPreview] = useState(null)
   const [importMsg, setImportMsg] = useState(null)
   const fileInputRef = useRef(null)
+  const [fdcKey, setFdcKey] = useState('')
+  const [fdcKeyDraft, setFdcKeyDraft] = useState('')
+  const [fdcMsg, setFdcMsg] = useState(null)
+
+  useEffect(() => {
+    storage.get('settings').then((settings) => {
+      setFdcKey(settings.fdcKey ?? '')
+      setFdcKeyDraft(settings.fdcKey ?? '')
+    })
+  }, [])
+
+  async function handleSaveFdcKey() {
+    const trimmed = fdcKeyDraft.trim()
+    const settings = await storage.get('settings')
+    await storage.set('settings', { ...settings, fdcKey: trimmed || null })
+    setFdcKey(trimmed)
+    setFdcMsg({ type: 'success', text: trimmed ? 'FDC key saved.' : 'FDC key removed.' })
+  }
+
+  async function handleRemoveFdcKey() {
+    const settings = await storage.get('settings')
+    await storage.set('settings', { ...settings, fdcKey: null })
+    setFdcKey('')
+    setFdcKeyDraft('')
+    setFdcMsg({ type: 'success', text: 'FDC key removed.' })
+  }
 
   async function handleExportDownload() {
     const json = await storage.exportState()
@@ -159,6 +185,38 @@ export default function SettingsScreen() {
         )}
 
         {importMsg && !preview && <div className={`message message--${importMsg.type}`}>{importMsg.text}</div>}
+      </section>
+
+      <section className="settings-section">
+        <h2>Nutrition lookups</h2>
+        <p className="placeholder">
+          Paste your free USDA FoodData Central API key to use it as a fallback when Open Food Facts has no match.
+          Lookups only run when you tap Scan in the pantry — never in the background.
+        </p>
+
+        <div className="field">
+          <label htmlFor="fdc-key">FDC API key</label>
+          <input
+            id="fdc-key"
+            type="password"
+            value={fdcKeyDraft}
+            onChange={(e) => setFdcKeyDraft(e.target.value)}
+            placeholder={fdcKey ? '••••••••' : 'paste key'}
+          />
+        </div>
+
+        <div className="button-row">
+          <button className="btn btn--primary" onClick={handleSaveFdcKey} disabled={fdcKeyDraft.trim() === fdcKey}>
+            Save
+          </button>
+          {fdcKey && (
+            <button className="btn btn--danger" onClick={handleRemoveFdcKey}>
+              Remove
+            </button>
+          )}
+        </div>
+
+        {fdcMsg && <div className={`message message--${fdcMsg.type}`}>{fdcMsg.text}</div>}
       </section>
     </div>
   )

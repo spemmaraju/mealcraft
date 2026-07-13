@@ -21,6 +21,7 @@ export default function ComponentDetail({ component, onBack, onEdit }) {
           </span>
           <span className="chip">keeps {component.shelfLifeDays}d</span>
           {component.storage && <span className="chip">{component.storage}</span>}
+          {component.servings != null && <span className="chip">{component.servings} servings/batch</span>}
         </div>
 
         {component.ingredients.length > 0 && (

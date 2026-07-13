@@ -1030,6 +1030,35 @@ select {
   color: var(--text-muted);
 }
 
+/* ---- Nutrition capture (Phase 4.5) ---- */
+
+/* Second-layer sheets (nutrition editor over item editor, scanner over
+   nutrition editor) stack above the first sheet-backdrop's z-index: 10. */
+.sheet-backdrop--stacked {
+  z-index: 20;
+}
+
+.nutrition-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  margin: 6px 0;
+}
+
+.provenance-tag--tiny {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+}
+
+.barcode-scanner__video {
+  width: 100%;
+  max-height: 50vh;
+  border-radius: 8px;
+  background: #000;
+  object-fit: cover;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;

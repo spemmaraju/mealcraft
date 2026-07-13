@@ -180,6 +180,7 @@ export default function LibraryScreen() {
         <ComponentEditor
           component={editingComponent}
           isNew={editingId === 'new'}
+          pantry={pantry}
           onSave={handleSaveComponent}
           onDelete={handleDeleteComponent}
           onCancel={handleCancelEditor}

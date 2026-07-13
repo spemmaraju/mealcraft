@@ -51,6 +51,7 @@ export function createNutritionInfo(overrides = {}) {
     servingsPerContainer: null,
     perServing: { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
     naturalUnits: [],
+    barcode: null,
     ...overrides,
   }
 }
@@ -81,6 +82,7 @@ export function createComponent(overrides = {}) {
     station: 'none',
     activeMin: 0,
     passiveMin: 0,
+    servings: null,
     macrosPerServing: null,
     macroSource: 'manual',
     rating: null,
@@ -130,6 +132,7 @@ export function createSettings(overrides = {}) {
     apiMode: 'paste',
     provider: 'anthropic',
     apiKey: null,
+    fdcKey: null,
     ...overrides,
   }
 }
@@ -216,6 +219,7 @@ const nutritionInfoFields = {
     fiber_g: T.optional(T.num()),
   }),
   naturalUnits: T.arrayOf(T.obj({ label: T.str(), gramsOrFraction: T.num() })),
+  barcode: T.optional(T.str({ nullable: true })),
 }
 
 const SHAPES = {
@@ -241,6 +245,7 @@ const SHAPES = {
     station: T.enumOf(STATIONS),
     activeMin: T.num(),
     passiveMin: T.num(),
+    servings: T.num({ nullable: true }),
     macrosPerServing: T.obj(
       { kcal: T.num(), protein_g: T.num(), carbs_g: T.num(), fat_g: T.num() },
       { nullable: true },
@@ -285,6 +290,7 @@ const SHAPES = {
     apiMode: T.enumOf(API_MODES),
     provider: T.enumOf(PROVIDERS),
     apiKey: T.str({ nullable: true }),
+    fdcKey: T.str({ nullable: true }),
   },
 }
 
