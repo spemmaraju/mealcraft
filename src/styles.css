@@ -180,6 +180,235 @@ textarea, input[type="text"] {
   margin: 10px 0;
 }
 
+/* ---- Pantry ---- */
+
+.pantry-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pantry-filters__search {
+  min-height: 44px;
+}
+
+.pantry-filters__chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.chip--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.pantry-section {
+  margin-bottom: 20px;
+}
+
+.pantry-section__title {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+}
+
+.pantry-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+}
+
+.pantry-row__onhand {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.pantry-row__onhand--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.pantry-row__body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border: none;
+  background: none;
+  text-align: left;
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.pantry-row__name {
+  flex: 1;
+}
+
+.pantry-row__badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.pantry-row__badge--staple {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.pantry-row__qty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.pantry-fast-add__btn {
+  min-height: 44px;
+  width: 100%;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.pantry-fast-add__input {
+  min-height: 44px;
+  width: 100%;
+  margin-top: 6px;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ---- Bottom-sheet editors ---- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 10;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 16px 16px 0 0;
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0));
+}
+
+.sheet h2 {
+  margin: 0 0 16px;
+  font-size: 1.15rem;
+}
+
+.sheet__danger-row {
+  margin-top: 8px;
+  align-items: center;
+}
+
+.sheet__confirm-text {
+  font-size: 0.9rem;
+  color: var(--danger);
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.checkbox-field input {
+  width: 20px;
+  height: 20px;
+}
+
+select {
+  min-height: 44px;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ---- Category manager ---- */
+
+.category-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.category-list__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+}
+
+.category-list__row input[type='text'] {
+  flex: 1;
+}
+
+.category-list__name {
+  flex: 1;
+  cursor: pointer;
+}
+
+.category-list__move {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;

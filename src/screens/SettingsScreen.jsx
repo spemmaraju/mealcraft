@@ -11,6 +11,7 @@ const SUMMARY_LABELS = {
   weeks: 'weeks',
   logs: 'logs',
   feedback: 'feedback entries',
+  categories: 'categories',
 }
 
 function summaryLine(summary) {

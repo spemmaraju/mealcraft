@@ -2,9 +2,10 @@
 // future IndexedDB backend can replace the internals without touching callers.
 
 import { validate, createSettings, COLLECTION_SHAPES } from './schema.js'
+import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
 const COLLECTIONS = ['pantry', 'components', 'weeks', 'logs', 'feedback']
 
 function describe(v) {
@@ -24,7 +25,8 @@ function isPlainObject(v) {
 function defaultState() {
   return {
     schemaVersion: SCHEMA_VERSION,
-    pantry: [],
+    categories: [...DEFAULT_CATEGORIES],
+    pantry: seedPantryItems(),
     components: [],
     weeks: [],
     logs: [],
@@ -33,11 +35,34 @@ function defaultState() {
   }
 }
 
+// v1 -> v2: adds `categories`, derived from the defaults plus any custom
+// category names already referenced by the state's own pantry items
+// (default order preserved, extras appended). Mutates and returns `state`.
+function migrate(state) {
+  if (state.schemaVersion === 1) {
+    const pantryItems = Array.isArray(state.pantry) ? state.pantry : []
+    const extras = []
+    for (const item of pantryItems) {
+      const cat = item && item.category
+      if (typeof cat === 'string' && cat && !DEFAULT_CATEGORIES.includes(cat) && !extras.includes(cat)) {
+        extras.push(cat)
+      }
+    }
+    state.categories = [...DEFAULT_CATEGORIES, ...extras]
+    state.schemaVersion = 2
+  }
+  return state
+}
+
 function readRaw() {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return defaultState()
   try {
-    return { ...defaultState(), ...JSON.parse(raw) }
+    const merged = { ...defaultState(), ...JSON.parse(raw) }
+    const wasV1 = merged.schemaVersion === 1
+    const state = migrate(merged)
+    if (wasV1) writeRaw(state)
+    return state
   } catch {
     return defaultState()
   }
@@ -96,6 +121,7 @@ function parseAndValidate(jsonString) {
   if (!isPlainObject(parsed)) {
     return { ok: false, errors: [`(root): expected object, got ${describe(parsed)}`] }
   }
+  if (parsed.schemaVersion === 1) migrate(parsed)
   if (parsed.schemaVersion !== SCHEMA_VERSION) {
     return { ok: false, errors: [`schemaVersion: expected ${SCHEMA_VERSION}, got ${describe(parsed.schemaVersion)}`] }
   }
@@ -111,11 +137,19 @@ function parseAndValidate(jsonString) {
       validate(record, COLLECTION_SHAPES[collection]).forEach((err) => errors.push(`${collection}[${i}].${err}`))
     })
   }
+  if (!Array.isArray(parsed.categories)) {
+    errors.push(`categories: expected array, got ${describe(parsed.categories)}`)
+  } else {
+    parsed.categories.forEach((c, i) => {
+      if (typeof c !== 'string') errors.push(`categories[${i}]: expected string, got ${describe(c)}`)
+    })
+  }
   validate(parsed.settings, 'Settings').forEach((err) => errors.push(`settings.${err}`))
 
   if (errors.length > 0) return { ok: false, errors }
 
   const summary = Object.fromEntries(COLLECTIONS.map((c) => [c, parsed[c].length]))
+  summary.categories = parsed.categories.length
   return { ok: true, parsed, summary }
 }
 
