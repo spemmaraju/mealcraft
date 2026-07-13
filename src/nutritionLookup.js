@@ -5,6 +5,7 @@
 
 import { createNutritionInfo } from './schema.js'
 import { extractJson } from './weekImport.js'
+import { chat } from './aiClient.js'
 
 function hasAllNumbers(values) {
   return values.every((v) => typeof v === 'number' && !Number.isNaN(v))
@@ -140,4 +141,33 @@ export function mapLabelReply(text) {
     servingsPerContainer: coerceNum(parsed.servingsPerContainer),
     perServing,
   })
+}
+
+export const LABEL_PROMPT =
+  'This photo shows a nutrition facts label. Output ONLY one JSON object — no prose, no markdown code fences: ' +
+  '{"servingDesc": string, "servingsPerContainer": number|null, "perServing": {"kcal": number, "protein_g": number, ' +
+  '"carbs_g": number, "fat_g": number, "fiber_g"?: number}}.'
+
+/**
+ * BYOK label-photo lookup, same {ok, nutrition} contract as lookupBarcode.
+ * @returns {Promise<{ok:true, nutrition: NutritionInfo} | {ok:false}>}
+ */
+export async function lookupLabelPhoto({ provider, apiKey, mediaType, data }) {
+  const result = await chat({
+    provider,
+    apiKey,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: LABEL_PROMPT },
+          { type: 'image', mediaType, data },
+        ],
+      },
+    ],
+    maxTokens: 500,
+  })
+  if (!result.ok) return { ok: false }
+  const nutrition = mapLabelReply(result.text)
+  return nutrition ? { ok: true, nutrition } : { ok: false }
 }

@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import MicroActionSheet from './MicroActionSheet.jsx'
 
-export default function AssemblyCards({ week, components, onSwap, onRemove, onRequestPicker }) {
+export default function AssemblyCards({ week, components, pantry, settings, byokActive, onSwap, onRemove, onRequestPicker, onAiSubstitute }) {
   const byId = Object.fromEntries(components.map((c) => [c.id, c]))
   const [swapping, setSwapping] = useState(null)
   const [confirmingRemove, setConfirmingRemove] = useState(null)
+  const [aiSubstituting, setAiSubstituting] = useState(null) // { day, fromId, component }
 
   function handleSwapClick(day) {
     if (swapping === day) {
@@ -44,6 +46,15 @@ export default function AssemblyCards({ week, components, onSwap, onRemove, onRe
           <span className="assembly-card__component assembly-card__component--static">
             {component ? component.name : componentId}
           </span>
+        )}
+        {removable && byokActive && (
+          <button
+            type="button"
+            className="btn assembly-card__swap-btn"
+            onClick={() => setAiSubstituting({ day, fromId: componentId, component })}
+          >
+            AI substitute
+          </button>
         )}
         {removable &&
           (isConfirming ? (
@@ -124,6 +135,20 @@ export default function AssemblyCards({ week, components, onSwap, onRemove, onRe
         <p className="placeholder">No assembly days in this week.</p>
       ) : (
         cards
+      )}
+
+      {aiSubstituting && (
+        <MicroActionSheet
+          mode="substitute"
+          component={aiSubstituting.component}
+          pantry={pantry}
+          settings={settings}
+          onApply={(newComponent) => {
+            onAiSubstitute(aiSubstituting.day, aiSubstituting.fromId, newComponent)
+            setAiSubstituting(null)
+          }}
+          onCancel={() => setAiSubstituting(null)}
+        />
       )}
     </div>
   )

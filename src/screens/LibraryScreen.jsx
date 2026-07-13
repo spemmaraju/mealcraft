@@ -5,6 +5,7 @@ import { createComponent, COMPONENT_TYPES } from '../schema.js'
 import ComponentRow from '../components/ComponentRow.jsx'
 import ComponentEditor from '../components/ComponentEditor.jsx'
 import ComponentDetail from '../components/ComponentDetail.jsx'
+import MicroActionSheet from '../components/MicroActionSheet.jsx'
 
 const RATING_CHIPS = [
   { label: 'Repeat', value: 'repeat' },
@@ -15,6 +16,7 @@ const RATING_CHIPS = [
 export default function LibraryScreen() {
   const [components, setComponents] = useState([])
   const [pantry, setPantry] = useState([])
+  const [settings, setSettings] = useState(null)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState(null)
   const [tagFilter, setTagFilter] = useState(null)
@@ -24,11 +26,13 @@ export default function LibraryScreen() {
   const [editingId, setEditingId] = useState(null)
   const [newDraft, setNewDraft] = useState(null)
   const [viewingId, setViewingId] = useState(null)
+  const [regenerating, setRegenerating] = useState(null)
 
   async function reload() {
-    const [c, p] = await Promise.all([storage.get('components'), storage.get('pantry')])
+    const [c, p, s] = await Promise.all([storage.get('components'), storage.get('pantry'), storage.get('settings')])
     setComponents(c)
     setPantry(p)
+    setSettings(s)
   }
 
   useEffect(() => {
@@ -76,6 +80,13 @@ export default function LibraryScreen() {
     persist(componentOps.updateComponent(components, id, { rating }))
   }
 
+  function handleApplyRegenerate(newComponent) {
+    const replaced = { ...newComponent, id: regenerating.id, rating: regenerating.rating }
+    persist(componentOps.upsertComponent(components, replaced))
+    setRegenerating(null)
+  }
+
+  const byokActive = !!(settings && settings.apiMode === 'byok' && settings.apiKey)
   const makeability = componentOps.makeabilityMap(components, pantry)
   const filtered = componentOps.filterComponents(
     components,
@@ -188,7 +199,24 @@ export default function LibraryScreen() {
       )}
 
       {viewingComponent && (
-        <ComponentDetail component={viewingComponent} onBack={() => setViewingId(null)} onEdit={handleEditFromDetail} />
+        <ComponentDetail
+          component={viewingComponent}
+          byokActive={byokActive}
+          onBack={() => setViewingId(null)}
+          onEdit={handleEditFromDetail}
+          onRegenerate={setRegenerating}
+        />
+      )}
+
+      {regenerating && settings && (
+        <MicroActionSheet
+          mode="regenerate"
+          component={regenerating}
+          pantry={pantry}
+          settings={settings}
+          onApply={handleApplyRegenerate}
+          onCancel={() => setRegenerating(null)}
+        />
       )}
     </div>
   )

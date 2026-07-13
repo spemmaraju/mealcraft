@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 
-export default function PantryItemEditor({ item, categories, fdcKey, onSave, onDelete, onSaveNutrition, onCancel }) {
+export default function PantryItemEditor({ item, categories, fdcKey, byok, onSave, onDelete, onSaveNutrition, onCancel }) {
   const [name, setName] = useState(item.name)
   const [category, setCategory] = useState(item.category)
   const [role, setRole] = useState(item.role)
@@ -136,6 +136,7 @@ export default function PantryItemEditor({ item, categories, fdcKey, onSave, onD
             itemName={item.name}
             nutrition={item.nutrition}
             fdcKey={fdcKey}
+            byok={byok}
             onSave={handleSaveNutrition}
             onCancel={() => setEditingNutrition(false)}
           />

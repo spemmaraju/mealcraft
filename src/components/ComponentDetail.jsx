@@ -1,4 +1,4 @@
-export default function ComponentDetail({ component, onBack, onEdit }) {
+export default function ComponentDetail({ component, byokActive, onBack, onEdit, onRegenerate }) {
   return (
     <div className="component-detail">
       <div className="component-detail__header">
@@ -23,6 +23,14 @@ export default function ComponentDetail({ component, onBack, onEdit }) {
           {component.storage && <span className="chip">{component.storage}</span>}
           {component.servings != null && <span className="chip">{component.servings} servings/batch</span>}
         </div>
+
+        {byokActive && (
+          <div className="button-row">
+            <button type="button" className="btn" onClick={() => onRegenerate(component)}>
+              Regenerate (AI)
+            </button>
+          </div>
+        )}
 
         {component.ingredients.length > 0 && (
           <div className="component-detail__section">

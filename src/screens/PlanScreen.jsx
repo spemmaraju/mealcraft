@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as storage from '../storage.js'
 import * as weekOps from '../weekOps.js'
+import * as componentOps from '../componentOps.js'
 import GenerateWeekForm from '../components/GenerateWeekForm.jsx'
 import WeekImportBox from '../components/WeekImportBox.jsx'
 import WeekView from '../components/WeekView.jsx'
@@ -46,6 +47,12 @@ export default function PlanScreen() {
     await storage.set('weeks', weekOps.replaceWeek(weeks, nextWeek))
   }
 
+  async function handleSubstituteComponent(day, fromId, newComponent) {
+    await storage.set('components', componentOps.upsertComponent(components, newComponent))
+    const nextWeek = weekOps.substituteComponent(latestWeek, day, fromId, newComponent.id)
+    await storage.set('weeks', weekOps.replaceWeek(weeks, nextWeek))
+  }
+
   async function handleCopyRawResponse() {
     try {
       await navigator.clipboard.writeText(generateResult.rawText)
@@ -63,7 +70,15 @@ export default function PlanScreen() {
       <h1>Plan</h1>
 
       {latestWeek && !showGenerate ? (
-        <WeekView week={latestWeek} components={components} onCommit={handleCommitWeek} onGenerateNew={() => setShowGenerate(true)} />
+        <WeekView
+          week={latestWeek}
+          components={components}
+          pantry={pantry}
+          settings={settings}
+          onCommit={handleCommitWeek}
+          onGenerateNew={() => setShowGenerate(true)}
+          onSubstituteComponent={handleSubstituteComponent}
+        />
       ) : (
         <>
           {weeks.length === 0 && (

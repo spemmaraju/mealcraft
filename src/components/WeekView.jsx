@@ -5,8 +5,9 @@ import AssemblyCards from './AssemblyCards.jsx'
 import ComponentPickerSheet from './ComponentPickerSheet.jsx'
 import GroceryList from './GroceryList.jsx'
 
-export default function WeekView({ week, components, onCommit, onGenerateNew }) {
+export default function WeekView({ week, components, pantry, settings, onCommit, onGenerateNew, onSubstituteComponent }) {
   const [picker, setPicker] = useState(null) // { day, mode: 'substitute'|'add', fromId?, type? }
+  const byokActive = !!(settings && settings.apiMode === 'byok' && settings.apiKey)
 
   function handleToggleStep(index) {
     onCommit(weekOps.toggleRunSheetStep(week, index))
@@ -54,9 +55,13 @@ export default function WeekView({ week, components, onCommit, onGenerateNew }) 
       <AssemblyCards
         week={week}
         components={components}
+        pantry={pantry}
+        settings={settings}
+        byokActive={byokActive}
         onSwap={handleSwap}
         onRemove={handleRemove}
         onRequestPicker={setPicker}
+        onAiSubstitute={onSubstituteComponent}
       />
 
       <GroceryList week={week} onToggle={handleToggleGrocery} onDismissAll={handleDismissAllGroceries} />

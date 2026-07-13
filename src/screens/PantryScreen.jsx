@@ -94,6 +94,7 @@ export default function PantryScreen() {
   const known = new Set(categories)
   const otherItems = filtered.filter((item) => !known.has(item.category))
   const editingItem = editingItemId ? pantry.find((i) => i.id === editingItemId) : null
+  const byok = settings?.apiMode === 'byok' && settings.apiKey ? { provider: settings.provider, apiKey: settings.apiKey } : null
 
   function renderSection(category, items) {
     return (
@@ -169,6 +170,7 @@ export default function PantryScreen() {
           item={editingItem}
           categories={categories}
           fdcKey={settings?.fdcKey ?? null}
+          byok={byok}
           onSave={handleSaveItem}
           onDelete={handleDeleteItem}
           onSaveNutrition={handleSaveNutrition}

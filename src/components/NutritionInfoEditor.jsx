@@ -4,6 +4,7 @@ import { findSeedForName } from '../nutritionOps.js'
 import { lookupBarcode } from '../nutritionLookup.js'
 import NaturalUnitsEditor from './NaturalUnitsEditor.jsx'
 import BarcodeScanner from './BarcodeScanner.jsx'
+import LabelPhotoButton from './LabelPhotoButton.jsx'
 
 function toNumOrZero(text) {
   const n = parseFloat(text)
@@ -13,7 +14,7 @@ function toNumOrZero(text) {
 // Second-layer sheet over PantryItemEditor. Scan/seed results prefill the
 // form for confirmation — nothing is saved until the user taps Save (this is
 // the seam Phase 6's label-photo capture will plug into).
-export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, onSave, onCancel }) {
+export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok, onSave, onCancel }) {
   const base = nutrition ?? createNutritionInfo()
   const [source, setSource] = useState(base.source)
   const [state, setState] = useState(base.state)
@@ -71,6 +72,15 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, onSav
     }
   }
 
+  function handleLabelPhotoResult(result) {
+    if (result.ok) {
+      applyPrefill(result.nutrition)
+      setLookupMsg({ type: 'success', text: 'Read from photo — review and Save.' })
+    } else {
+      setLookupMsg({ type: 'error', text: "Couldn't read the label — enter nutrition manually." })
+    }
+  }
+
   function handleSave() {
     onSave({
       source,
@@ -101,6 +111,7 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, onSav
           <button type="button" className="btn" onClick={handleFillFromSeed}>
             Fill from seed table
           </button>
+          {byok && <LabelPhotoButton byok={byok} onResult={handleLabelPhotoResult} />}
         </div>
         {lookupMsg && <div className={`message message--${lookupMsg.type}`}>{lookupMsg.text}</div>}
 
