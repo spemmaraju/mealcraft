@@ -1,4 +1,5 @@
 node_modules
 dist
+dist-ghpages
 .DS_Store
 *.local

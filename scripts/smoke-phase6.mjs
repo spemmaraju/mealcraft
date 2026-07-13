@@ -139,17 +139,21 @@ try {
     assert.deepEqual(schema.validate(applied.weeks[0], 'WeekPlan'), [])
   })
 
-  await check('sw.js static: version string present; all four network-only hostnames listed; no cross-origin precache', () => {
+  await check('sw.js static: version string present; all four network-only hostnames listed; precache is BASE-relative (no hardcoded absolute/cross-origin URLs)', () => {
     const swText = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf-8')
     assert.match(swText, /CACHE\s*=\s*['"]mealcraft-shell-v\d+['"]/)
     for (const host of ['world.openfoodfacts.org', 'api.nal.usda.gov', 'api.anthropic.com', 'generativelanguage.googleapis.com']) {
       assert.ok(swText.includes(host), `sw.js must list ${host}`)
     }
+    // BASE is computed from this file's own location (works under any deploy
+    // subpath, e.g. GitHub Pages) rather than hardcoded — precached filenames
+    // are BASE-relative, not absolute root paths.
+    assert.ok(swText.includes('self.location'), 'BASE must be derived from self.location, not hardcoded')
     const precacheMatch = swText.match(/PRECACHE_URLS\s*=\s*(\[[^\]]*\])/)
     assert.ok(precacheMatch, 'PRECACHE_URLS not found')
-    const precached = JSON.parse(precacheMatch[1].replace(/'/g, '"'))
-    for (const url of precached) {
-      assert.ok(!/^https?:\/\//.test(url), `precached URL must be same-origin, got ${url}`)
+    assert.ok(!/https?:\/\//.test(precacheMatch[1]), 'precache list must not hardcode an absolute/cross-origin URL')
+    for (const file of ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png']) {
+      assert.ok(precacheMatch[1].includes(file), `PRECACHE_URLS must include ${file}`)
     }
   })
 
@@ -471,9 +475,15 @@ try {
     assert.ok(sizes.includes('512x512'))
     assert.ok(manifest.icons.some((i) => i.purpose === 'maskable'))
 
+    assert.equal(manifest.start_url, '.', 'start_url must be relative so it works under any deploy subpath')
+    assert.ok(
+      manifest.icons.every((i) => !i.src.startsWith('/')),
+      'icon src must be relative (no leading slash) so it works under any deploy subpath',
+    )
+
     const pngMagic = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
     for (const icon of manifest.icons) {
-      const bytes = readFileSync(new URL(`../public${icon.src}`, import.meta.url))
+      const bytes = readFileSync(new URL(`../public/${icon.src}`, import.meta.url))
       assert.ok(bytes.subarray(0, 8).equals(pngMagic), `${icon.src} is not a valid PNG`)
     }
     const appleTouchIcon = readFileSync(new URL('../public/apple-touch-icon.png', import.meta.url))
@@ -488,10 +498,11 @@ try {
     assert.ok(html.includes('apple-mobile-web-app-title" content="MealCraft"'))
   })
 
-  await check('main.jsx: registers /sw.js guarded by import.meta.env.PROD', () => {
+  await check('main.jsx: registers sw.js (BASE_URL-relative) guarded by import.meta.env.PROD', () => {
     const mainText = readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf-8')
     assert.ok(mainText.includes('import.meta.env.PROD'))
-    assert.ok(mainText.includes("register('/sw.js')"))
+    assert.ok(mainText.includes('import.meta.env.BASE_URL'))
+    assert.ok(mainText.includes('sw.js'))
   })
 
   console.log(`\n${passed} passed`)

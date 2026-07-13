@@ -2,7 +2,11 @@
 // Bump the version suffix on every deploy that changes precached shell files.
 const CACHE = 'mealcraft-shell-v1'
 
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png']
+// BASE is computed from this file's own location so the same static sw.js
+// works whether the app is served from "/" (local dev/preview) or a
+// subfolder like "/mealcraft/" (GitHub Pages) — no build step needed.
+const BASE = new URL('./', self.location).pathname
+const PRECACHE_URLS = [BASE, `${BASE}index.html`, `${BASE}manifest.json`, `${BASE}icon-192.png`, `${BASE}icon-512.png`, `${BASE}apple-touch-icon.png`]
 
 // Cross-origin requests are always network-only (see the fetch handler below)
 // — this covers every host MealCraft ever talks to:
@@ -35,7 +39,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return // cross-origin (NETWORK_ONLY_HOSTS): network-only, untouched
 
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/index.html')))
+    event.respondWith(fetch(request).catch(() => caches.match(`${BASE}index.html`)))
     return
   }
 
