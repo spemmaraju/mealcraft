@@ -62,6 +62,7 @@ export default function SettingsScreen() {
     a.download = `mealcraft-export-${todayStamp()}.json`
     a.click()
     URL.revokeObjectURL(url)
+    await storage.markExported()
     setExportMsg({ type: 'success', text: 'Export downloaded.' })
   }
 
@@ -69,6 +70,7 @@ export default function SettingsScreen() {
     const json = await storage.exportState()
     try {
       await navigator.clipboard.writeText(json)
+      await storage.markExported()
       setExportMsg({ type: 'success', text: 'Export copied to clipboard.' })
     } catch {
       setExportMsg({ type: 'error', text: 'Clipboard unavailable — use Download instead.' })

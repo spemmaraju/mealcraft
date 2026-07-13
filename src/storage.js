@@ -6,7 +6,7 @@ import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName } from './nutritionOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 const COLLECTIONS = ['pantry', 'components', 'weeks', 'logs', 'feedback']
 
 function describe(v) {
@@ -41,7 +41,9 @@ function defaultState() {
 // (default order preserved, extras appended).
 // v2 -> v3: adds `Settings.fdcKey`, `Component.servings`, and backfills seed
 // nutrition onto pantry items whose `nutrition === null` (never overwrites
-// existing nutrition). Mutates and returns `state`; chains v1 through v3.
+// existing nutrition).
+// v3 -> v4: adds `Settings.lastExportAt`. Mutates and returns `state`; chains
+// v1 through v4.
 function migrate(state) {
   if (state.schemaVersion === 1) {
     const pantryItems = Array.isArray(state.pantry) ? state.pantry : []
@@ -67,6 +69,10 @@ function migrate(state) {
       }
     }
     state.schemaVersion = 3
+  }
+  if (state.schemaVersion === 3) {
+    if (state.settings) state.settings.lastExportAt ??= null
+    state.schemaVersion = 4
   }
   return state
 }
@@ -118,7 +124,16 @@ export async function getFullState() {
 }
 
 export async function exportState() {
-  return JSON.stringify(readRaw(), null, 2)
+  const state = readRaw()
+  return JSON.stringify({ ...state, settings: { ...state.settings, apiKey: null, fdcKey: null } }, null, 2)
+}
+
+/** Stamps `settings.lastExportAt` to now. Call after a successful export. */
+export async function markExported() {
+  const state = readRaw()
+  state.settings = { ...state.settings, lastExportAt: new Date().toISOString() }
+  writeRaw(state)
+  notify()
 }
 
 export async function resetState() {
@@ -179,6 +194,12 @@ export async function previewImport(jsonString) {
 export async function importState(jsonString) {
   const result = parseAndValidate(jsonString)
   if (!result.ok) return result
+  const current = readRaw()
+  result.parsed.settings = {
+    ...result.parsed.settings,
+    apiKey: current.settings.apiKey,
+    fdcKey: current.settings.fdcKey,
+  }
   writeRaw(result.parsed)
   notify()
   return result

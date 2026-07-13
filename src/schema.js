@@ -133,6 +133,7 @@ export function createSettings(overrides = {}) {
     provider: 'anthropic',
     apiKey: null,
     fdcKey: null,
+    lastExportAt: null,
     ...overrides,
   }
 }
@@ -291,6 +292,7 @@ const SHAPES = {
     provider: T.enumOf(PROVIDERS),
     apiKey: T.str({ nullable: true }),
     fdcKey: T.str({ nullable: true }),
+    lastExportAt: T.str({ nullable: true }),
   },
 }
 
