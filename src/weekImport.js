@@ -1,5 +1,5 @@
-// Validates and applies the AI's pasted JSON reply (Phase 3 Ideator import).
-// Pure — no storage imports, no DOM; caller persists. Mirrors componentOps.js.
+// Validates and applies the AI's pasted/BYOK JSON reply. Pure — no storage
+// imports, no DOM; caller persists.
 
 import { createComponent, createWeekPlan, validate, STATIONS } from './schema.js'
 import { nameMatches, upsertComponent } from './componentOps.js'
@@ -273,4 +273,31 @@ export function applyImport(payload, resolutions, library, weeks) {
 export function buildFixRequest(errors) {
   const lines = errors.map((e) => `- ${e}`).join('\n')
   return `The JSON you sent had validation errors:\n\n${lines}\n\nFix these and output the corrected FULL JSON only — no prose, no fences.`
+}
+
+/** Validates a single-component AI reply (regenerate/substitute). @returns {{ok, errors, component}} */
+export function validateComponentReply(text) {
+  let parsed
+  try {
+    parsed = JSON.parse(extractJson(text))
+  } catch (e) {
+    return { ok: false, errors: [`(json): could not parse — ${e.message}`], component: null }
+  }
+  if (!isPlainObject(parsed)) {
+    return { ok: false, errors: [`(root): expected object, got ${describe(parsed)}`], component: null }
+  }
+  if (typeof parsed.name !== 'string' || !parsed.name.trim()) {
+    return { ok: false, errors: [`name: expected non-empty string, got ${describe(parsed.name)}`], component: null }
+  }
+  const full = createComponent({
+    ...stripComponentPayload(parsed),
+    name: parsed.name.trim(),
+    origin: 'ai',
+    rating: null,
+    archived: false,
+    macroSource: 'ai_estimate',
+  })
+  const errors = validate(full, 'Component')
+  if (errors.length > 0) return { ok: false, errors, component: null }
+  return { ok: true, errors: [], component: full }
 }

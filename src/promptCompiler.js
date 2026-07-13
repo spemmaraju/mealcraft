@@ -89,6 +89,24 @@ function feedbackSection(components, feedback) {
   ].join('\n')
 }
 
+// Shared between the week prompt's output-format section and
+// compileComponentPrompt so the two example shapes never drift apart.
+function componentExample(typeEnum, stationEnum) {
+  return {
+    name: '...',
+    type: typeEnum,
+    cuisineTags: [],
+    ingredients: [{ name: '...', measure: '...' }],
+    steps: [],
+    shelfLifeDays: 4,
+    storage: '...',
+    station: stationEnum,
+    activeMin: 10,
+    passiveMin: 25,
+    macrosPerServing: { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
+  }
+}
+
 function outputFormatSection() {
   const typeEnum = COMPONENT_TYPES.join(' | ')
   const stationEnum = STATIONS.join(' | ')
@@ -103,21 +121,7 @@ function outputFormatSection() {
     '```json',
     JSON.stringify(
       {
-        components: [
-          {
-            name: '...',
-            type: typeEnum,
-            cuisineTags: [],
-            ingredients: [{ name: '...', measure: '...' }],
-            steps: [],
-            shelfLifeDays: 4,
-            storage: '...',
-            station: stationEnum,
-            activeMin: 10,
-            passiveMin: 25,
-            macrosPerServing: { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
-          },
-        ],
+        components: [componentExample(typeEnum, stationEnum)],
         weekPlan: {
           weekOf: 'YYYY-MM-DD',
           runSheet: [{ t: '0:05', station: stationEnum, action: '...', componentName: '...' }],
@@ -149,5 +153,51 @@ export function compileWeekPrompt({ pantry, components, feedback, settings }, op
     feedbackSection(components, feedback),
     outputFormatSection(),
     briefSection(),
+  ].join('\n\n')
+}
+
+function proteinBandSection(settings) {
+  const { low_g, high_g } = settings.proteinBand
+  return ['## Protein band', '', `${low_g}–${high_g} g per serving`].join('\n')
+}
+
+function currentComponentSection(component) {
+  const { id, rating, archived, origin, macroSource, ...rest } = component
+  return ['## Current component', '', '```json', JSON.stringify(rest, null, 2), '```'].join('\n')
+}
+
+function componentTaskSection(mode, instruction) {
+  const typeEnum = COMPONENT_TYPES.join(' | ')
+  const stationEnum = STATIONS.join(' | ')
+  const taskLine =
+    mode === 'substitute'
+      ? 'Propose a REPLACEMENT component for this slot, following the instruction below.'
+      : 'Revise this component, following the instruction below.'
+  return [
+    '## Task',
+    '',
+    taskLine,
+    `Instruction: ${instruction}`,
+    '',
+    'Output ONLY one JSON object — a single component. No prose, no markdown code fences.',
+    `"type" must be one of: ${typeEnum}. "station" must be one of: ${stationEnum}.`,
+    '',
+    '```json',
+    JSON.stringify(componentExample(typeEnum, stationEnum), null, 2),
+    '```',
+  ].join('\n')
+}
+
+/**
+ * @param {{component, pantry, settings}} state
+ * @param {{mode: 'regenerate'|'substitute', instruction: string}} options
+ * @returns {string}
+ */
+export function compileComponentPrompt({ component, pantry, settings }, { mode, instruction }) {
+  return [
+    pantrySection(pantry),
+    proteinBandSection(settings),
+    currentComponentSection(component),
+    componentTaskSection(mode, instruction),
   ].join('\n\n')
 }

@@ -10,6 +10,11 @@ import * as schema from '../src/schema.js'
 import * as storage from '../src/storage.js'
 import * as promptCompiler from '../src/promptCompiler.js'
 import * as weekImport from '../src/weekImport.js'
+import * as aiClient from '../src/aiClient.js'
+import * as byok from '../src/byok.js'
+import * as componentOps from '../src/componentOps.js'
+import * as weekOps from '../src/weekOps.js'
+import * as nutritionLookup from '../src/nutritionLookup.js'
 
 class MemoryStorage {
   constructor() {
@@ -130,6 +135,249 @@ try {
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const applied = weekImport.applyImport(result.payload, {}, [], [])
     assert.deepEqual(schema.validate(applied.weeks[0], 'WeekPlan'), [])
+  })
+
+  // ==== Gate 2: BYOK, zero manual JSON ====
+
+  function goldenWeekPayload() {
+    return {
+      components: [
+        {
+          name: 'Coconut rice base',
+          type: 'base',
+          cuisineTags: ['thai'],
+          ingredients: [{ name: 'basmati rice', measure: '2 cups' }],
+          steps: ['Rinse rice', 'Cook with coconut milk'],
+          shelfLifeDays: 5,
+          storage: 'fridge airtight',
+          station: 'instant_pot',
+          activeMin: 10,
+          passiveMin: 20,
+          macrosPerServing: { kcal: 210, protein_g: 4, carbs_g: 40, fat_g: 5 },
+        },
+      ],
+      weekPlan: {
+        weekOf: '2026-07-19',
+        runSheet: [],
+        assembly: [],
+        refresh: { day: 'Wed', steps: [], componentNames: [] },
+        grocerySuggestions: [],
+      },
+    }
+  }
+
+  function goldenWeekReplyText() {
+    return 'Here is the week:\n```json\n' + JSON.stringify(goldenWeekPayload()) + '\n```\nEnjoy!'
+  }
+
+  await check('buildAnthropicRequest: exact URL/headers, model, no temperature/top_p', () => {
+    const { url, headers, body } = aiClient.buildAnthropicRequest('sk-test', [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }], 1000)
+    assert.equal(url, 'https://api.anthropic.com/v1/messages')
+    assert.equal(headers['x-api-key'], 'sk-test')
+    assert.equal(headers['anthropic-version'], '2023-06-01')
+    assert.equal(headers['anthropic-dangerous-direct-browser-access'], 'true')
+    assert.equal(headers['content-type'], 'application/json')
+    assert.equal(body.model, 'claude-opus-4-8')
+    assert.equal(body.max_tokens, 1000)
+    assert.ok(!('temperature' in body))
+    assert.ok(!('top_p' in body))
+  })
+
+  await check('buildGoogleRequest: URL ends generateContent, key in header not URL', () => {
+    const { url, headers, body } = aiClient.buildGoogleRequest('AIza-test', [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }], 1000)
+    assert.ok(url.endsWith('gemini-2.5-flash:generateContent'), url)
+    assert.ok(!url.includes('AIza-test'), 'key must never appear in the URL')
+    assert.equal(headers['x-goog-api-key'], 'AIza-test')
+    assert.equal(body.generationConfig.maxOutputTokens, 1000)
+  })
+
+  await check('extractAnthropicText: multi-block join; stop_reason max_tokens -> truncation error', () => {
+    const ok = aiClient.extractAnthropicText({
+      content: [
+        { type: 'text', text: 'Hello ' },
+        { type: 'text', text: 'world' },
+      ],
+      stop_reason: 'end_turn',
+    })
+    assert.equal(ok.ok, true)
+    assert.equal(ok.text, 'Hello world')
+
+    const truncated = aiClient.extractAnthropicText({ content: [{ type: 'text', text: 'partial' }], stop_reason: 'max_tokens' })
+    assert.equal(truncated.ok, false)
+    assert.ok(truncated.error.toLowerCase().includes('cut off'))
+  })
+
+  await check('extractGoogleText: Gemini fixture multi-part join', () => {
+    const result = aiClient.extractGoogleText({ candidates: [{ content: { parts: [{ text: 'Hello ' }, { text: 'Gemini' }] } }] })
+    assert.equal(result.ok, true)
+    assert.equal(result.text, 'Hello Gemini')
+  })
+
+  await check('image-block mapping: Anthropic base64 source, Google inline_data', () => {
+    const messages = [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'what is this' },
+          { type: 'image', mediaType: 'image/jpeg', data: 'BASE64DATA' },
+        ],
+      },
+    ]
+    const anthropic = aiClient.buildAnthropicRequest('key', messages, 500)
+    assert.deepEqual(anthropic.body.messages[0].content[1], {
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: 'BASE64DATA' },
+    })
+
+    const google = aiClient.buildGoogleRequest('key', messages, 500)
+    assert.deepEqual(google.body.contents[0].parts[1], { inline_data: { mime_type: 'image/jpeg', data: 'BASE64DATA' } })
+  })
+
+  await check('generateWeekViaApi: happy path fenced/prose reply -> ok attempts:1; flows through findConflicts+applyImport', async () => {
+    const stubChat = async () => ({ ok: true, text: goldenWeekReplyText() })
+    const result = await byok.generateWeekViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'compile...', chatFn: stubChat })
+    assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
+    assert.equal(result.attempts, 1)
+    assert.deepEqual(weekImport.findConflicts(result.payload, []), [])
+    const applied = weekImport.applyImport(result.payload, {}, [], [])
+    assert.deepEqual(schema.validate(applied.week, 'WeekPlan'), [])
+  })
+
+  await check('generateWeekViaApi: retry loop rebuilds messages [prompt, assistant garbage, fix-request]; valid second -> attempts:2', async () => {
+    let callCount = 0
+    let secondMessages = null
+    const stubChat = async ({ messages }) => {
+      callCount++
+      if (callCount === 1) return { ok: true, text: 'not json at all' }
+      secondMessages = messages
+      return { ok: true, text: goldenWeekReplyText() }
+    }
+    const result = await byok.generateWeekViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'THE PROMPT', chatFn: stubChat })
+    assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
+    assert.equal(result.attempts, 2)
+    assert.equal(secondMessages.length, 3)
+    assert.equal(secondMessages[0].role, 'user')
+    assert.equal(secondMessages[0].content[0].text, 'THE PROMPT')
+    assert.equal(secondMessages[1].role, 'assistant')
+    assert.equal(secondMessages[1].content[0].text, 'not json at all')
+    assert.equal(secondMessages[2].role, 'user')
+    assert.ok(secondMessages[2].content[0].text.includes('validation errors'))
+  })
+
+  await check('generateWeekViaApi: double failure -> errors+rawText; transport failure -> 1 attempt, no retry', async () => {
+    let callCount = 0
+    const alwaysGarbage = async () => {
+      callCount++
+      return { ok: true, text: 'still not json' }
+    }
+    const doubleFail = await byok.generateWeekViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'p', chatFn: alwaysGarbage })
+    assert.equal(doubleFail.ok, false)
+    assert.equal(doubleFail.attempts, 2)
+    assert.ok(Array.isArray(doubleFail.errors) && doubleFail.errors.length > 0)
+    assert.equal(doubleFail.rawText, 'still not json')
+    assert.equal(callCount, 2)
+
+    callCount = 0
+    const transportFail = async () => {
+      callCount++
+      return { ok: false, error: 'Network request failed — check your connection and try again.' }
+    }
+    const failResult = await byok.generateWeekViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'p', chatFn: transportFail })
+    assert.equal(failResult.ok, false)
+    assert.equal(failResult.attempts, 1)
+    assert.equal(callCount, 1, 'transport failure must not retry')
+  })
+
+  await check('compileComponentPrompt: pantry, component name, instruction, protein band, single-object rules', () => {
+    const pantry = [schema.createPantryItem({ name: 'Ginger', role: 'staple', onHand: true })]
+    const component = schema.createComponent({ name: 'Peanut sauce' })
+    const settings = schema.createSettings({ proteinBand: { low_g: 20, high_g: 35 } })
+    const prompt = promptCompiler.compileComponentPrompt(
+      { component, pantry, settings },
+      { mode: 'regenerate', instruction: 'make it spicier' },
+    )
+    assert.ok(prompt.includes('Ginger'))
+    assert.ok(prompt.includes('Peanut sauce'))
+    assert.ok(prompt.includes('make it spicier'))
+    assert.ok(prompt.includes('20') && prompt.includes('35'))
+    assert.ok(prompt.toLowerCase().includes('one json object'))
+  })
+
+  await check('validateComponentReply: good reply -> valid Component ai/ai_estimate; bad fixtures -> named errors', () => {
+    const good = {
+      name: 'Spicy peanut sauce',
+      type: 'sauce',
+      cuisineTags: ['thai'],
+      ingredients: [{ name: 'peanut butter', measure: '1/3 cup' }],
+      steps: ['Whisk'],
+      shelfLifeDays: 7,
+      storage: 'fridge jar',
+      station: 'none',
+      activeMin: 5,
+      passiveMin: 0,
+      macrosPerServing: null,
+    }
+    const result = weekImport.validateComponentReply('```json\n' + JSON.stringify(good) + '\n```')
+    assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
+    assert.equal(result.component.origin, 'ai')
+    assert.equal(result.component.macroSource, 'ai_estimate')
+    assert.deepEqual(schema.validate(result.component, 'Component'), [])
+
+    const missingName = weekImport.validateComponentReply(JSON.stringify({ type: 'sauce' }))
+    assert.equal(missingName.ok, false)
+    assert.ok(missingName.errors[0].startsWith('name:'))
+
+    const badType = weekImport.validateComponentReply(JSON.stringify({ ...good, type: 'nonsense' }))
+    assert.equal(badType.ok, false)
+    assert.ok(badType.errors.some((e) => e.includes('type')))
+
+    const garbage = weekImport.validateComponentReply('not json')
+    assert.equal(garbage.ok, false)
+    assert.ok(garbage.errors[0].startsWith('(json)'))
+  })
+
+  await check('regenerate keeps id+rating through upsertComponent; substitute swaps componentIds for that day only', () => {
+    const original = schema.createComponent({ id: 'c-orig', name: 'Old sauce', rating: 'repeat' })
+    const newDraft = schema.createComponent({ id: 'c-new-draft', name: 'New sauce', rating: null, origin: 'ai' })
+    const replaced = { ...newDraft, id: original.id, rating: original.rating }
+    const library = componentOps.upsertComponent([original], replaced)
+    assert.equal(library.length, 1)
+    assert.equal(library[0].id, 'c-orig')
+    assert.equal(library[0].name, 'New sauce')
+    assert.equal(library[0].rating, 'repeat')
+
+    const substituteComponent = schema.createComponent({ id: 'c-sub', name: 'Substitute sauce', origin: 'ai' })
+    const week = schema.createWeekPlan({
+      weekOf: '2026-07-19',
+      componentIds: ['c-orig', 'c-other'],
+      assembly: [
+        { day: 'Mon', componentIds: ['c-orig', 'c-other'], note: '' },
+        { day: 'Tue', componentIds: ['c-orig'], note: '' },
+      ],
+    })
+    const substitutedWeek = weekOps.substituteComponent(week, 'Mon', 'c-orig', substituteComponent.id)
+    assert.deepEqual(substitutedWeek.assembly[0].componentIds, ['c-sub', 'c-other'])
+    assert.deepEqual(substitutedWeek.assembly[1].componentIds, ['c-orig'], 'other days are untouched')
+    assert.deepEqual(schema.validate(substitutedWeek, 'WeekPlan'), [])
+  })
+
+  await check('mapLabelReply: fenced-JSON -> valid NutritionInfo source:label_photo; garbage -> null', () => {
+    const reply =
+      'Here:\n```json\n' +
+      JSON.stringify({
+        servingDesc: '1 cup (245 g)',
+        servingsPerContainer: 4,
+        perServing: { kcal: 210, protein_g: 8, carbs_g: 30, fat_g: 5, fiber_g: 3 },
+      }) +
+      '\n```'
+    const nutrition = nutritionLookup.mapLabelReply(reply)
+    assert.ok(nutrition)
+    assert.equal(nutrition.source, 'label_photo')
+    assert.equal(nutrition.state, 'as_packaged')
+    assert.deepEqual(schema.validate(nutrition, 'NutritionInfo'), [])
+
+    assert.equal(nutritionLookup.mapLabelReply('not json'), null)
+    assert.equal(nutritionLookup.mapLabelReply(JSON.stringify({ servingDesc: 'x' })), null, 'missing perServing -> null')
   })
 
   // ==== Gate 3: key hygiene ====

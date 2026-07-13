@@ -4,9 +4,15 @@
 // exercised offline in scripts/smoke-phase4.5.mjs with inline fixtures.
 
 import { createNutritionInfo } from './schema.js'
+import { extractJson } from './weekImport.js'
 
 function hasAllNumbers(values) {
   return values.every((v) => typeof v === 'number' && !Number.isNaN(v))
+}
+
+function coerceNum(v) {
+  const n = typeof v === 'string' ? Number(v) : v
+  return typeof n === 'number' && !Number.isNaN(n) ? n : null
 }
 
 /** @param {object} json Open Food Facts /api/v2/product/{code}.json body @returns {NutritionInfo|null} */
@@ -103,4 +109,35 @@ export async function lookupBarcode(code, { fdcKey } = {}) {
   }
 
   return { ok: false }
+}
+
+/** Maps a BYOK label-photo reply (fenced or prose JSON) to NutritionInfo, or null if unusable. */
+export function mapLabelReply(text) {
+  let parsed
+  try {
+    parsed = JSON.parse(extractJson(text))
+  } catch {
+    return null
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+
+  const ps = parsed.perServing
+  if (!ps || typeof ps !== 'object') return null
+  const kcal = coerceNum(ps.kcal)
+  const protein_g = coerceNum(ps.protein_g)
+  const carbs_g = coerceNum(ps.carbs_g)
+  const fat_g = coerceNum(ps.fat_g)
+  if ([kcal, protein_g, carbs_g, fat_g].some((v) => v === null)) return null
+
+  const perServing = { kcal, protein_g, carbs_g, fat_g }
+  const fiber_g = coerceNum(ps.fiber_g)
+  if (fiber_g !== null) perServing.fiber_g = fiber_g
+
+  return createNutritionInfo({
+    source: 'label_photo',
+    state: 'as_packaged',
+    servingDesc: typeof parsed.servingDesc === 'string' ? parsed.servingDesc : '',
+    servingsPerContainer: coerceNum(parsed.servingsPerContainer),
+    perServing,
+  })
 }
