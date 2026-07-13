@@ -6,6 +6,7 @@
 //   node scripts/smoke-phase6.mjs
 
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import * as schema from '../src/schema.js'
 import * as storage from '../src/storage.js'
 import * as promptCompiler from '../src/promptCompiler.js'
@@ -15,6 +16,7 @@ import * as byok from '../src/byok.js'
 import * as componentOps from '../src/componentOps.js'
 import * as weekOps from '../src/weekOps.js'
 import * as nutritionLookup from '../src/nutritionLookup.js'
+import * as backupOps from '../src/backupOps.js'
 
 class MemoryStorage {
   constructor() {
@@ -135,6 +137,20 @@ try {
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const applied = weekImport.applyImport(result.payload, {}, [], [])
     assert.deepEqual(schema.validate(applied.weeks[0], 'WeekPlan'), [])
+  })
+
+  await check('sw.js static: version string present; all four network-only hostnames listed; no cross-origin precache', () => {
+    const swText = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf-8')
+    assert.match(swText, /CACHE\s*=\s*['"]mealcraft-shell-v\d+['"]/)
+    for (const host of ['world.openfoodfacts.org', 'api.nal.usda.gov', 'api.anthropic.com', 'generativelanguage.googleapis.com']) {
+      assert.ok(swText.includes(host), `sw.js must list ${host}`)
+    }
+    const precacheMatch = swText.match(/PRECACHE_URLS\s*=\s*(\[[^\]]*\])/)
+    assert.ok(precacheMatch, 'PRECACHE_URLS not found')
+    const precached = JSON.parse(precacheMatch[1].replace(/'/g, '"'))
+    for (const url of precached) {
+      assert.ok(!/^https?:\/\//.test(url), `precached URL must be same-origin, got ${url}`)
+    }
   })
 
   // ==== Gate 2: BYOK, zero manual JSON ====
@@ -431,6 +447,51 @@ try {
     const result = await storage.importState(exported)
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     assert.equal((await storage.get('settings')).lastExportAt, stamped.lastExportAt)
+  })
+
+  await check('shouldNudgeBackup: null+no-data false; null+data true; 15d true; 13d false', () => {
+    const nowISO = '2026-07-19T00:00:00.000Z'
+    assert.equal(backupOps.shouldNudgeBackup({ lastExportAt: null, hasUserData: false, nowISO }), false)
+    assert.equal(backupOps.shouldNudgeBackup({ lastExportAt: null, hasUserData: true, nowISO }), true)
+    const fifteenDaysAgo = '2026-07-04T00:00:00.000Z'
+    assert.equal(backupOps.shouldNudgeBackup({ lastExportAt: fifteenDaysAgo, hasUserData: true, nowISO }), true)
+    const thirteenDaysAgo = '2026-07-06T00:00:00.000Z'
+    assert.equal(backupOps.shouldNudgeBackup({ lastExportAt: thirteenDaysAgo, hasUserData: true, nowISO }), false)
+  })
+
+  // ==== Gate 4: installability, static proxies ====
+
+  await check('manifest.json: parses; name/short_name; standalone; 192+512+maskable icons; PNG magic bytes', () => {
+    const manifest = JSON.parse(readFileSync(new URL('../public/manifest.json', import.meta.url), 'utf-8'))
+    assert.equal(manifest.name, 'MealCraft')
+    assert.equal(manifest.short_name, 'MealCraft')
+    assert.equal(manifest.display, 'standalone')
+    const sizes = manifest.icons.map((i) => i.sizes)
+    assert.ok(sizes.includes('192x192'))
+    assert.ok(sizes.includes('512x512'))
+    assert.ok(manifest.icons.some((i) => i.purpose === 'maskable'))
+
+    const pngMagic = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    for (const icon of manifest.icons) {
+      const bytes = readFileSync(new URL(`../public${icon.src}`, import.meta.url))
+      assert.ok(bytes.subarray(0, 8).equals(pngMagic), `${icon.src} is not a valid PNG`)
+    }
+    const appleTouchIcon = readFileSync(new URL('../public/apple-touch-icon.png', import.meta.url))
+    assert.ok(appleTouchIcon.subarray(0, 8).equals(pngMagic), 'apple-touch-icon.png is not a valid PNG')
+  })
+
+  await check('index.html: manifest link, theme-color, apple-touch-icon, apple title', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf-8')
+    assert.ok(html.includes('rel="manifest"'))
+    assert.ok(html.includes('name="theme-color"'))
+    assert.ok(html.includes('rel="apple-touch-icon"'))
+    assert.ok(html.includes('apple-mobile-web-app-title" content="MealCraft"'))
+  })
+
+  await check('main.jsx: registers /sw.js guarded by import.meta.env.PROD', () => {
+    const mainText = readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf-8')
+    assert.ok(mainText.includes('import.meta.env.PROD'))
+    assert.ok(mainText.includes("register('/sw.js')"))
   })
 
   console.log(`\n${passed} passed`)

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import TabBar from './components/TabBar.jsx'
+import BackupNudge from './components/BackupNudge.jsx'
+import InstallHint from './components/InstallHint.jsx'
 import PantryScreen from './screens/PantryScreen.jsx'
 import LibraryScreen from './screens/LibraryScreen.jsx'
 import PlanScreen from './screens/PlanScreen.jsx'
@@ -20,6 +22,8 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <BackupNudge onGoSettings={() => setActiveTab('settings')} />
+      <InstallHint />
       <main className="app-content">
         <Screen />
       </main>
