@@ -1,13 +1,26 @@
+/* Warm Kitchen palette: terracotta (--brand) for actions/navigation,
+   green (--accent) reserved for food status — on hand, success, repeat. */
 :root {
   color-scheme: light;
   --bg: #faf8f5;
   --surface: #ffffff;
   --text: #1f2320;
   --text-muted: #6b6f6c;
+  --brand: #b04a2b;
+  --brand-soft: #f6e7df;
   --accent: #2f6b4f;
+  --accent-soft: #e9f3ee;
+  --accent-border: #c9e2d5;
   --accent-contrast: #ffffff;
   --border: #e2ded6;
   --danger: #b3423a;
+  --danger-soft: #fbeae8;
+  --danger-border: #f0c6c2;
+  --gold: #b08a2e;
+  --amber: #c98a2b;
+  --teal: #3f8f8a;
+  --shadow-sm: 0 1px 2px rgba(31, 35, 32, 0.06);
+  --shadow-md: 0 4px 14px rgba(31, 35, 32, 0.1);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -60,9 +73,9 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--brand);
   background: var(--surface);
-  color: var(--accent);
+  color: var(--brand);
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
@@ -70,6 +83,7 @@ body {
 
 .screen h1 {
   font-size: 1.4rem;
+  font-weight: 700;
   margin: 4px 0 12px;
 }
 
@@ -98,10 +112,15 @@ body {
   color: var(--text-muted);
   font-size: 0.7rem;
   cursor: pointer;
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+
+.tab-bar__item:active {
+  transform: scale(0.95);
 }
 
 .tab-bar__item--active {
-  color: var(--accent);
+  color: var(--brand);
   font-weight: 600;
 }
 
@@ -123,11 +142,24 @@ button {
   color: var(--text);
   font-size: 1rem;
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:focus-visible,
+.chip:focus-visible,
+.tab-bar__item:focus-visible,
+.pantry-section__header:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 .btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--brand);
+  border-color: var(--brand);
   color: var(--accent-contrast);
 }
 
@@ -162,13 +194,15 @@ textarea, input[type="text"] {
 .settings-section {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 16px;
   margin-bottom: 16px;
+  box-shadow: var(--shadow-md);
 }
 
 .settings-section h2 {
   font-size: 1.05rem;
+  font-weight: 700;
   margin: 0 0 12px;
 }
 
@@ -186,15 +220,15 @@ textarea, input[type="text"] {
 }
 
 .message--error {
-  background: #fbeae8;
+  background: var(--danger-soft);
   color: var(--danger);
-  border: 1px solid #f0c6c2;
+  border: 1px solid var(--danger-border);
 }
 
 .message--success {
-  background: #e9f3ee;
+  background: var(--accent-soft);
   color: var(--accent);
-  border: 1px solid #c9e2d5;
+  border: 1px solid var(--accent-border);
 }
 
 .diff-summary {
@@ -235,12 +269,18 @@ textarea, input[type="text"] {
   color: var(--text);
   font-size: 0.9rem;
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.chip:active {
+  transform: scale(0.97);
 }
 
 .chip--active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand);
+  font-weight: 600;
 }
 
 .pantry-section {
@@ -375,7 +415,7 @@ textarea, input[type="text"] {
   font-size: 1rem;
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--brand);
   background: var(--surface);
   color: var(--text);
 }
@@ -400,11 +440,13 @@ textarea, input[type="text"] {
   background: var(--surface);
   border-radius: 16px 16px 0 0;
   padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0));
+  box-shadow: var(--shadow-md);
 }
 
 .sheet h2 {
   margin: 0 0 16px;
   font-size: 1.15rem;
+  font-weight: 700;
 }
 
 .sheet__danger-row {
@@ -594,8 +636,8 @@ select {
 }
 
 .rating-segment--active.rating-segment--fine {
-  background: #b08a2e;
-  border-color: #b08a2e;
+  background: var(--gold);
+  border-color: var(--gold);
   color: var(--accent-contrast);
 }
 
@@ -747,13 +789,15 @@ select {
 .plan-section {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 16px;
   margin-bottom: 16px;
+  box-shadow: var(--shadow-md);
 }
 
 .plan-section h2 {
   font-size: 1.05rem;
+  font-weight: 700;
   margin: 0 0 12px;
 }
 
@@ -857,7 +901,7 @@ select {
   padding: 0 4px;
   border: none;
   background: none;
-  color: var(--accent);
+  color: var(--brand);
   font-size: inherit;
   text-decoration: underline;
   cursor: pointer;
@@ -950,13 +994,15 @@ select {
 
 .assembly-card {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 12px;
   margin-bottom: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .assembly-card--selected {
-  border-color: var(--accent);
+  border-color: var(--brand);
   border-width: 2px;
 }
 
@@ -1163,7 +1209,7 @@ select {
 }
 
 .day-strip__day--selected {
-  border-color: var(--accent);
+  border-color: var(--brand);
   border-width: 2px;
 }
 
@@ -1300,11 +1346,11 @@ select {
 }
 
 .plate-mix__legend-dot--carbs, .plate-mix__segment--carbs {
-  background: #c98a2b;
+  background: var(--amber);
 }
 
 .plate-mix__legend-dot--veg, .plate-mix__segment--veg {
-  background: #3f8f8a;
+  background: var(--teal);
 }
 
 .plate-mix__legend-dot--other, .plate-mix__segment--other {
@@ -1332,7 +1378,7 @@ select {
   min-height: 44px;
   border: none;
   background: none;
-  color: var(--accent);
+  color: var(--brand);
   font-size: 0.95rem;
   text-align: left;
   cursor: pointer;
@@ -1391,6 +1437,7 @@ select {
   margin: 12px 16px 0;
   font-size: 0.85rem;
   color: var(--text);
+  box-shadow: var(--shadow-sm);
 }
 
 .banner__actions {
@@ -1430,5 +1477,18 @@ select {
     --text: #edeceA;
     --text-muted: #9a9d9b;
     --border: #33373a;
+    --brand: #c25f3c;
+    --brand-soft: #3a2a21;
+    --accent: #4f9673;
+    --accent-soft: #22322a;
+    --accent-border: #35503f;
+    --danger: #d06258;
+    --danger-soft: #3a2422;
+    --danger-border: #5c332f;
+    --gold: #cfa54a;
+    --amber: #d9a04a;
+    --teal: #57aaa4;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.55);
   }
 }
