@@ -51,16 +51,35 @@ try {
     schema.createComponent({ name: 'Retired dish', rating: 'never', archived: true }),
   ]
   const settings = schema.createSettings({ proteinBand: { low_g: 22, high_g: 38 } })
-  const opts = { servings: 5, cookSunday: true, wedRefresh: true, notes: 'use up the cabbage', weekOf: '2026-07-19' }
+  const opts = { servings: 5, cook: true, refresh: true, notes: 'use up the cabbage', weekOf: '2026-07-19' }
 
   await check('compileWeekPrompt includes all five section headers', () => {
     const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings }, opts)
     for (let n = 1; n <= 5; n++) assert.ok(prompt.includes(`## ${n}.`), `missing section ${n}`)
   })
 
-  await check('compileWeekPrompt embeds GENERATION_BRIEF verbatim', () => {
+  await check('compileWeekPrompt embeds the generation brief verbatim (default Sunday/Wednesday)', () => {
     const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings }, opts)
-    assert.ok(prompt.includes(promptCompiler.GENERATION_BRIEF))
+    assert.ok(prompt.includes(promptCompiler.buildGenerationBrief('Sunday', 'Wednesday')))
+    assert.ok(prompt.includes('Assign durable components to Sunday'))
+    assert.ok(prompt.includes('Sunday cook, Wednesday refresh'))
+  })
+
+  await check('compileWeekPrompt follows configured cook/refresh days', () => {
+    const satSettings = schema.createSettings({ cookDay: 'Sat', refreshDay: 'Tue' })
+    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings: satSettings }, opts)
+    assert.ok(prompt.includes('Saturday cook, Tuesday refresh'))
+    assert.ok(prompt.includes('Assign durable components to Saturday'))
+    assert.ok(prompt.includes('timed Saturday run sheet'))
+    assert.ok(prompt.includes('"day": "Tue"'))
+  })
+
+  await check('compileWeekPrompt with refreshDay: null goes single-session', () => {
+    const noRefresh = schema.createSettings({ refreshDay: null })
+    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings: noRefresh }, opts)
+    assert.ok(prompt.includes('single Sunday session'))
+    assert.ok(prompt.includes('no midweek refresh'))
+    assert.ok(!prompt.includes('Wednesday refresh'))
   })
 
   await check('pantry section groups staple/rotating and excludes off-hand items', () => {

@@ -106,7 +106,7 @@ try {
     const pantry = [schema.createPantryItem({ name: 'Basmati rice', role: 'staple', onHand: true })]
     const components = [schema.createComponent({ name: 'Mint chutney', rating: 'repeat', archived: false })]
     const settings = schema.createSettings()
-    const opts = { servings: 5, cookSunday: true, wedRefresh: true, notes: '', weekOf: '2026-07-19' }
+    const opts = { servings: 5, cook: true, refresh: true, notes: '', weekOf: '2026-07-19' }
     const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings }, opts)
     for (let n = 1; n <= 5; n++) assert.ok(prompt.includes(`## ${n}.`), `missing section ${n}`)
 

@@ -1,16 +1,18 @@
 import { groupRunSheetByStation, runSheetProgress } from '../weekOps.js'
+import { DAY_NAMES } from '../schema.js'
 
 const STATION_LABELS = { stovetop: 'Stovetop', oven: 'Oven', instant_pot: 'Instant Pot', none: 'Other' }
 
-export default function RunSheet({ week, components, onToggleStep }) {
+export default function RunSheet({ week, components, settings, onToggleStep }) {
   const byId = Object.fromEntries(components.map((c) => [c.id, c]))
   const { done, total } = runSheetProgress(week)
   const groups = groupRunSheetByStation(week.runSheet)
+  const title = `${DAY_NAMES[settings?.cookDay] ?? 'Sunday'} run sheet`
 
   if (total === 0) {
     return (
       <div className="plan-section">
-        <h2>Sunday run sheet</h2>
+        <h2>{title}</h2>
         <p className="placeholder">No run-sheet steps in this week.</p>
       </div>
     )
@@ -18,7 +20,7 @@ export default function RunSheet({ week, components, onToggleStep }) {
 
   return (
     <div className="plan-section">
-      <h2>Sunday run sheet</h2>
+      <h2>{title}</h2>
       <div className="run-sheet__progress">
         {done} of {total} done
       </div>

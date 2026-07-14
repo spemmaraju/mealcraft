@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { compileWeekPrompt, nextSundayISO } from '../promptCompiler.js'
+import { DAY_NAMES } from '../schema.js'
 import { generateWeekViaApi } from '../byok.js'
 
 const BUSY_ASKING = 'Asking Claude… this can take a minute'
@@ -7,8 +8,8 @@ const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
 
 export default function GenerateWeekForm({ state, onGenerated }) {
   const [servings, setServings] = useState(5)
-  const [cookSunday, setCookSunday] = useState(true)
-  const [wedRefresh, setWedRefresh] = useState(true)
+  const [cookEnabled, setCookEnabled] = useState(true)
+  const [refreshEnabled, setRefreshEnabled] = useState(true)
   const [weekOf, setWeekOf] = useState(nextSundayISO())
   const [notes, setNotes] = useState('')
   const [prompt, setPrompt] = useState(null)
@@ -18,9 +19,11 @@ export default function GenerateWeekForm({ state, onGenerated }) {
   const [busyMsg, setBusyMsg] = useState(BUSY_ASKING)
 
   const byokActive = state.settings.apiMode === 'byok' && !!state.settings.apiKey
+  const cookName = DAY_NAMES[state.settings.cookDay] ?? 'Sunday'
+  const refreshName = state.settings.refreshDay ? DAY_NAMES[state.settings.refreshDay] : null
 
   async function handleCopy() {
-    const text = compileWeekPrompt(state, { servings, cookSunday, wedRefresh, notes, weekOf })
+    const text = compileWeekPrompt(state, { servings, cook: cookEnabled, refresh: refreshEnabled, notes, weekOf })
     setPrompt(text)
     try {
       await navigator.clipboard.writeText(text)
@@ -33,7 +36,7 @@ export default function GenerateWeekForm({ state, onGenerated }) {
   }
 
   async function handleGenerate() {
-    const text = compileWeekPrompt(state, { servings, cookSunday, wedRefresh, notes, weekOf })
+    const text = compileWeekPrompt(state, { servings, cook: cookEnabled, refresh: refreshEnabled, notes, weekOf })
     setGenerating(true)
     setBusyMsg(BUSY_ASKING)
     const result = await generateWeekViaApi({
@@ -70,18 +73,20 @@ export default function GenerateWeekForm({ state, onGenerated }) {
         <div className="segmented">
           <button
             type="button"
-            className={`chip${cookSunday ? ' chip--active' : ''}`}
-            onClick={() => setCookSunday((v) => !v)}
+            className={`chip${cookEnabled ? ' chip--active' : ''}`}
+            onClick={() => setCookEnabled((v) => !v)}
           >
-            Sunday cook
+            {cookName} cook
           </button>
-          <button
-            type="button"
-            className={`chip${wedRefresh ? ' chip--active' : ''}`}
-            onClick={() => setWedRefresh((v) => !v)}
-          >
-            Wednesday refresh
-          </button>
+          {refreshName && (
+            <button
+              type="button"
+              className={`chip${refreshEnabled ? ' chip--active' : ''}`}
+              onClick={() => setRefreshEnabled((v) => !v)}
+            >
+              {refreshName} refresh
+            </button>
+          )}
         </div>
       </div>
 

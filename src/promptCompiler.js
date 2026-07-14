@@ -2,19 +2,37 @@
 // Ideator flow (Phase 3). Pure — no storage imports, no DOM. Mirrors the
 // module style of componentOps.js/pantryOps.js.
 
-import { COMPONENT_TYPES, STATIONS } from './schema.js'
+import { COMPONENT_TYPES, STATIONS, DAY_NAMES } from './schema.js'
 
-// Standing generation brief from PROMPT_PACK.md (Phase 3 section), verbatim.
-export const GENERATION_BRIEF =
-  'Design a component-based meal-prep week (bowl format): bases, protein preps ' +
-  '(veg + eggs: tofu/paneer/legumes/eggs), veg preps, 3–4 sauces from DIFFERENT ' +
-  'cuisine families, finishers. No two consecutive lunches share a sauce family. ' +
-  'Assign durable components to Sunday, fragile ones to the Wednesday refresh ' +
-  '(15 min, one fresh sauce + one quick veg). Produce a timed Sunday run sheet ' +
-  '(~90 min) that runs Instant Pot, oven, and stovetop in parallel, ordered to ' +
-  'maximize passive overlap. Include shelf life, storage notes, and approximate ' +
-  'macros per serving for every component. Grocery suggestions = plan minus ' +
-  'on-hand, advisory.'
+// Standing generation brief from PROMPT_PACK.md (Phase 3 section),
+// parameterized by the configured cook/refresh days. With the defaults
+// ('Sunday', 'Wednesday') it reproduces the original brief verbatim.
+// refreshName = null means a single cook session with no midweek refresh.
+export function buildGenerationBrief(cookName, refreshName) {
+  const assignment = refreshName
+    ? `Assign durable components to ${cookName}, fragile ones to the ${refreshName} refresh ` +
+      '(15 min, one fresh sauce + one quick veg). '
+    : `Everything is cooked in the single ${cookName} session, so favor components ` +
+      'that keep for 5 days. '
+  return (
+    'Design a component-based meal-prep week (bowl format): bases, protein preps ' +
+    '(veg + eggs: tofu/paneer/legumes/eggs), veg preps, 3–4 sauces from DIFFERENT ' +
+    'cuisine families, finishers. No two consecutive lunches share a sauce family. ' +
+    assignment +
+    `Produce a timed ${cookName} run sheet ` +
+    '(~90 min) that runs Instant Pot, oven, and stovetop in parallel, ordered to ' +
+    'maximize passive overlap. Include shelf life, storage notes, and approximate ' +
+    'macros per serving for every component. Grocery suggestions = plan minus ' +
+    'on-hand, advisory.'
+  )
+}
+
+function scheduleNames(settings) {
+  return {
+    cookName: DAY_NAMES[settings.cookDay] ?? 'Sunday',
+    refreshName: settings.refreshDay ? DAY_NAMES[settings.refreshDay] : null,
+  }
+}
 
 /** @param {Date|string} [from] @returns {string} YYYY-MM-DD of the next Sunday (today if today is Sunday) */
 export function nextSundayISO(from) {
@@ -46,10 +64,11 @@ function pantrySection(pantry) {
   ].join('\n')
 }
 
-function constraintsSection(settings, { servings, cookSunday, wedRefresh, notes, weekOf }) {
+function constraintsSection(settings, { servings, cook, refresh, notes, weekOf }) {
+  const { cookName, refreshName } = scheduleNames(settings)
   const cookEvents = []
-  if (cookSunday) cookEvents.push('Sunday cook')
-  if (wedRefresh) cookEvents.push('Wednesday refresh')
+  if (cook) cookEvents.push(`${cookName} cook`)
+  if (refresh && refreshName) cookEvents.push(`${refreshName} refresh`)
   const { low_g, high_g } = settings.proteinBand
   return [
     '## 2. Constraints',
@@ -107,16 +126,18 @@ function componentExample(typeEnum, stationEnum) {
   }
 }
 
-function outputFormatSection() {
+function outputFormatSection(settings, refreshEnabled) {
   const typeEnum = COMPONENT_TYPES.join(' | ')
   const stationEnum = STATIONS.join(' | ')
+  const refreshExampleDay = refreshEnabled ? settings.refreshDay : (settings.cookDay ?? 'Wed')
   return [
     '## 4. Output format (STRICT)',
     '',
     'Output ONLY valid JSON — no prose, no markdown code fences, no commentary ' +
       'before or after. Reference components by NAME (never id) everywhere below. ' +
       `Component "type" must be one of: ${typeEnum}. Component "station" must be ` +
-      `one of: ${stationEnum}. "macrosPerServing" may be null — never fake precision.`,
+      `one of: ${stationEnum}. "macrosPerServing" may be null — never fake precision.` +
+      (refreshEnabled ? '' : ' There is no midweek refresh: set refresh.steps and refresh.componentNames to empty arrays.'),
     '',
     '```json',
     JSON.stringify(
@@ -126,7 +147,7 @@ function outputFormatSection() {
           weekOf: 'YYYY-MM-DD',
           runSheet: [{ t: '0:05', station: stationEnum, action: '...', componentName: '...' }],
           assembly: [{ day: 'Mon', componentNames: [], note: '' }],
-          refresh: { day: 'Wed', steps: [], componentNames: [] },
+          refresh: { day: refreshExampleDay, steps: [], componentNames: [] },
           grocerySuggestions: [{ name: '...', qty: '...' }],
         },
       },
@@ -137,22 +158,24 @@ function outputFormatSection() {
   ].join('\n')
 }
 
-function briefSection() {
-  return ['## 5. Brief', '', GENERATION_BRIEF].join('\n')
+function briefSection(settings, refreshEnabled) {
+  const { cookName, refreshName } = scheduleNames(settings)
+  return ['## 5. Brief', '', buildGenerationBrief(cookName, refreshEnabled ? refreshName : null)].join('\n')
 }
 
 /**
  * @param {{pantry, components, feedback, settings}} state
- * @param {{servings, cookSunday, wedRefresh, notes, weekOf}} options
+ * @param {{servings, cook, refresh, notes, weekOf}} options
  * @returns {string}
  */
 export function compileWeekPrompt({ pantry, components, feedback, settings }, options) {
+  const refreshEnabled = Boolean(options.refresh && settings.refreshDay)
   return [
     pantrySection(pantry),
     constraintsSection(settings, options),
     feedbackSection(components, feedback),
-    outputFormatSection(),
-    briefSection(),
+    outputFormatSection(settings, refreshEnabled),
+    briefSection(settings, refreshEnabled),
   ].join('\n\n')
 }
 

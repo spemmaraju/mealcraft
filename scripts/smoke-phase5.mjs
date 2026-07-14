@@ -283,7 +283,7 @@ try {
     )
     let prompt = promptCompiler.compileWeekPrompt(
       { pantry: [], components: [], feedback, settings },
-      { servings: 5, cookSunday: true, wedRefresh: true, notes: '', weekOf: '2026-01-11' },
+      { servings: 5, cook: true, refresh: true, notes: '', weekOf: '2026-01-11' },
     )
     assert.ok(prompt.includes('chicken bowl UNIQUE_MARKER_1'))
     assert.ok(prompt.includes('mystery paste UNIQUE_MARKER_2'))
@@ -296,7 +296,7 @@ try {
     )
     prompt = promptCompiler.compileWeekPrompt(
       { pantry: [], components: [], feedback, settings },
-      { servings: 5, cookSunday: true, wedRefresh: true, notes: '', weekOf: '2026-01-18' },
+      { servings: 5, cook: true, refresh: true, notes: '', weekOf: '2026-01-18' },
     )
     assert.ok(prompt.includes('NEWEST_MARKER'))
     assert.ok(!prompt.includes('chicken bowl UNIQUE_MARKER_1'), 'only the latest weekOf feedback is embedded')

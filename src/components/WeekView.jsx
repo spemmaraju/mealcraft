@@ -50,7 +50,7 @@ export default function WeekView({ week, components, pantry, settings, onCommit,
         </button>
       </div>
 
-      <RunSheet week={week} components={components} onToggleStep={handleToggleStep} />
+      <RunSheet week={week} components={components} settings={settings} onToggleStep={handleToggleStep} />
 
       <AssemblyCards
         week={week}
