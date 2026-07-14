@@ -4,7 +4,8 @@
 import { createPantryItem } from './schema.js'
 
 export function addItem(pantry, overrides) {
-  return [...pantry, createPantryItem(overrides)]
+  const item = createPantryItem(overrides)
+  return { pantry: [...pantry, item], item }
 }
 
 export function updateItem(pantry, id, patch) {

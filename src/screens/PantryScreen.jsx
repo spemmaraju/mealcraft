@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as storage from '../storage.js'
 import * as pantryOps from '../pantryOps.js'
 import * as nutritionOps from '../nutritionOps.js'
@@ -24,6 +24,9 @@ export default function PantryScreen() {
   const [addingIn, setAddingIn] = useState(null)
   const [addText, setAddText] = useState('')
   const [expanded, setExpanded] = useState(() => new Set())
+  // Set by Enter in the quick-add input just before it blurs; blur owns the
+  // single commit path so Enter-then-blur can't create the item twice.
+  const openEditorRef = useRef(false)
 
   async function reload() {
     const [p, c, comps, s] = await Promise.all([
@@ -90,14 +93,25 @@ export default function PantryScreen() {
   }
 
   function commitAdd(category) {
+    const openEditor = openEditorRef.current
+    openEditorRef.current = false
     const name = addText.trim()
     if (!name) {
       setAddingIn(null)
       return
     }
     const nutrition = nutritionOps.findSeedForName(name)
-    persist(pantryOps.addItem(pantry, { name, category, onHand: true, role: 'rotating', nutrition }))
+    const { pantry: nextPantry, item } = pantryOps.addItem(pantry, {
+      name,
+      category,
+      onHand: true,
+      role: 'rotating',
+      nutrition,
+    })
+    persist(nextPantry)
     setAddText('')
+    setAddingIn(null)
+    if (openEditor) setEditingItemId(item.id)
   }
 
   const filtered = pantryOps.filterItems(pantry, { search, role: roleFilter, onHandOnly })
@@ -143,7 +157,10 @@ export default function PantryScreen() {
             value={addText}
             onChange={(e) => setAddText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitAdd(category)
+              if (e.key === 'Enter') {
+                openEditorRef.current = true
+                e.currentTarget.blur()
+              }
               if (e.key === 'Escape') setAddingIn(null)
             }}
             onBlur={() => commitAdd(category)}
