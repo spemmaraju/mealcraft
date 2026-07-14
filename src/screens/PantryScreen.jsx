@@ -23,6 +23,7 @@ export default function PantryScreen() {
   const [managingCategories, setManagingCategories] = useState(false)
   const [addingIn, setAddingIn] = useState(null)
   const [addText, setAddText] = useState('')
+  const [expanded, setExpanded] = useState(() => new Set())
 
   async function reload() {
     const [p, c, comps, s] = await Promise.all([
@@ -79,6 +80,15 @@ export default function PantryScreen() {
     setAddText('')
   }
 
+  function toggleSection(category) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(category)) next.delete(category)
+      else next.add(category)
+      return next
+    })
+  }
+
   function commitAdd(category) {
     const name = addText.trim()
     if (!name) {
@@ -91,19 +101,41 @@ export default function PantryScreen() {
   }
 
   const filtered = pantryOps.filterItems(pantry, { search, role: roleFilter, onHandOnly })
+  const searching = search.trim().length > 0
   const known = new Set(categories)
   const otherItems = filtered.filter((item) => !known.has(item.category))
   const editingItem = editingItemId ? pantry.find((i) => i.id === editingItemId) : null
   const byok = settings?.apiMode === 'byok' && settings.apiKey ? { provider: settings.provider, apiKey: settings.apiKey } : null
 
   function renderSection(category, items) {
+    // While searching, sections auto-expand and empty ones drop out entirely
+    // so matches aren't buried between blank headers.
+    if (searching && items.length === 0) return null
+    const open = searching || expanded.has(category)
+    const onHandCount = items.filter((item) => item.onHand).length
     return (
       <section className="pantry-section" key={category}>
-        <h2 className="pantry-section__title">{category}</h2>
-        {items.map((item) => (
-          <PantryItemRow key={item.id} item={item} onToggleOnHand={handleToggleOnHand} onOpenEditor={setEditingItemId} />
-        ))}
-        {addingIn === category ? (
+        <h2 className="pantry-section__title">
+          <button
+            type="button"
+            className="pantry-section__header"
+            aria-expanded={open}
+            onClick={() => toggleSection(category)}
+          >
+            <span className="pantry-section__name">{category}</span>
+            <span className="pantry-section__count">
+              {items.length === 0 ? 'empty' : `${onHandCount}/${items.length} on hand`}
+            </span>
+            <span className={`pantry-section__chevron${open ? ' pantry-section__chevron--open' : ''}`} aria-hidden="true">
+              ▸
+            </span>
+          </button>
+        </h2>
+        {open &&
+          items.map((item) => (
+            <PantryItemRow key={item.id} item={item} onToggleOnHand={handleToggleOnHand} onOpenEditor={setEditingItemId} />
+          ))}
+        {open && (addingIn === category ? (
           <input
             type="text"
             className="pantry-fast-add__input"
@@ -121,7 +153,7 @@ export default function PantryScreen() {
           <button type="button" className="pantry-fast-add__btn" onClick={() => startAdd(category)}>
             + Add item
           </button>
-        )}
+        ))}
       </section>
     )
   }
