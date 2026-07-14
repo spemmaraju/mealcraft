@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as storage from '../storage.js'
+import { DAYS, REFRESH_DAYS, DAY_NAMES } from '../schema.js'
 import ByokSettings from '../components/ByokSettings.jsx'
 
 function todayStamp() {
@@ -30,13 +31,24 @@ export default function SettingsScreen() {
   const [fdcKey, setFdcKey] = useState('')
   const [fdcKeyDraft, setFdcKeyDraft] = useState('')
   const [fdcMsg, setFdcMsg] = useState(null)
+  const [cookDay, setCookDay] = useState('Sun')
+  const [refreshDay, setRefreshDay] = useState('Wed')
 
   useEffect(() => {
     storage.get('settings').then((settings) => {
       setFdcKey(settings.fdcKey ?? '')
       setFdcKeyDraft(settings.fdcKey ?? '')
+      setCookDay(settings.cookDay ?? 'Sun')
+      setRefreshDay(settings.refreshDay ?? null)
     })
   }, [])
+
+  async function handleScheduleChange(patch) {
+    if ('cookDay' in patch) setCookDay(patch.cookDay)
+    if ('refreshDay' in patch) setRefreshDay(patch.refreshDay)
+    const settings = await storage.get('settings')
+    await storage.set('settings', { ...settings, ...patch })
+  }
 
   async function handleSaveFdcKey() {
     const trimmed = fdcKeyDraft.trim()
@@ -188,6 +200,58 @@ export default function SettingsScreen() {
         )}
 
         {importMsg && !preview && <div className={`message message--${importMsg.type}`}>{importMsg.text}</div>}
+      </section>
+
+      <section className="settings-section">
+        <h2>Week schedule</h2>
+        <p className="placeholder">
+          Which day you cook and when the midweek refresh happens. Applies to newly generated weeks — saved plans keep
+          their own days.
+        </p>
+
+        <div className="field">
+          <span>Cook day</span>
+          <div className="chip-row">
+            {DAYS.map((day) => (
+              <button
+                key={day}
+                type="button"
+                className={`chip${cookDay === day ? ' chip--active' : ''}`}
+                onClick={() => handleScheduleChange({ cookDay: day })}
+              >
+                {day}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="field">
+          <span>Refresh day</span>
+          <div className="chip-row">
+            {REFRESH_DAYS.map((day) => (
+              <button
+                key={day}
+                type="button"
+                className={`chip${refreshDay === day ? ' chip--active' : ''}`}
+                onClick={() => handleScheduleChange({ refreshDay: day })}
+              >
+                {day}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`chip${refreshDay === null ? ' chip--active' : ''}`}
+              onClick={() => handleScheduleChange({ refreshDay: null })}
+            >
+              None
+            </button>
+          </div>
+        </div>
+
+        <p className="placeholder">
+          Cooking on {DAY_NAMES[cookDay]}
+          {refreshDay ? `, refresh on ${DAY_NAMES[refreshDay]}` : ', no midweek refresh'}. Lunches stay Monday–Friday.
+        </p>
       </section>
 
       <ByokSettings />

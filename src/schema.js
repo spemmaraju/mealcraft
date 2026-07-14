@@ -32,6 +32,17 @@ export const ORIGINS = ['ai', 'manual', 'adapted']
 export const MEALS = ['lunch', 'other']
 export const API_MODES = ['paste', 'byok']
 export const PROVIDERS = ['anthropic', 'google']
+export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+export const REFRESH_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+export const DAY_NAMES = {
+  Sun: 'Sunday',
+  Mon: 'Monday',
+  Tue: 'Tuesday',
+  Wed: 'Wednesday',
+  Thu: 'Thursday',
+  Fri: 'Friday',
+  Sat: 'Saturday',
+}
 
 function genId(prefix) {
   const rand =
@@ -134,6 +145,8 @@ export function createSettings(overrides = {}) {
     apiKey: null,
     fdcKey: null,
     lastExportAt: null,
+    cookDay: 'Sun',
+    refreshDay: 'Wed', // null = no midweek refresh
     ...overrides,
   }
 }
@@ -293,6 +306,8 @@ const SHAPES = {
     apiKey: T.str({ nullable: true }),
     fdcKey: T.str({ nullable: true }),
     lastExportAt: T.str({ nullable: true }),
+    cookDay: T.enumOf(DAYS),
+    refreshDay: T.enumOf(REFRESH_DAYS, { nullable: true }),
   },
 }
 

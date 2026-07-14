@@ -6,7 +6,7 @@ import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName } from './nutritionOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 4
+const SCHEMA_VERSION = 5
 const COLLECTIONS = ['pantry', 'components', 'weeks', 'logs', 'feedback']
 
 function describe(v) {
@@ -42,8 +42,10 @@ function defaultState() {
 // v2 -> v3: adds `Settings.fdcKey`, `Component.servings`, and backfills seed
 // nutrition onto pantry items whose `nutrition === null` (never overwrites
 // existing nutrition).
-// v3 -> v4: adds `Settings.lastExportAt`. Mutates and returns `state`; chains
-// v1 through v4.
+// v3 -> v4: adds `Settings.lastExportAt`.
+// v4 -> v5: adds `Settings.cookDay` / `Settings.refreshDay` (defaults keep
+// the original Sunday cook / Wednesday refresh behavior). Mutates and
+// returns `state`; chains v1 through v5.
 function migrate(state) {
   if (state.schemaVersion === 1) {
     const pantryItems = Array.isArray(state.pantry) ? state.pantry : []
@@ -73,6 +75,13 @@ function migrate(state) {
   if (state.schemaVersion === 3) {
     if (state.settings) state.settings.lastExportAt ??= null
     state.schemaVersion = 4
+  }
+  if (state.schemaVersion === 4) {
+    if (state.settings) {
+      state.settings.cookDay ??= 'Sun'
+      state.settings.refreshDay ??= 'Wed'
+    }
+    state.schemaVersion = 5
   }
   return state
 }

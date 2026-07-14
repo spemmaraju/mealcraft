@@ -80,13 +80,15 @@ try {
     assert.deepEqual(schema.validate(settings, 'Settings'), [])
   })
 
-  await check('v3->v4 migration of a seeded v3 blob; re-persisted schemaVersion: 4', async () => {
+  await check('v3 blob migrates through the chain; re-persisted at current schemaVersion', async () => {
     await storage.resetState()
     const result = await storage.importState(JSON.stringify(v3State()))
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 4)
+    assert.equal(state.schemaVersion, 5)
     assert.equal(state.settings.lastExportAt, null)
+    assert.equal(state.settings.cookDay, 'Sun')
+    assert.equal(state.settings.refreshDay, 'Wed')
   })
 
   await check('importState accepts both a v3 export string and a v4 export string', async () => {
