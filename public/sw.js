@@ -1,6 +1,6 @@
 // MealCraft offline app shell (Phase 6). Classic script, no bundler.
 // Bump the version suffix on every deploy that changes precached shell files.
-const CACHE = 'mealcraft-shell-v1'
+const CACHE = 'mealcraft-shell-v2'
 
 // BASE is computed from this file's own location so the same static sw.js
 // works whether the app is served from "/" (local dev/preview) or a
