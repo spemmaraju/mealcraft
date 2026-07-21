@@ -4,7 +4,6 @@ import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 export default function PantryItemEditor({ item, categories, fdcKey, byok, onSave, onDelete, onSaveNutrition, onCancel }) {
   const [name, setName] = useState(item.name)
   const [category, setCategory] = useState(item.category)
-  const [role, setRole] = useState(item.role)
   const [onHand, setOnHand] = useState(item.onHand)
   const [roughQty, setRoughQty] = useState(item.roughQty ?? '')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -21,7 +20,6 @@ export default function PantryItemEditor({ item, categories, fdcKey, byok, onSav
     onSave(item.id, {
       name: trimmedName,
       category,
-      role,
       onHand,
       roughQty: roughQty.trim() ? roughQty.trim() : null,
     })
@@ -47,26 +45,6 @@ export default function PantryItemEditor({ item, categories, fdcKey, byok, onSav
             ))}
             {!categories.includes(category) && category && <option value={category}>{category} (unlisted)</option>}
           </select>
-        </div>
-
-        <div className="field">
-          <span>Role</span>
-          <div className="button-row">
-            <button
-              type="button"
-              className={`btn${role === 'staple' ? ' btn--primary' : ''}`}
-              onClick={() => setRole('staple')}
-            >
-              Staple
-            </button>
-            <button
-              type="button"
-              className={`btn${role === 'rotating' ? ' btn--primary' : ''}`}
-              onClick={() => setRole('rotating')}
-            >
-              Rotating
-            </button>
-          </div>
         </div>
 
         <div className="field">

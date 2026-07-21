@@ -6,24 +6,22 @@ import PantryItemRow from '../components/PantryItemRow.jsx'
 import PantryItemEditor from '../components/PantryItemEditor.jsx'
 import CategoryManager from '../components/CategoryManager.jsx'
 
-const ROLE_CHIPS = [
-  { label: 'Staples', role: 'staple' },
-  { label: 'Rotating', role: 'rotating' },
-]
-
 export default function PantryScreen() {
   const [pantry, setPantry] = useState([])
   const [categories, setCategories] = useState([])
   const [components, setComponents] = useState([])
   const [settings, setSettings] = useState(null)
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState(null)
   const [onHandOnly, setOnHandOnly] = useState(false)
   const [editingItemId, setEditingItemId] = useState(null)
   const [managingCategories, setManagingCategories] = useState(false)
   const [addingIn, setAddingIn] = useState(null)
   const [addText, setAddText] = useState('')
   const [expanded, setExpanded] = useState(() => new Set())
+  const [quickAdding, setQuickAdding] = useState(false)
+  const [quickAddName, setQuickAddName] = useState('')
+  const [quickAddCategory, setQuickAddCategory] = useState('')
+  const [lastCategory, setLastCategory] = useState(null)
   // Set by Enter in the quick-add input just before it blurs; blur owns the
   // single commit path so Enter-then-blur can't create the item twice.
   const openEditorRef = useRef(false)
@@ -105,16 +103,42 @@ export default function PantryScreen() {
       name,
       category,
       onHand: true,
-      role: 'rotating',
       nutrition,
     })
     persist(nextPantry)
     setAddText('')
     setAddingIn(null)
+    setLastCategory(category)
     if (openEditor) setEditingItemId(item.id)
   }
 
-  const filtered = pantryOps.filterItems(pantry, { search, role: roleFilter, onHandOnly })
+  function openQuickAdd() {
+    setQuickAdding(true)
+    setQuickAddName('')
+    setQuickAddCategory(lastCategory ?? categories[0] ?? '')
+  }
+
+  function cancelQuickAdd() {
+    setQuickAdding(false)
+    setQuickAddName('')
+  }
+
+  function commitQuickAdd() {
+    const name = quickAddName.trim()
+    if (!name) {
+      cancelQuickAdd()
+      return
+    }
+    const category = quickAddCategory || categories[0] || ''
+    const nutrition = nutritionOps.findSeedForName(name)
+    const { pantry: nextPantry } = pantryOps.addItem(pantry, { name, category, onHand: true, nutrition })
+    persist(nextPantry)
+    setLastCategory(category)
+    setQuickAdding(false)
+    setQuickAddName('')
+  }
+
+  const filtered = pantryOps.filterItems(pantry, { search, onHandOnly })
   const searching = search.trim().length > 0
   const known = new Set(categories)
   const otherItems = filtered.filter((item) => !known.has(item.category))
@@ -187,17 +211,44 @@ export default function PantryScreen() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search pantry"
         />
-        <div className="pantry-filters__chips">
-          {ROLE_CHIPS.map(({ label, role }) => (
-            <button
-              key={role}
-              type="button"
-              className={`chip${roleFilter === role ? ' chip--active' : ''}`}
-              onClick={() => setRoleFilter(roleFilter === role ? null : role)}
+        {quickAdding ? (
+          <div className="pantry-quick-add">
+            <input
+              type="text"
+              className="pantry-quick-add__name"
+              autoFocus
+              value={quickAddName}
+              onChange={(e) => setQuickAddName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitQuickAdd()
+                if (e.key === 'Escape') cancelQuickAdd()
+              }}
+              placeholder="Item name"
+            />
+            <select
+              className="pantry-quick-add__category"
+              value={quickAddCategory}
+              onChange={(e) => setQuickAddCategory(e.target.value)}
             >
-              {label}
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="btn btn--primary" onClick={commitQuickAdd}>
+              Add
             </button>
-          ))}
+            <button type="button" className="btn" onClick={cancelQuickAdd}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="btn btn--primary pantry-quick-add__open" onClick={openQuickAdd}>
+            + Add item
+          </button>
+        )}
+        <div className="pantry-filters__chips">
           <button
             type="button"
             className={`chip${onHandOnly ? ' chip--active' : ''}`}

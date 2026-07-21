@@ -24,7 +24,7 @@ export default function ComponentRow({ component, status, onOpenDetail, onRate }
           <span className={`component-row__badge component-row__badge--${component.type}`}>{component.type}</span>
         </div>
         <div className="component-row__meta">
-          {component.cuisineTags.length > 0 && <span>{component.cuisineTags.join(', ')}</span>}
+          {component.cuisineTags?.length > 0 && <span>{component.cuisineTags.join(', ')}</span>}
           <span
             className={`component-row__makeable${status && status.makeable ? ' component-row__makeable--yes' : ''}`}
           >

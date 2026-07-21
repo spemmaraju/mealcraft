@@ -22,12 +22,12 @@ export const COLLECTION_SHAPES = {
 }
 
 export const NUTRITION_SOURCES = ['barcode', 'label_photo', 'seed_table', 'ai_estimate', 'manual']
-export const NUTRITION_STATES = ['as_packaged', 'as_prepared']
-export const PANTRY_ROLES = ['staple', 'rotating']
 export const COMPONENT_TYPES = ['base', 'protein', 'veg', 'sauce', 'finisher', 'dish']
 export const STATIONS = ['stovetop', 'oven', 'instant_pot', 'none']
 export const MACRO_SOURCES = [...NUTRITION_SOURCES, 'derived']
 export const RATINGS = ['repeat', 'fine', 'never']
+// No longer a Component field (removed Phase 7) — kept only for
+// ComponentEditor's origin select, which Phase 9 removes entirely.
 export const ORIGINS = ['ai', 'manual', 'adapted']
 export const MEALS = ['lunch', 'other']
 export const API_MODES = ['paste', 'byok']
@@ -57,7 +57,6 @@ function genId(prefix) {
 export function createNutritionInfo(overrides = {}) {
   return {
     source: 'manual',
-    state: 'as_packaged',
     servingDesc: '',
     servingsPerContainer: null,
     perServing: { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
@@ -72,7 +71,6 @@ export function createPantryItem(overrides = {}) {
     id: genId('pantry'),
     name: '',
     category: '',
-    role: 'rotating',
     onHand: false,
     roughQty: null,
     nutrition: null,
@@ -85,7 +83,6 @@ export function createComponent(overrides = {}) {
     id: genId('component'),
     name: '',
     type: 'dish',
-    cuisineTags: [],
     ingredients: [],
     steps: [],
     shelfLifeDays: 3,
@@ -97,7 +94,6 @@ export function createComponent(overrides = {}) {
     macrosPerServing: null,
     macroSource: 'manual',
     rating: null,
-    origin: 'manual',
     archived: false,
     ...overrides,
   }
@@ -222,7 +218,6 @@ const T = {
 
 const nutritionInfoFields = {
   source: T.enumOf(NUTRITION_SOURCES),
-  state: T.enumOf(NUTRITION_STATES),
   servingDesc: T.str(),
   servingsPerContainer: T.num({ nullable: true }),
   perServing: T.obj({
@@ -242,7 +237,6 @@ const SHAPES = {
     id: T.str(),
     name: T.str(),
     category: T.str(),
-    role: T.enumOf(PANTRY_ROLES),
     onHand: T.bool(),
     roughQty: T.str({ nullable: true }),
     nutrition: T.obj(nutritionInfoFields, { nullable: true }),
@@ -251,7 +245,6 @@ const SHAPES = {
     id: T.str(),
     name: T.str(),
     type: T.enumOf(COMPONENT_TYPES),
-    cuisineTags: T.strArray(),
     ingredients: T.arrayOf(T.obj({ name: T.str(), measure: T.str() })),
     steps: T.strArray(),
     shelfLifeDays: T.num(),
@@ -266,7 +259,6 @@ const SHAPES = {
     ),
     macroSource: T.enumOf(MACRO_SOURCES),
     rating: T.enumOf(RATINGS, { nullable: true }),
-    origin: T.enumOf(ORIGINS),
     archived: T.bool(),
   },
   WeekPlan: {

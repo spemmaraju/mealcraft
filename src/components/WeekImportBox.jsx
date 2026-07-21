@@ -33,10 +33,7 @@ export default function WeekImportBox({ components, weeks, onImported }) {
   }
 
   return (
-    <div className="plan-section">
-      <h2>Import a generated week</h2>
-      <p className="placeholder">Paste the AI's JSON reply here.</p>
-
+    <>
       <div className="field">
         <label htmlFor="week-import-textarea">Paste JSON</label>
         <textarea
@@ -77,6 +74,6 @@ export default function WeekImportBox({ components, weeks, onImported }) {
       {result && result.ok && (
         <ImportReview payload={result.payload} components={components} weeks={weeks} onConfirm={handleConfirm} onCancel={handleCancel} />
       )}
-    </div>
+    </>
   )
 }

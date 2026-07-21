@@ -3,7 +3,6 @@ import * as storage from '../storage.js'
 import * as weekOps from '../weekOps.js'
 import * as componentOps from '../componentOps.js'
 import GenerateWeekForm from '../components/GenerateWeekForm.jsx'
-import WeekImportBox from '../components/WeekImportBox.jsx'
 import WeekView from '../components/WeekView.jsx'
 import ImportReview from '../components/ImportReview.jsx'
 
@@ -108,7 +107,13 @@ export default function PlanScreen() {
               </button>
             </div>
           )}
-          <GenerateWeekForm state={{ pantry, components, feedback, settings }} onGenerated={setGenerateResult} />
+          <GenerateWeekForm
+            state={{ pantry, components, feedback, settings }}
+            onGenerated={setGenerateResult}
+            components={components}
+            weeks={weeks}
+            onImported={handleImported}
+          />
 
           {generateResult && generateResult.ok && (
             <div className="plan-section">
@@ -148,8 +153,6 @@ export default function PlanScreen() {
               </div>
             </div>
           )}
-
-          <WeekImportBox components={components} weeks={weeks} onImported={handleImported} />
         </>
       )}
     </div>

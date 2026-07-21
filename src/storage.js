@@ -6,7 +6,7 @@ import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName } from './nutritionOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 5
+const SCHEMA_VERSION = 6
 const COLLECTIONS = ['pantry', 'components', 'weeks', 'logs', 'feedback']
 
 function describe(v) {
@@ -44,8 +44,11 @@ function defaultState() {
 // existing nutrition).
 // v3 -> v4: adds `Settings.lastExportAt`.
 // v4 -> v5: adds `Settings.cookDay` / `Settings.refreshDay` (defaults keep
-// the original Sunday cook / Wednesday refresh behavior). Mutates and
-// returns `state`; chains v1 through v5.
+// the original Sunday cook / Wednesday refresh behavior).
+// v5 -> v6: drops the now-unused `role` (pantry items), `origin`/
+// `cuisineTags` (components), and `state` (nutrition objects) keys — pure
+// storage hygiene, safe no-op if a key is already absent. Mutates and
+// returns `state`; chains v1 through v6.
 function migrate(state) {
   if (state.schemaVersion === 1) {
     const pantryItems = Array.isArray(state.pantry) ? state.pantry : []
@@ -82,6 +85,21 @@ function migrate(state) {
       state.settings.refreshDay ??= 'Wed'
     }
     state.schemaVersion = 5
+  }
+  if (state.schemaVersion === 5) {
+    const stripNutritionState = (nutrition) => {
+      if (nutrition && typeof nutrition === 'object') delete nutrition.state
+    }
+    for (const item of Array.isArray(state.pantry) ? state.pantry : []) {
+      delete item.role
+      stripNutritionState(item.nutrition)
+    }
+    for (const component of Array.isArray(state.components) ? state.components : []) {
+      delete component.origin
+      delete component.cuisineTags
+      stripNutritionState(component.nutrition)
+    }
+    state.schemaVersion = 6
   }
   return state
 }

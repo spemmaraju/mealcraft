@@ -1,3 +1,13 @@
+const STATION_LABELS = { stovetop: 'Stovetop', oven: 'Oven', instant_pot: 'Instant Pot', none: 'Other' }
+const MACRO_SOURCE_LABELS = {
+  barcode: 'Barcode',
+  label_photo: 'Label photo',
+  seed_table: 'Seed table',
+  ai_estimate: 'AI estimate',
+  manual: 'Manual',
+  derived: 'Derived',
+}
+
 export default function ComponentDetail({ component, byokActive, onBack, onEdit, onRegenerate }) {
   return (
     <div className="component-detail">
@@ -15,7 +25,7 @@ export default function ComponentDetail({ component, byokActive, onBack, onEdit,
 
         <div className="component-detail__meta">
           <span className="chip">{component.type}</span>
-          <span className="chip">{component.station}</span>
+          <span className="chip">{STATION_LABELS[component.station] ?? component.station}</span>
           <span className="chip">
             {component.activeMin}m active / {component.passiveMin}m passive
           </span>
@@ -58,7 +68,8 @@ export default function ComponentDetail({ component, byokActive, onBack, onEdit,
         {component.macrosPerServing && (
           <div className="component-detail__section">
             <h2>
-              Macros per serving <span className="provenance-tag">{component.macroSource}</span>
+              Macros per serving{' '}
+              <span className="provenance-tag">{MACRO_SOURCE_LABELS[component.macroSource] ?? component.macroSource}</span>
             </h2>
             <div className="component-detail__macros">
               <span>{component.macrosPerServing.kcal} kcal</span>

@@ -82,15 +82,14 @@ try {
     assert.deepEqual(pantryOps.moveCategory(categories, 'C', 'up'), ['A', 'C', 'B'])
   })
 
-  await check('filterItems combines search + role + onHand', () => {
+  await check('filterItems combines search + onHand', () => {
     const pantry = [
-      schema.createPantryItem({ name: 'Tofu', role: 'rotating', onHand: true }),
-      schema.createPantryItem({ name: 'Toor dal', role: 'staple', onHand: true }),
-      schema.createPantryItem({ name: 'Tomatoes', role: 'rotating', onHand: false }),
+      schema.createPantryItem({ name: 'Tofu', onHand: true }),
+      schema.createPantryItem({ name: 'Toor dal', onHand: true }),
+      schema.createPantryItem({ name: 'Tomatoes', onHand: false }),
     ]
     assert.equal(pantryOps.filterItems(pantry, { search: 'to' }).length, 3)
-    assert.equal(pantryOps.filterItems(pantry, { search: 'to', role: 'staple' }).length, 1)
-    assert.equal(pantryOps.filterItems(pantry, { search: 'to', role: 'rotating', onHandOnly: true }).length, 1)
+    assert.equal(pantryOps.filterItems(pantry, { search: 'to', onHandOnly: true }).length, 2)
     assert.equal(pantryOps.filterItems(pantry, { onHandOnly: true }).length, 2)
   })
 
@@ -117,7 +116,7 @@ try {
     assert.equal(result.ok, true, `import failed: ${JSON.stringify(result.errors)}`)
 
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 5)
+    assert.equal(state.schemaVersion, 6)
     assert.ok(state.categories.includes('Homemade Sauces'))
     assert.ok(DEFAULT_CATEGORIES.every((c) => state.categories.includes(c)))
   })
@@ -130,7 +129,7 @@ try {
     await storage.set('categories', ['Dairy', 'Custom'])
 
     const before = await storage.getFullState()
-    assert.equal(before.schemaVersion, 5)
+    assert.equal(before.schemaVersion, 6)
     const exported = await storage.exportState()
 
     await storage.resetState()

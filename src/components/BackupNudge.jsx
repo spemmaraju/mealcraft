@@ -35,13 +35,13 @@ export default function BackupNudge({ onGoSettings }) {
 
   return (
     <div className="banner">
-      <span>{text} — your data lives only on this device.</span>
+      <span className="banner__text">{text} — your data lives only on this device.</span>
       <div className="banner__actions">
         <button type="button" className="btn" onClick={onGoSettings}>
           Go to Settings
         </button>
-        <button type="button" className="btn banner__dismiss" onClick={() => setDismissed(true)}>
-          Dismiss
+        <button type="button" className="btn banner__dismiss" onClick={() => setDismissed(true)} aria-label="Dismiss">
+          ×
         </button>
       </div>
     </div>

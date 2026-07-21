@@ -10,10 +10,16 @@ export default function LogMealCard({ week, logs, components, today, onLogLunch,
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   const [showOther, setShowOther] = useState(false)
   const [otherSelected, setOtherSelected] = useState([])
+  const [editingDate, setEditingDate] = useState(null)
 
   function selectDate(date) {
     setSelectedDate(date)
     setConfirmingRemove(false)
+  }
+
+  function handleLogLunch() {
+    onLogLunch(card, selectedDate)
+    setEditingDate(selectedDate)
   }
 
   function toggleOther(componentId) {
@@ -28,6 +34,7 @@ export default function LogMealCard({ week, logs, components, today, onLogLunch,
 
   const card = week ? trackOps.assemblyCardForDate(week, selectedDate) : null
   const entry = trackOps.logFor(logs, selectedDate, 'lunch')
+  const isEditing = editingDate === selectedDate
 
   return (
     <div className="plan-section log-meal-card">
@@ -56,10 +63,20 @@ export default function LogMealCard({ week, logs, components, today, onLogLunch,
           <p className="log-meal-card__preview">
             {card.componentIds.length > 0 ? card.componentIds.map((id) => byId[id]?.name || id).join(', ') : 'No components yet.'}
           </p>
-          <button type="button" className="btn btn--primary log-meal-card__log-btn" onClick={() => onLogLunch(card, selectedDate)}>
+          <button type="button" className="btn btn--primary log-meal-card__log-btn" onClick={handleLogLunch}>
             Log lunch
           </button>
         </>
+      ) : !isEditing ? (
+        <div className="log-meal-card__summary">
+          <span className="log-meal-card__summary-text">
+            {entry.log.portions.map((p) => byId[p.componentId]?.name || p.componentId).join(', ') || '(none)'}
+            {entry.log.quickRating && <span className="chip chip--active log-meal-card__summary-rating">{entry.log.quickRating}</span>}
+          </span>
+          <button type="button" className="btn" onClick={() => setEditingDate(selectedDate)}>
+            Edit
+          </button>
+        </div>
       ) : (
         <>
           {entry.log.portions.map((portion) => (

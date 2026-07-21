@@ -67,9 +67,10 @@ export default function MacroSectionEditor({
 
       <div className="button-row">
         <button type="button" className="btn" onClick={onDerive}>
-          Derive from ingredients
+          Calculate from pantry
         </button>
       </div>
+      <p className="field-caption">Uses your pantry items&rsquo; nutrition data, matched by ingredient name.</p>
 
       {deriveError && (
         <div className="message message--error">

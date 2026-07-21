@@ -16,79 +16,75 @@ export const DEFAULT_CATEGORIES = [
   'Frozen',
 ]
 
-function staple(name, category, roughQty = null) {
-  return createPantryItem({ name, category, role: 'staple', onHand: true, roughQty })
-}
-
-function rotating(name, category, roughQty = null, onHand = true) {
-  return createPantryItem({ name, category, role: 'rotating', onHand, roughQty })
+function item(name, category, roughQty = null, onHand = true) {
+  return createPantryItem({ name, category, onHand, roughQty })
 }
 
 export function seedPantryItems() {
   return [
     // Spices
-    staple('Cumin seeds', 'Spices'),
-    staple('Coriander powder', 'Spices'),
-    staple('Turmeric powder', 'Spices'),
-    staple('Chili powder', 'Spices'),
-    staple('Garam masala', 'Spices'),
-    staple('Mustard seeds', 'Spices'),
-    staple('Hing (asafoetida)', 'Spices'),
-    staple('Black pepper', 'Spices'),
-    staple('Salt', 'Spices'),
+    item('Cumin seeds', 'Spices'),
+    item('Coriander powder', 'Spices'),
+    item('Turmeric powder', 'Spices'),
+    item('Chili powder', 'Spices'),
+    item('Garam masala', 'Spices'),
+    item('Mustard seeds', 'Spices'),
+    item('Hing (asafoetida)', 'Spices'),
+    item('Black pepper', 'Spices'),
+    item('Salt', 'Spices'),
 
     // Condiments & Sauces
-    staple('Soy sauce', 'Condiments & Sauces'),
-    staple('Vinegar', 'Condiments & Sauces'),
-    staple('Tahini', 'Condiments & Sauces'),
-    staple('Peanut butter', 'Condiments & Sauces'),
-    rotating('Sriracha', 'Condiments & Sauces'),
+    item('Soy sauce', 'Condiments & Sauces'),
+    item('Vinegar', 'Condiments & Sauces'),
+    item('Tahini', 'Condiments & Sauces'),
+    item('Peanut butter', 'Condiments & Sauces'),
+    item('Sriracha', 'Condiments & Sauces'),
 
     // Oils & Fats
-    staple('Olive oil', 'Oils & Fats'),
-    staple('Neutral oil', 'Oils & Fats'),
-    staple('Ghee', 'Oils & Fats'),
+    item('Olive oil', 'Oils & Fats'),
+    item('Neutral oil', 'Oils & Fats'),
+    item('Ghee', 'Oils & Fats'),
 
     // Grains & Bases
-    staple('Basmati rice', 'Grains & Bases', '5 lb bag'),
-    staple('Quinoa', 'Grains & Bases', 'half bag'),
-    staple('Rolled oats', 'Grains & Bases'),
-    rotating('Millet', 'Grains & Bases'),
+    item('Basmati rice', 'Grains & Bases', '5 lb bag'),
+    item('Quinoa', 'Grains & Bases', 'half bag'),
+    item('Rolled oats', 'Grains & Bases'),
+    item('Millet', 'Grains & Bases'),
 
     // Legumes
-    staple('Chickpeas (canned)', 'Legumes', '3 cans'),
-    staple('Chickpeas (dry)', 'Legumes'),
-    staple('Toor dal', 'Legumes'),
-    staple('Masoor dal', 'Legumes'),
-    staple('Chana dal', 'Legumes'),
+    item('Chickpeas (canned)', 'Legumes', '3 cans'),
+    item('Chickpeas (dry)', 'Legumes'),
+    item('Toor dal', 'Legumes'),
+    item('Masoor dal', 'Legumes'),
+    item('Chana dal', 'Legumes'),
 
     // Proteins
-    rotating('Tofu', 'Proteins', '1 block'),
-    rotating('Paneer', 'Proteins', '1 block'),
-    staple('Eggs', 'Proteins', '1 dozen'),
+    item('Tofu', 'Proteins', '1 block'),
+    item('Paneer', 'Proteins', '1 block'),
+    item('Eggs', 'Proteins', '1 dozen'),
 
     // Vegetables
-    staple('Onions', 'Vegetables'),
-    staple('Garlic', 'Vegetables'),
-    staple('Ginger', 'Vegetables'),
-    rotating('Tomatoes', 'Vegetables'),
-    rotating('Seasonal vegetables', 'Vegetables'),
+    item('Onions', 'Vegetables'),
+    item('Garlic', 'Vegetables'),
+    item('Ginger', 'Vegetables'),
+    item('Tomatoes', 'Vegetables'),
+    item('Seasonal vegetables', 'Vegetables'),
 
     // Fruits
-    staple('Lemons', 'Fruits'),
+    item('Lemons', 'Fruits'),
 
     // Nuts Seeds & Finishers
-    staple('Peanuts', 'Nuts Seeds & Finishers'),
-    staple('Sesame seeds', 'Nuts Seeds & Finishers'),
-    staple('Almonds', 'Nuts Seeds & Finishers'),
+    item('Peanuts', 'Nuts Seeds & Finishers'),
+    item('Sesame seeds', 'Nuts Seeds & Finishers'),
+    item('Almonds', 'Nuts Seeds & Finishers'),
 
     // Dairy
-    rotating('Yogurt', 'Dairy'),
-    rotating('Milk', 'Dairy'),
-    staple('Butter', 'Dairy'),
+    item('Yogurt', 'Dairy'),
+    item('Milk', 'Dairy'),
+    item('Butter', 'Dairy'),
 
     // Frozen
-    staple('Frozen peas', 'Frozen'),
-    staple('Frozen spinach', 'Frozen'),
+    item('Frozen peas', 'Frozen'),
+    item('Frozen spinach', 'Frozen'),
   ]
 }

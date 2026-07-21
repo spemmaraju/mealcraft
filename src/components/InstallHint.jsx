@@ -47,22 +47,22 @@ export default function InstallHint() {
     <div className="banner">
       {deferredPrompt ? (
         <>
-          <span>Install MealCraft for one-tap access, even offline.</span>
+          <span className="banner__text">Install MealCraft for one-tap access, even offline.</span>
           <div className="banner__actions">
             <button type="button" className="btn" onClick={handleInstallClick}>
               Install
             </button>
-            <button type="button" className="btn banner__dismiss" onClick={() => setDismissed(true)}>
-              Dismiss
+            <button type="button" className="btn banner__dismiss" onClick={() => setDismissed(true)} aria-label="Dismiss">
+              ×
             </button>
           </div>
         </>
       ) : (
         <>
-          <span>Install: Share → Add to Home Screen.</span>
+          <span className="banner__text">Install: Share → Add to Home Screen.</span>
           <div className="banner__actions">
-            <button type="button" className="btn banner__dismiss" onClick={() => setDismissed(true)}>
-              Dismiss
+            <button type="button" className="btn banner__dismiss" onClick={() => setDismissed(true)} aria-label="Dismiss">
+              ×
             </button>
           </div>
         </>

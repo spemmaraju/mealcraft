@@ -1,7 +1,7 @@
 // Zero-dependency Node smoke test for Phase 5 (Tracker). Shims localStorage,
 // then exercises trackOps.js math, the logs/feedback storage round-trip, and
-// gate 3 (feedback flows verbatim into the compiled prompt) — no network.
-// Run with:
+// (Phase 7) that free-text WeeklyFeedback no longer reaches the compiled
+// prompt — no network. Run with:
 //   node scripts/smoke-phase5.mjs
 
 import assert from 'node:assert/strict'
@@ -268,11 +268,11 @@ try {
     assert.deepEqual(await storage.get('feedback'), [fb])
   })
 
-  // ==== gate 3: feedback flows verbatim into the compiled prompt ====
+  // ==== Phase 7: free-text WeeklyFeedback no longer reaches the compiled prompt ====
 
-  await check('gate 3: latest weekOf feedback appears verbatim in compileWeekPrompt output', () => {
+  await check('compileWeekPrompt ignores WeeklyFeedback free text; only component ratings appear', () => {
     const settings = schema.createSettings()
-    let feedback = trackOps.upsertFeedback(
+    const feedback = trackOps.upsertFeedback(
       [],
       schema.createWeeklyFeedback({
         weekOf: '2026-01-04',
@@ -281,25 +281,15 @@ try {
         boredomNotes: 'too much rice UNIQUE_MARKER_3',
       }),
     )
-    let prompt = promptCompiler.compileWeekPrompt(
-      { pantry: [], components: [], feedback, settings },
+    const components = [component({ name: 'Mint chutney', rating: 'repeat' }), component({ name: 'Old chili', rating: 'never' })]
+    const prompt = promptCompiler.compileWeekPrompt(
+      { pantry: [], components, feedback, settings },
       { servings: 5, cook: true, refresh: true, notes: '', weekOf: '2026-01-11' },
     )
-    assert.ok(prompt.includes('chicken bowl UNIQUE_MARKER_1'))
-    assert.ok(prompt.includes('mystery paste UNIQUE_MARKER_2'))
-    assert.ok(prompt.includes('too much rice UNIQUE_MARKER_3'))
-
-    // A newer feedback record must win even if inserted before an older one elsewhere.
-    feedback = trackOps.upsertFeedback(
-      feedback,
-      schema.createWeeklyFeedback({ weekOf: '2026-01-11', repeatWorthy: 'NEWEST_MARKER' }),
-    )
-    prompt = promptCompiler.compileWeekPrompt(
-      { pantry: [], components: [], feedback, settings },
-      { servings: 5, cook: true, refresh: true, notes: '', weekOf: '2026-01-18' },
-    )
-    assert.ok(prompt.includes('NEWEST_MARKER'))
-    assert.ok(!prompt.includes('chicken bowl UNIQUE_MARKER_1'), 'only the latest weekOf feedback is embedded')
+    assert.ok(!prompt.includes('UNIQUE_MARKER'), 'free-text WeeklyFeedback must not leak into the prompt')
+    assert.ok(prompt.includes('## 3. Component ratings'))
+    assert.ok(prompt.includes('Repeat-worthy components: Mint chutney'))
+    assert.ok(prompt.includes('Never-repeat components: Old chili'))
   })
 
   console.log(`\n${passed} checks passed.`)

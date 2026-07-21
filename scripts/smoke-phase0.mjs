@@ -54,10 +54,10 @@ try {
   })
 
   await check('validate() names the exact bad field with an actionable message', () => {
-    const bad = schema.createPantryItem({ role: 'stple' })
+    const bad = schema.createPantryItem({ onHand: 'yes' })
     const errors = schema.validate(bad, 'PantryItem')
     assert.equal(errors.length, 1)
-    assert.equal(errors[0], 'role: expected "staple" | "rotating", got "stple"')
+    assert.equal(errors[0], 'onHand: expected boolean, got "yes"')
   })
 
   await check('validate() catches nested NutritionInfo errors on a PantryItem', () => {
@@ -91,11 +91,11 @@ try {
     const before = await storage.getFullState()
 
     const parsed = JSON.parse(await storage.exportState())
-    parsed.pantry[0].role = 'stple'
+    parsed.pantry[0].onHand = 'yes'
     const result = await storage.importState(JSON.stringify(parsed))
 
     assert.equal(result.ok, false)
-    assert.ok(result.errors.some((e) => e.includes('pantry[0].role')))
+    assert.ok(result.errors.some((e) => e.includes('pantry[0].onHand')))
 
     const after = await storage.getFullState()
     assert.deepEqual(after, before)

@@ -202,91 +202,83 @@ export default function SettingsScreen() {
         {importMsg && !preview && <div className={`message message--${importMsg.type}`}>{importMsg.text}</div>}
       </section>
 
-      <section className="settings-section">
-        <h2>Week schedule</h2>
-        <p className="placeholder">
-          Which day you cook and when the midweek refresh happens. Applies to newly generated weeks — saved plans keep
-          their own days.
-        </p>
+      <details className="settings-advanced">
+        <summary>Advanced</summary>
 
-        <div className="field">
-          <span>Cook day</span>
-          <div className="chip-row">
-            {DAYS.map((day) => (
-              <button
-                key={day}
-                type="button"
-                className={`chip${cookDay === day ? ' chip--active' : ''}`}
-                onClick={() => handleScheduleChange({ cookDay: day })}
-              >
-                {day}
-              </button>
-            ))}
+        <section className="settings-section">
+          <h2>Week schedule</h2>
+          <p className="placeholder">
+            Which day you cook and when the midweek refresh happens. Applies to newly generated weeks — saved plans
+            keep their own days.
+          </p>
+
+          <div className="field">
+            <label htmlFor="cook-day">Cook day</label>
+            <select id="cook-day" value={cookDay} onChange={(e) => handleScheduleChange({ cookDay: e.target.value })}>
+              {DAYS.map((day) => (
+                <option key={day} value={day}>
+                  {DAY_NAMES[day]}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
 
-        <div className="field">
-          <span>Refresh day</span>
-          <div className="chip-row">
-            {REFRESH_DAYS.map((day) => (
-              <button
-                key={day}
-                type="button"
-                className={`chip${refreshDay === day ? ' chip--active' : ''}`}
-                onClick={() => handleScheduleChange({ refreshDay: day })}
-              >
-                {day}
-              </button>
-            ))}
-            <button
-              type="button"
-              className={`chip${refreshDay === null ? ' chip--active' : ''}`}
-              onClick={() => handleScheduleChange({ refreshDay: null })}
+          <div className="field">
+            <label htmlFor="refresh-day">Refresh day</label>
+            <select
+              id="refresh-day"
+              value={refreshDay ?? 'none'}
+              onChange={(e) => handleScheduleChange({ refreshDay: e.target.value === 'none' ? null : e.target.value })}
             >
-              None
-            </button>
+              {REFRESH_DAYS.map((day) => (
+                <option key={day} value={day}>
+                  {DAY_NAMES[day]}
+                </option>
+              ))}
+              <option value="none">None</option>
+            </select>
           </div>
-        </div>
 
-        <p className="placeholder">
-          Cooking on {DAY_NAMES[cookDay]}
-          {refreshDay ? `, refresh on ${DAY_NAMES[refreshDay]}` : ', no midweek refresh'}. Lunches stay Monday–Friday.
-        </p>
-      </section>
+          <p className="placeholder">
+            Cooking on {DAY_NAMES[cookDay]}
+            {refreshDay ? `, refresh on ${DAY_NAMES[refreshDay]}` : ', no midweek refresh'}. Lunches stay Monday–Friday.
+          </p>
+        </section>
 
-      <ByokSettings />
+        <ByokSettings />
 
-      <section className="settings-section">
-        <h2>Nutrition lookups</h2>
-        <p className="placeholder">
-          Paste your free USDA FoodData Central API key to use it as a fallback when Open Food Facts has no match.
-          Lookups only run when you tap Scan in the pantry — never in the background.
-        </p>
+        <section className="settings-section">
+          <h2>Nutrition lookups</h2>
+          <p className="placeholder">
+            Paste your free USDA FoodData Central API key to use it as a fallback when Open Food Facts has no match.
+            Lookups only run when you tap Scan in the pantry — never in the background.
+          </p>
 
-        <div className="field">
-          <label htmlFor="fdc-key">FDC API key</label>
-          <input
-            id="fdc-key"
-            type="password"
-            value={fdcKeyDraft}
-            onChange={(e) => setFdcKeyDraft(e.target.value)}
-            placeholder={fdcKey ? '••••••••' : 'paste key'}
-          />
-        </div>
+          <div className="field">
+            <label htmlFor="fdc-key">FDC API key</label>
+            <input
+              id="fdc-key"
+              type="password"
+              value={fdcKeyDraft}
+              onChange={(e) => setFdcKeyDraft(e.target.value)}
+              placeholder={fdcKey ? '••••••••' : 'paste key'}
+            />
+          </div>
 
-        <div className="button-row">
-          <button className="btn btn--primary" onClick={handleSaveFdcKey} disabled={fdcKeyDraft.trim() === fdcKey}>
-            Save
-          </button>
-          {fdcKey && (
-            <button className="btn btn--danger" onClick={handleRemoveFdcKey}>
-              Remove
+          <div className="button-row">
+            <button className="btn btn--primary" onClick={handleSaveFdcKey} disabled={fdcKeyDraft.trim() === fdcKey}>
+              Save
             </button>
-          )}
-        </div>
+            {fdcKey && (
+              <button className="btn btn--danger" onClick={handleRemoveFdcKey}>
+                Remove
+              </button>
+            )}
+          </div>
 
-        {fdcMsg && <div className={`message message--${fdcMsg.type}`}>{fdcMsg.text}</div>}
-      </section>
+          {fdcMsg && <div className={`message message--${fdcMsg.type}`}>{fdcMsg.text}</div>}
+        </section>
+      </details>
     </div>
   )
 }

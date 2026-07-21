@@ -35,13 +35,22 @@ export default function AssemblyCards({ week, components, pantry, settings, byok
     return (
       <div key={componentId} className="assembly-card__row">
         {removable ? (
-          <button
-            type="button"
-            className="assembly-card__component"
-            onClick={() => onRequestPicker({ day, mode: 'substitute', fromId: componentId, type: component?.type })}
-          >
-            {component ? component.name : componentId}
-          </button>
+          <>
+            <button
+              type="button"
+              className="assembly-card__component"
+              onClick={() => onRequestPicker({ day, mode: 'substitute', fromId: componentId, type: component?.type })}
+            >
+              {component ? component.name : componentId}
+            </button>
+            <button
+              type="button"
+              className="btn assembly-card__change-btn"
+              onClick={() => onRequestPicker({ day, mode: 'substitute', fromId: componentId, type: component?.type })}
+            >
+              Change
+            </button>
+          </>
         ) : (
           <span className="assembly-card__component assembly-card__component--static">
             {component ? component.name : componentId}
@@ -88,7 +97,7 @@ export default function AssemblyCards({ week, components, pantry, settings, byok
         <div className="assembly-card__header">
           <h3>{a.day}</h3>
           <button type="button" className="btn assembly-card__swap-btn" onClick={() => handleSwapClick(a.day)}>
-            {swapping === a.day ? 'Cancel' : swapping ? `Swap with ${swapping}` : 'Swap'}
+            {swapping === a.day ? 'Cancel' : swapping ? `Swap with ${swapping}` : 'Swap with another day'}
           </button>
         </div>
 

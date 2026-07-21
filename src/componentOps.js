@@ -75,9 +75,9 @@ export function allCuisineTags(components) {
   return [...seen.values()].sort((a, b) => a.localeCompare(b))
 }
 
-/** filters = { search, type, cuisineTag, rating, makeableOnly, includeArchived } */
+/** filters = { search, type, rating, makeableOnly, includeArchived } */
 export function filterComponents(components, filters = {}, makeability = {}) {
-  const { search = '', type = null, cuisineTag = null, rating = null, makeableOnly = false, includeArchived = false } = filters
+  const { search = '', type = null, rating = null, makeableOnly = false, includeArchived = false } = filters
   const needle = search.trim().toLowerCase()
   return components.filter((c) => {
     if (!includeArchived && c.archived) return false
@@ -87,7 +87,6 @@ export function filterComponents(components, filters = {}, makeability = {}) {
       if (!nameHit && !ingredientHit) return false
     }
     if (type && c.type !== type) return false
-    if (cuisineTag && !(c.cuisineTags || []).some((t) => t.toLowerCase() === cuisineTag.toLowerCase())) return false
     if (rating && c.rating !== rating) return false
     if (makeableOnly && !(makeability[c.id] && makeability[c.id].makeable)) return false
     return true

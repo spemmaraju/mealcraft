@@ -30,7 +30,6 @@ export function mapOffProduct(json) {
     if (typeof n.fiber_serving === 'number') perServing.fiber_g = n.fiber_serving
     return createNutritionInfo({
       source: 'barcode',
-      state: 'as_packaged',
       servingDesc: product.serving_size || '',
       perServing,
       barcode,
@@ -44,7 +43,6 @@ export function mapOffProduct(json) {
     if (typeof n.fiber_100g === 'number') perServing.fiber_g = n.fiber_100g
     return createNutritionInfo({
       source: 'barcode',
-      state: 'as_packaged',
       servingDesc: '100 g',
       perServing,
       barcode,
@@ -69,7 +67,6 @@ export function mapFdcFood(food) {
 
   return createNutritionInfo({
     source: 'barcode',
-    state: 'as_packaged',
     servingDesc,
     perServing,
     barcode: food.gtinUpc || null,
@@ -136,7 +133,6 @@ export function mapLabelReply(text) {
 
   return createNutritionInfo({
     source: 'label_photo',
-    state: 'as_packaged',
     servingDesc: typeof parsed.servingDesc === 'string' ? parsed.servingDesc : '',
     servingsPerContainer: coerceNum(parsed.servingsPerContainer),
     perServing,

@@ -186,14 +186,6 @@ try {
     assert.deepEqual(result.map((c) => c.name), ['Mint chutney'])
   })
 
-  await check('filterComponents: cuisineTag is case-insensitive', () => {
-    const result = componentOps.filterComponents(fixture, { cuisineTag: 'INDIAN' }, makeability)
-    assert.deepEqual(
-      result.map((c) => c.name).sort(),
-      ['Chickpea coconut curry', 'Mint chutney'],
-    )
-  })
-
   await check('filterComponents: rating filters', () => {
     const result = componentOps.filterComponents(fixture, { rating: 'repeat' }, makeability)
     assert.deepEqual(result.map((c) => c.name), ['Chickpea coconut curry'])

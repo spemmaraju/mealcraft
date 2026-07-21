@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { compileWeekPrompt, nextSundayISO } from '../promptCompiler.js'
 import { DAY_NAMES } from '../schema.js'
 import { generateWeekViaApi } from '../byok.js'
+import WeekImportBox from './WeekImportBox.jsx'
 
 const BUSY_ASKING = 'Asking Claude… this can take a minute'
 const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
 
-export default function GenerateWeekForm({ state, onGenerated }) {
+export default function GenerateWeekForm({ state, onGenerated, components, weeks, onImported }) {
   const [servings, setServings] = useState(5)
   const [cookEnabled, setCookEnabled] = useState(true)
   const [refreshEnabled, setRefreshEnabled] = useState(true)
@@ -106,27 +107,42 @@ export default function GenerateWeekForm({ state, onGenerated }) {
         />
       </div>
 
-      <div className="button-row">
-        {byokActive && (
+      {byokActive && (
+        <div className="button-row">
           <button type="button" className="btn btn--primary" onClick={handleGenerate} disabled={generating}>
             {generating ? busyMsg : 'Generate week'}
           </button>
+        </div>
+      )}
+
+      <div className="plan-generate-step">
+        <h3>① Copy prompt</h3>
+        <div className="button-row">
+          <button type="button" className={`btn${byokActive ? '' : ' btn--primary'}`} onClick={handleCopy} disabled={generating}>
+            Copy prompt
+          </button>
+        </div>
+        {copyMsg && <div className={`message message--${copyMsg.type}`}>{copyMsg.text}</div>}
+        {showFallback && prompt && (
+          <textarea className="prompt-fallback" readOnly value={prompt} onFocus={(e) => e.target.select()} />
         )}
-        <button type="button" className={`btn${byokActive ? '' : ' btn--primary'}`} onClick={handleCopy} disabled={generating}>
-          Copy prompt
-        </button>
+        <p className="field-caption">
+          Paste it into{' '}
+          <a href="https://claude.ai/new" target="_blank" rel="noreferrer">
+            Claude
+          </a>{' '}
+          or{' '}
+          <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer">
+            Gemini
+          </a>
+          , then bring the reply back here.
+        </p>
       </div>
 
-      {copyMsg && <div className={`message message--${copyMsg.type}`}>{copyMsg.text}</div>}
-
-      {showFallback && prompt && (
-        <textarea
-          className="prompt-fallback"
-          readOnly
-          value={prompt}
-          onFocus={(e) => e.target.select()}
-        />
-      )}
+      <div className="plan-generate-step">
+        <h3>② Paste the reply here</h3>
+        <WeekImportBox components={components} weeks={weeks} onImported={onImported} />
+      </div>
     </div>
   )
 }

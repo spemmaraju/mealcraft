@@ -4,10 +4,10 @@
 
 import { COMPONENT_TYPES, STATIONS, DAY_NAMES } from './schema.js'
 
-// Standing generation brief from PROMPT_PACK.md (Phase 3 section),
-// parameterized by the configured cook/refresh days. With the defaults
-// ('Sunday', 'Wednesday') it reproduces the original brief verbatim.
-// refreshName = null means a single cook session with no midweek refresh.
+// Standing generation brief, parameterized by the configured cook/refresh
+// days. Rescoped in Phase 10 to a smaller single-station session (no longer
+// mirrors the original Phase 3 brief verbatim). refreshName = null means a
+// single cook session with no midweek refresh.
 export function buildGenerationBrief(cookName, refreshName) {
   const assignment = refreshName
     ? `Assign durable components to ${cookName}, fragile ones to the ${refreshName} refresh ` +
@@ -15,15 +15,15 @@ export function buildGenerationBrief(cookName, refreshName) {
     : `Everything is cooked in the single ${cookName} session, so favor components ` +
       'that keep for 5 days. '
   return (
-    'Design a component-based meal-prep week (bowl format): bases, protein preps ' +
-    '(veg + eggs: tofu/paneer/legumes/eggs), veg preps, 3–4 sauces from DIFFERENT ' +
-    'cuisine families, finishers. No two consecutive lunches share a sauce family. ' +
+    'Design a small component-based meal-prep session (bowl format): one base, ' +
+    'one protein prep (veg + eggs: tofu/paneer/legumes/eggs), one veg prep, one ' +
+    'sauce. ' +
     assignment +
-    `Produce a timed ${cookName} run sheet ` +
-    '(~90 min) that runs Instant Pot, oven, and stovetop in parallel, ordered to ' +
-    'maximize passive overlap. Include shelf life, storage notes, and approximate ' +
-    'macros per serving for every component. Grocery suggestions = plan minus ' +
-    'on-hand, advisory.'
+    `Cook everything sequentially on a single station (stovetop OR oven, ` +
+    `whichever fits) — produce a timed ${cookName} run sheet targeting ~45 ` +
+    'minutes total. Include shelf life, storage notes, and approximate macros ' +
+    'per serving for every component. Grocery suggestions = plan minus on-hand, ' +
+    'advisory.'
   )
 }
 
@@ -51,17 +51,7 @@ function formatPantryGroup(items) {
 
 function pantrySection(pantry) {
   const onHand = pantry.filter((p) => p.onHand)
-  const staples = onHand.filter((p) => p.role === 'staple')
-  const rotating = onHand.filter((p) => p.role === 'rotating')
-  return [
-    '## 1. On-hand pantry',
-    '',
-    'Staples:',
-    formatPantryGroup(staples),
-    '',
-    'Rotating:',
-    formatPantryGroup(rotating),
-  ].join('\n')
+  return ['## 1. On-hand pantry', '', formatPantryGroup(onHand)].join('\n')
 }
 
 function constraintsSection(settings, { servings, cook, refresh, notes, weekOf }) {
@@ -81,27 +71,12 @@ function constraintsSection(settings, { servings, cook, refresh, notes, weekOf }
   ].join('\n')
 }
 
-function feedbackSection(components, feedback) {
-  const latest =
-    feedback.length === 0
-      ? null
-      : [...feedback].sort((a, b) => (a.weekOf < b.weekOf ? 1 : a.weekOf > b.weekOf ? -1 : 0))[0]
-  const feedbackLines = latest
-    ? [
-        `Latest feedback (week of ${latest.weekOf}):`,
-        `- Repeat-worthy: ${latest.repeatWorthy || '(none)'}`,
-        `- Died uneaten: ${latest.diedUneaten || '(none)'}`,
-        `- Boredom notes: ${latest.boredomNotes || '(none)'}`,
-      ]
-    : ['(no feedback yet)']
-
+function feedbackSection(components) {
   const repeatNames = components.filter((c) => !c.archived && c.rating === 'repeat').map((c) => c.name)
   const neverNames = components.filter((c) => !c.archived && c.rating === 'never').map((c) => c.name)
 
   return [
-    '## 3. Recent feedback & ratings',
-    '',
-    ...feedbackLines,
+    '## 3. Component ratings',
     '',
     `Repeat-worthy components: ${repeatNames.length > 0 ? repeatNames.join(', ') : '(none)'}`,
     `Never-repeat components: ${neverNames.length > 0 ? neverNames.join(', ') : '(none)'}`,
@@ -114,7 +89,6 @@ function componentExample(typeEnum, stationEnum) {
   return {
     name: '...',
     type: typeEnum,
-    cuisineTags: [],
     ingredients: [{ name: '...', measure: '...' }],
     steps: [],
     shelfLifeDays: 4,
@@ -168,12 +142,12 @@ function briefSection(settings, refreshEnabled) {
  * @param {{servings, cook, refresh, notes, weekOf}} options
  * @returns {string}
  */
-export function compileWeekPrompt({ pantry, components, feedback, settings }, options) {
+export function compileWeekPrompt({ pantry, components, settings }, options) {
   const refreshEnabled = Boolean(options.refresh && settings.refreshDay)
   return [
     pantrySection(pantry),
     constraintsSection(settings, options),
-    feedbackSection(components, feedback),
+    feedbackSection(components),
     outputFormatSection(settings, refreshEnabled),
     briefSection(settings, refreshEnabled),
   ].join('\n\n')
@@ -185,7 +159,7 @@ function proteinBandSection(settings) {
 }
 
 function currentComponentSection(component) {
-  const { id, rating, archived, origin, macroSource, ...rest } = component
+  const { id, rating, archived, macroSource, ...rest } = component
   return ['## Current component', '', '```json', JSON.stringify(rest, null, 2), '```'].join('\n')
 }
 

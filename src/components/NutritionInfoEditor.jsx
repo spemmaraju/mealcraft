@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NUTRITION_SOURCES, NUTRITION_STATES, createNutritionInfo } from '../schema.js'
+import { createNutritionInfo } from '../schema.js'
 import { findSeedForName } from '../nutritionOps.js'
 import { lookupBarcode } from '../nutritionLookup.js'
 import NaturalUnitsEditor from './NaturalUnitsEditor.jsx'
@@ -17,7 +17,6 @@ function toNumOrZero(text) {
 export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok, onSave, onCancel }) {
   const base = nutrition ?? createNutritionInfo()
   const [source, setSource] = useState(base.source)
-  const [state, setState] = useState(base.state)
   const [servingDesc, setServingDesc] = useState(base.servingDesc)
   const [servingsPerContainer, setServingsPerContainer] = useState(
     base.servingsPerContainer != null ? String(base.servingsPerContainer) : '',
@@ -36,7 +35,6 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok,
 
   function applyPrefill(fresh) {
     setSource(fresh.source)
-    setState(fresh.state)
     setServingDesc(fresh.servingDesc)
     setServingsPerContainer(fresh.servingsPerContainer != null ? String(fresh.servingsPerContainer) : '')
     setKcal(String(fresh.perServing.kcal))
@@ -47,6 +45,15 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok,
     setFiber(String(fresh.perServing.fiber_g ?? 0))
     setNaturalUnits(fresh.naturalUnits)
     setBarcode(fresh.barcode ?? null)
+  }
+
+  // Typing a macro value by hand overrides whatever provenance the fields
+  // currently carry (even if they were just autofilled/scanned).
+  function handleMacroInput(setter) {
+    return (e) => {
+      setSource('manual')
+      setter(e.target.value)
+    }
   }
 
   function handleFillFromSeed() {
@@ -84,7 +91,6 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok,
   function handleSave() {
     onSave({
       source,
-      state,
       servingDesc,
       servingsPerContainer: servingsPerContainer.trim() ? toNumOrZero(servingsPerContainer) : null,
       perServing: {
@@ -109,38 +115,11 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok,
             Scan barcode
           </button>
           <button type="button" className="btn" onClick={handleFillFromSeed}>
-            Fill from seed table
+            Autofill from common foods
           </button>
           {byok && <LabelPhotoButton byok={byok} onResult={handleLabelPhotoResult} />}
         </div>
         {lookupMsg && <div className={`message message--${lookupMsg.type}`}>{lookupMsg.text}</div>}
-
-        <div className="field">
-          <label htmlFor="nutrition-source">Source</label>
-          <select id="nutrition-source" value={source} onChange={(e) => setSource(e.target.value)}>
-            {NUTRITION_SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="field">
-          <span>State</span>
-          <div className="button-row">
-            {NUTRITION_STATES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`btn${state === s ? ' btn--primary' : ''}`}
-                onClick={() => setState(s)}
-              >
-                {s === 'as_packaged' ? 'As packaged' : 'As prepared'}
-              </button>
-            ))}
-          </div>
-        </div>
 
         <div className="field">
           <label htmlFor="nutrition-serving-desc">Serving size</label>
@@ -168,16 +147,22 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok,
         <div className="field">
           <span>Per serving</span>
           <div className="button-row">
-            <input type="text" inputMode="decimal" value={kcal} onChange={(e) => setKcal(e.target.value)} placeholder="kcal" />
-            <input
-              type="text"
-              inputMode="decimal"
-              value={protein}
-              onChange={(e) => setProtein(e.target.value)}
-              placeholder="protein g"
-            />
-            <input type="text" inputMode="decimal" value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="carbs g" />
-            <input type="text" inputMode="decimal" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="fat g" />
+            <div className="field">
+              <label htmlFor="nutrition-kcal">Calories</label>
+              <input id="nutrition-kcal" type="text" inputMode="decimal" value={kcal} onChange={handleMacroInput(setKcal)} />
+            </div>
+            <div className="field">
+              <label htmlFor="nutrition-protein">Protein (g)</label>
+              <input id="nutrition-protein" type="text" inputMode="decimal" value={protein} onChange={handleMacroInput(setProtein)} />
+            </div>
+            <div className="field">
+              <label htmlFor="nutrition-carbs">Carbs (g)</label>
+              <input id="nutrition-carbs" type="text" inputMode="decimal" value={carbs} onChange={handleMacroInput(setCarbs)} />
+            </div>
+            <div className="field">
+              <label htmlFor="nutrition-fat">Fat (g)</label>
+              <input id="nutrition-fat" type="text" inputMode="decimal" value={fat} onChange={handleMacroInput(setFat)} />
+            </div>
           </div>
           <label className="checkbox-field">
             <input type="checkbox" checked={hasFiber} onChange={(e) => setHasFiber(e.target.checked)} />

@@ -37,7 +37,7 @@ export default function GaugesPanel({ logs, components, week, settings, today })
               <div key={d.date} className="protein-chart__bar-col">
                 {d.logged ? (
                   <div
-                    className={`protein-chart__bar${inBand ? ' protein-chart__bar--in-band' : ''}`}
+                    className={`protein-chart__bar${inBand ? ' protein-chart__bar--in-band' : ''}${d.hasMissing ? ' protein-chart__bar--partial' : ''}`}
                     style={{ height: `${barHeight}%` }}
                     title={`${Math.round(d.protein_g)}g protein${d.hasMissing ? ' (partial — some macros unknown)' : ''}`}
                   />

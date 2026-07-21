@@ -19,10 +19,10 @@ export default function LibraryScreen() {
   const [settings, setSettings] = useState(null)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState(null)
-  const [tagFilter, setTagFilter] = useState(null)
   const [ratingFilter, setRatingFilter] = useState(null)
   const [makeableOnly, setMakeableOnly] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [newDraft, setNewDraft] = useState(null)
   const [viewingId, setViewingId] = useState(null)
@@ -86,15 +86,22 @@ export default function LibraryScreen() {
     setRegenerating(null)
   }
 
+  function handleClearFilters() {
+    setTypeFilter(null)
+    setRatingFilter(null)
+    setMakeableOnly(false)
+    setShowArchived(false)
+  }
+
   const byokActive = !!(settings && settings.apiMode === 'byok' && settings.apiKey)
   const makeability = componentOps.makeabilityMap(components, pantry)
   const filtered = componentOps.filterComponents(
     components,
-    { search, type: typeFilter, cuisineTag: tagFilter, rating: ratingFilter, makeableOnly, includeArchived: showArchived },
+    { search, type: typeFilter, rating: ratingFilter, makeableOnly, includeArchived: showArchived },
     makeability,
   )
-  const cuisineTags = componentOps.allCuisineTags(components)
   const archivedCount = components.filter((c) => c.archived).length
+  const hasActiveFilters = typeFilter || ratingFilter || makeableOnly || showArchived
   const editingComponent = editingId === 'new' ? newDraft : editingId ? components.find((c) => c.id === editingId) : null
   const viewingComponent = viewingId ? components.find((c) => c.id === viewingId) : null
 
@@ -125,48 +132,50 @@ export default function LibraryScreen() {
             </button>
           ))}
         </div>
-        <div className="library-filters__chips">
-          <button
-            type="button"
-            className={`chip${makeableOnly ? ' chip--active' : ''}`}
-            onClick={() => setMakeableOnly((v) => !v)}
-          >
-            Makeable now
+
+        <div className="library-filters__more">
+          <button type="button" className="btn" onClick={() => setShowMoreFilters((v) => !v)}>
+            {showMoreFilters ? 'Fewer filters' : 'More filters'}
           </button>
-          {RATING_CHIPS.map(({ label, value }) => (
-            <button
-              key={value}
-              type="button"
-              className={`chip${ratingFilter === value ? ' chip--active' : ''}`}
-              onClick={() => setRatingFilter(ratingFilter === value ? null : value)}
-            >
-              {label}
+          {hasActiveFilters && (
+            <button type="button" className="btn" onClick={handleClearFilters}>
+              Clear filters
             </button>
-          ))}
+          )}
         </div>
-        {cuisineTags.length > 0 && (
-          <div className="library-filters__chips">
-            {cuisineTags.map((tag) => (
+
+        {showMoreFilters && (
+          <>
+            <div className="library-filters__chips">
               <button
-                key={tag}
                 type="button"
-                className={`chip${tagFilter === tag ? ' chip--active' : ''}`}
-                onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
+                className={`chip${makeableOnly ? ' chip--active' : ''}`}
+                onClick={() => setMakeableOnly((v) => !v)}
               >
-                {tag}
+                Makeable now
               </button>
-            ))}
-          </div>
+              {RATING_CHIPS.map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`chip${ratingFilter === value ? ' chip--active' : ''}`}
+                  onClick={() => setRatingFilter(ratingFilter === value ? null : value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="library-filters__chips">
+              <button
+                type="button"
+                className={`chip${showArchived ? ' chip--active' : ''}`}
+                onClick={() => setShowArchived((v) => !v)}
+              >
+                Archived ({archivedCount})
+              </button>
+            </div>
+          </>
         )}
-        <div className="library-filters__chips">
-          <button
-            type="button"
-            className={`chip${showArchived ? ' chip--active' : ''}`}
-            onClick={() => setShowArchived((v) => !v)}
-          >
-            Archived ({archivedCount})
-          </button>
-        </div>
       </div>
 
       {components.length === 0 ? (

@@ -85,7 +85,7 @@ try {
     const result = await storage.importState(JSON.stringify(v3State()))
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 5)
+    assert.equal(state.schemaVersion, 6)
     assert.equal(state.settings.lastExportAt, null)
     assert.equal(state.settings.cookDay, 'Sun')
     assert.equal(state.settings.refreshDay, 'Wed')
@@ -395,7 +395,6 @@ try {
     const nutrition = nutritionLookup.mapLabelReply(reply)
     assert.ok(nutrition)
     assert.equal(nutrition.source, 'label_photo')
-    assert.equal(nutrition.state, 'as_packaged')
     assert.deepEqual(schema.validate(nutrition, 'NutritionInfo'), [])
 
     assert.equal(nutritionLookup.mapLabelReply('not json'), null)

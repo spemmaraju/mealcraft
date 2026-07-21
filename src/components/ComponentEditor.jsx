@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { COMPONENT_TYPES, STATIONS, ORIGINS } from '../schema.js'
+import { COMPONENT_TYPES, STATIONS } from '../schema.js'
 import * as nutritionOps from '../nutritionOps.js'
 import IngredientListEditor from './IngredientListEditor.jsx'
 import StepListEditor from './StepListEditor.jsx'
@@ -20,7 +20,6 @@ function toNumOrZero(text) {
 export default function ComponentEditor({ component, isNew, pantry, onSave, onDelete, onCancel }) {
   const [name, setName] = useState(component.name)
   const [type, setType] = useState(component.type)
-  const [cuisineTagsText, setCuisineTagsText] = useState(component.cuisineTags.join(', '))
   const [ingredients, setIngredients] = useState(component.ingredients)
   const [steps, setSteps] = useState(component.steps)
   const [shelfLifeDays, setShelfLifeDays] = useState(String(component.shelfLifeDays))
@@ -36,7 +35,6 @@ export default function ComponentEditor({ component, isNew, pantry, onSave, onDe
   const [fat, setFat] = useState(String(component.macrosPerServing?.fat_g ?? 0))
   const [macroSource, setMacroSource] = useState(component.macroSource)
   const [deriveError, setDeriveError] = useState(null)
-  const [origin, setOrigin] = useState(component.origin)
   const [archived, setArchived] = useState(component.archived)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
@@ -66,10 +64,6 @@ export default function ComponentEditor({ component, isNew, pantry, onSave, onDe
     onSave(component.id, {
       name: trimmedName,
       type,
-      cuisineTags: cuisineTagsText
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
       ingredients: ingredients.filter((row) => row.name.trim()),
       steps: steps.filter((s) => s.trim()),
       shelfLifeDays: toIntOrZero(shelfLifeDays),
@@ -87,7 +81,6 @@ export default function ComponentEditor({ component, isNew, pantry, onSave, onDe
           }
         : null,
       macroSource: hasMacros ? macroSource : 'manual',
-      origin,
       archived,
     })
   }
@@ -113,98 +106,88 @@ export default function ComponentEditor({ component, isNew, pantry, onSave, onDe
           </select>
         </div>
 
-        <div className="field">
-          <label htmlFor="component-tags">Cuisine tags</label>
-          <input
-            id="component-tags"
-            type="text"
-            value={cuisineTagsText}
-            onChange={(e) => setCuisineTagsText(e.target.value)}
-            placeholder="comma-separated, e.g. indian, weeknight"
-          />
-        </div>
-
         <IngredientListEditor ingredients={ingredients} onChange={setIngredients} />
         <StepListEditor steps={steps} onChange={setSteps} />
 
-        <div className="field">
-          <span>Time &amp; shelf life</span>
+        <details className="field">
+          <summary>Time &amp; shelf life</summary>
           <div className="button-row">
+            <div className="field">
+              <label htmlFor="component-shelf-life">Shelf life (days)</label>
+              <input
+                id="component-shelf-life"
+                type="text"
+                inputMode="numeric"
+                value={shelfLifeDays}
+                onChange={(e) => setShelfLifeDays(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="component-active-min">Active min</label>
+              <input
+                id="component-active-min"
+                type="text"
+                inputMode="numeric"
+                value={activeMin}
+                onChange={(e) => setActiveMin(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="component-passive-min">Passive min</label>
+              <input
+                id="component-passive-min"
+                type="text"
+                inputMode="numeric"
+                value={passiveMin}
+                onChange={(e) => setPassiveMin(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="field">
+            <label htmlFor="component-storage">Storage</label>
             <input
+              id="component-storage"
               type="text"
-              inputMode="numeric"
-              value={shelfLifeDays}
-              onChange={(e) => setShelfLifeDays(e.target.value)}
-              placeholder="Shelf life (days)"
-            />
-            <input
-              type="text"
-              inputMode="numeric"
-              value={activeMin}
-              onChange={(e) => setActiveMin(e.target.value)}
-              placeholder="Active min"
-            />
-            <input
-              type="text"
-              inputMode="numeric"
-              value={passiveMin}
-              onChange={(e) => setPassiveMin(e.target.value)}
-              placeholder="Passive min"
+              value={storageText}
+              onChange={(e) => setStorageText(e.target.value)}
+              placeholder="e.g. fridge airtight, 4 days"
             />
           </div>
-        </div>
 
-        <div className="field">
-          <label htmlFor="component-storage">Storage</label>
-          <input
-            id="component-storage"
-            type="text"
-            value={storageText}
-            onChange={(e) => setStorageText(e.target.value)}
-            placeholder="e.g. fridge airtight, 4 days"
+          <div className="field">
+            <label htmlFor="component-station">Station</label>
+            <select id="component-station" value={station} onChange={(e) => setStation(e.target.value)}>
+              {STATIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+        </details>
+
+        <details className="field">
+          <summary>Macros</summary>
+          <MacroSectionEditor
+            servings={servings}
+            onServingsChange={setServings}
+            hasMacros={hasMacros}
+            onHasMacrosChange={setHasMacros}
+            kcal={kcal}
+            onKcalChange={setKcal}
+            protein={protein}
+            onProteinChange={setProtein}
+            carbs={carbs}
+            onCarbsChange={setCarbs}
+            fat={fat}
+            onFatChange={setFat}
+            macroSource={macroSource}
+            onMacroSourceChange={setMacroSource}
+            onDerive={handleDerive}
+            deriveError={deriveError}
           />
-        </div>
-
-        <div className="field">
-          <label htmlFor="component-station">Station</label>
-          <select id="component-station" value={station} onChange={(e) => setStation(e.target.value)}>
-            {STATIONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <MacroSectionEditor
-          servings={servings}
-          onServingsChange={setServings}
-          hasMacros={hasMacros}
-          onHasMacrosChange={setHasMacros}
-          kcal={kcal}
-          onKcalChange={setKcal}
-          protein={protein}
-          onProteinChange={setProtein}
-          carbs={carbs}
-          onCarbsChange={setCarbs}
-          fat={fat}
-          onFatChange={setFat}
-          macroSource={macroSource}
-          onMacroSourceChange={setMacroSource}
-          onDerive={handleDerive}
-          deriveError={deriveError}
-        />
-
-        <div className="field">
-          <label htmlFor="component-origin">Origin</label>
-          <select id="component-origin" value={origin} onChange={(e) => setOrigin(e.target.value)}>
-            {ORIGINS.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-        </div>
+        </details>
 
         <div className="field">
           <label className="checkbox-field">

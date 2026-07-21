@@ -91,6 +91,23 @@ body {
   color: var(--text-muted);
 }
 
+.field-caption {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: -4px 0 8px;
+}
+
+details.field summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: revert;
+  margin-bottom: 8px;
+}
+
+details.field[open] summary {
+  margin-bottom: 12px;
+}
+
 .tab-bar {
   display: flex;
   border-top: 1px solid var(--border);
@@ -206,6 +223,22 @@ textarea, input[type="text"] {
   margin: 0 0 12px;
 }
 
+.settings-advanced {
+  margin-bottom: 16px;
+}
+
+.settings-advanced > summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 12px 4px;
+  list-style: revert;
+}
+
+.settings-advanced[open] > summary {
+  margin-bottom: 12px;
+}
+
 .button-row {
   display: flex;
   gap: 8px;
@@ -258,6 +291,31 @@ textarea, input[type="text"] {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.pantry-quick-add__open {
+  align-self: flex-start;
+}
+
+.pantry-quick-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pantry-quick-add__name {
+  flex: 1 1 160px;
+  min-height: 44px;
+}
+
+.pantry-quick-add__category {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px;
 }
 
 .chip {
@@ -554,6 +612,12 @@ select {
   flex-wrap: wrap;
 }
 
+.library-filters__more {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .library-empty {
   color: var(--text-muted);
   padding: 24px 0;
@@ -799,6 +863,18 @@ select {
   font-size: 1.05rem;
   font-weight: 700;
   margin: 0 0 12px;
+}
+
+.plan-generate-step {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.plan-generate-step h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 10px;
 }
 
 .segmented {
@@ -1057,6 +1133,13 @@ select {
   cursor: default;
 }
 
+.assembly-card__change-btn {
+  flex: none;
+  min-height: 36px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
 .assembly-card__x {
   flex: none;
   min-height: 40px;
@@ -1223,6 +1306,26 @@ select {
   margin: 8px 0;
 }
 
+.log-meal-card__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.log-meal-card__summary-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--text);
+}
+
+.log-meal-card__summary-rating {
+  font-size: 0.75rem;
+}
+
 .log-meal-card__log-btn {
   width: 100%;
 }
@@ -1248,8 +1351,6 @@ select {
 }
 
 .log-meal-card__other-list {
-  max-height: 40vh;
-  overflow-y: auto;
   margin-bottom: 12px;
 }
 
@@ -1299,7 +1400,7 @@ select {
 
 .protein-chart__bar {
   width: 60%;
-  min-height: 4px;
+  min-height: 10px;
   border-radius: 4px 4px 0 0;
   background: var(--text-muted);
   opacity: 0.6;
@@ -1308,6 +1409,28 @@ select {
 .protein-chart__bar--in-band {
   background: var(--accent);
   opacity: 0.85;
+}
+
+/* Partial data (some logged components have unknown macros) reads as
+   hatched, never as a solid bar implying a precise (possibly near-zero)
+   total we don't actually know. */
+.protein-chart__bar--partial {
+  background-image: repeating-linear-gradient(
+    45deg,
+    currentColor,
+    currentColor 3px,
+    transparent 3px,
+    transparent 6px
+  );
+  background-color: transparent;
+  color: var(--text-muted);
+  opacity: 0.9;
+  border: 1px solid var(--text-muted);
+}
+
+.protein-chart__bar--partial.protein-chart__bar--in-band {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .protein-chart__dot {
@@ -1372,19 +1495,6 @@ select {
   color: var(--text);
 }
 
-.feedback-link {
-  display: block;
-  width: 100%;
-  min-height: 44px;
-  border: none;
-  background: none;
-  color: var(--brand);
-  font-size: 0.95rem;
-  text-align: left;
-  cursor: pointer;
-  margin-bottom: 16px;
-}
-
 .recent-log-row {
   display: flex;
   align-items: center;
@@ -1428,22 +1538,35 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin: 12px 16px 0;
-  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  line-height: 1.2;
   color: var(--text);
-  box-shadow: var(--shadow-sm);
+  min-height: 32px;
+  max-height: 40px;
+  overflow: hidden;
+}
+
+.banner__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
 }
 
 .banner__actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   flex: none;
+}
+
+.banner__actions .btn {
+  padding: 4px 8px;
+  font-size: 0.78rem;
 }
 
 .banner__dismiss {

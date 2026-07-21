@@ -12,7 +12,6 @@ export default function PantryItemRow({ item, onToggleOnHand, onOpenEditor }) {
       </button>
       <button type="button" className="pantry-row__body" onClick={() => onOpenEditor(item.id)}>
         <span className="pantry-row__name">{item.name}</span>
-        <span className={`pantry-row__badge pantry-row__badge--${item.role}`}>{item.role}</span>
         {item.roughQty && <span className="pantry-row__qty">{item.roughQty}</span>}
         {item.nutrition && <span className="provenance-tag provenance-tag--tiny">{item.nutrition.source}</span>}
       </button>

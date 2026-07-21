@@ -3,28 +3,24 @@ import * as storage from '../storage.js'
 import * as trackOps from '../trackOps.js'
 import LogMealCard from '../components/LogMealCard.jsx'
 import GaugesPanel from '../components/GaugesPanel.jsx'
-import WeeklyFeedbackForm from '../components/WeeklyFeedbackForm.jsx'
 
 export default function TrackScreen() {
   const [components, setComponents] = useState([])
   const [weeks, setWeeks] = useState([])
   const [logs, setLogs] = useState([])
-  const [feedback, setFeedback] = useState([])
   const [settings, setSettings] = useState(null)
   const [confirmingRemove, setConfirmingRemove] = useState(null)
 
   async function reload() {
-    const [c, w, l, f, s] = await Promise.all([
+    const [c, w, l, s] = await Promise.all([
       storage.get('components'),
       storage.get('weeks'),
       storage.get('logs'),
-      storage.get('feedback'),
       storage.get('settings'),
     ])
     setComponents(c)
     setWeeks(w)
     setLogs(l)
-    setFeedback(f)
     setSettings(s)
   }
 
@@ -65,15 +61,10 @@ export default function TrackScreen() {
     setConfirmingRemove(null)
   }
 
-  async function handleSaveFeedback(entry) {
-    await storage.set('feedback', trackOps.upsertFeedback(feedback, entry))
-  }
-
   if (!settings) return null
 
   const today = trackOps.todayISO()
   const week = trackOps.currentWeek(weeks, today)
-  const weekOf = trackOps.currentWeekSundayISO(today)
   const byId = Object.fromEntries(components.map((c) => [c.id, c]))
   const recent = logs
     .map((log, index) => ({ log, index }))
@@ -97,8 +88,6 @@ export default function TrackScreen() {
       />
 
       <GaugesPanel logs={logs} components={components} week={week} settings={settings} today={today} />
-
-      <WeeklyFeedbackForm feedback={feedback} weekOf={weekOf} today={today} onSave={handleSaveFeedback} />
 
       <div className="plan-section">
         <h2>Recent logs</h2>

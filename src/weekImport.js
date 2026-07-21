@@ -32,7 +32,7 @@ export function extractJson(text) {
 }
 
 function stripComponentPayload(raw) {
-  const { id, rating, archived, origin, macroSource, ...rest } = raw
+  const { id, rating, archived, macroSource, ...rest } = raw
   return rest
 }
 

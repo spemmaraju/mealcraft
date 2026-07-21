@@ -40,10 +40,10 @@ try {
   // ==== promptCompiler.js ====
 
   const pantry = [
-    schema.createPantryItem({ name: 'Basmati rice', role: 'staple', onHand: true, roughQty: '5 lb bag' }),
-    schema.createPantryItem({ name: 'Cumin seeds', role: 'staple', onHand: true, roughQty: null }),
-    schema.createPantryItem({ name: 'Tofu', role: 'rotating', onHand: true, roughQty: '1 block' }),
-    schema.createPantryItem({ name: 'Sriracha', role: 'rotating', onHand: false }),
+    schema.createPantryItem({ name: 'Basmati rice', onHand: true, roughQty: '5 lb bag' }),
+    schema.createPantryItem({ name: 'Cumin seeds', onHand: true, roughQty: null }),
+    schema.createPantryItem({ name: 'Tofu', onHand: true, roughQty: '1 block' }),
+    schema.createPantryItem({ name: 'Sriracha', onHand: false }),
   ]
   const components = [
     schema.createComponent({ name: 'Mint chutney', rating: 'repeat', archived: false }),
@@ -54,12 +54,12 @@ try {
   const opts = { servings: 5, cook: true, refresh: true, notes: 'use up the cabbage', weekOf: '2026-07-19' }
 
   await check('compileWeekPrompt includes all five section headers', () => {
-    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings }, opts)
+    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, settings }, opts)
     for (let n = 1; n <= 5; n++) assert.ok(prompt.includes(`## ${n}.`), `missing section ${n}`)
   })
 
   await check('compileWeekPrompt embeds the generation brief verbatim (default Sunday/Wednesday)', () => {
-    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings }, opts)
+    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, settings }, opts)
     assert.ok(prompt.includes(promptCompiler.buildGenerationBrief('Sunday', 'Wednesday')))
     assert.ok(prompt.includes('Assign durable components to Sunday'))
     assert.ok(prompt.includes('Sunday cook, Wednesday refresh'))
@@ -67,7 +67,7 @@ try {
 
   await check('compileWeekPrompt follows configured cook/refresh days', () => {
     const satSettings = schema.createSettings({ cookDay: 'Sat', refreshDay: 'Tue' })
-    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings: satSettings }, opts)
+    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, settings: satSettings }, opts)
     assert.ok(prompt.includes('Saturday cook, Tuesday refresh'))
     assert.ok(prompt.includes('Assign durable components to Saturday'))
     assert.ok(prompt.includes('timed Saturday run sheet'))
@@ -76,61 +76,44 @@ try {
 
   await check('compileWeekPrompt with refreshDay: null goes single-session', () => {
     const noRefresh = schema.createSettings({ refreshDay: null })
-    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings: noRefresh }, opts)
+    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, settings: noRefresh }, opts)
     assert.ok(prompt.includes('single Sunday session'))
     assert.ok(prompt.includes('no midweek refresh'))
     assert.ok(!prompt.includes('Wednesday refresh'))
   })
 
-  await check('pantry section groups staple/rotating and excludes off-hand items', () => {
-    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings }, opts)
+  await check('pantry section is a single on-hand list, excludes off-hand items', () => {
+    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, settings }, opts)
+    assert.ok(prompt.includes('## 1. On-hand pantry'))
     assert.ok(prompt.includes('Basmati rice (5 lb bag)'))
     assert.ok(prompt.includes('Cumin seeds'))
     assert.ok(prompt.includes('Tofu (1 block)'))
     assert.ok(!prompt.includes('Sriracha'), 'off-hand item must be excluded')
+    assert.ok(!prompt.includes('Staples:'), 'no more role-based grouping')
+    assert.ok(!prompt.includes('Rotating:'), 'no more role-based grouping')
   })
 
-  await check('pantry section shows (none) for an empty group', () => {
-    const staplesOnly = [schema.createPantryItem({ name: 'Salt', role: 'staple', onHand: true })]
-    const prompt = promptCompiler.compileWeekPrompt({ pantry: staplesOnly, components: [], feedback: [], settings }, opts)
-    assert.ok(prompt.includes('Rotating:\n(none)'))
-  })
-
-  await check('feedback section falls back to "(no feedback yet)" when empty', () => {
-    const prompt = promptCompiler.compileWeekPrompt({ pantry: [], components: [], feedback: [], settings }, opts)
-    assert.ok(prompt.includes('(no feedback yet)'))
-  })
-
-  await check('feedback section includes the latest seeded WeeklyFeedback', () => {
-    const older = schema.createWeeklyFeedback({ weekOf: '2026-07-05', repeatWorthy: 'curry' })
-    const newer = schema.createWeeklyFeedback({
-      weekOf: '2026-07-12',
-      repeatWorthy: 'chickpea bowl',
-      diedUneaten: 'plain rice',
-      boredomNotes: 'too many peanut sauces',
-    })
-    const prompt = promptCompiler.compileWeekPrompt({ pantry: [], components: [], feedback: [older, newer], settings }, opts)
-    assert.ok(prompt.includes('week of 2026-07-12'))
-    assert.ok(prompt.includes('chickpea bowl'))
-    assert.ok(prompt.includes('too many peanut sauces'))
-    assert.ok(!prompt.includes('curry\n') || prompt.includes('chickpea bowl'), 'must prefer the latest weekOf')
+  await check('pantry section shows (none) when nothing is on hand', () => {
+    const noneOnHand = [schema.createPantryItem({ name: 'Salt', onHand: false })]
+    const prompt = promptCompiler.compileWeekPrompt({ pantry: noneOnHand, components: [], settings }, opts)
+    assert.ok(prompt.includes('## 1. On-hand pantry\n\n(none)'))
   })
 
   await check('repeat/never rating lists include non-archived only', () => {
-    const prompt = promptCompiler.compileWeekPrompt({ pantry: [], components, feedback: [], settings }, opts)
+    const prompt = promptCompiler.compileWeekPrompt({ pantry: [], components, settings }, opts)
     assert.ok(prompt.includes('Repeat-worthy components: Mint chutney'))
     assert.ok(prompt.includes('Never-repeat components: Old chili'))
     assert.ok(!prompt.includes('Retired dish'), 'archived components must be excluded from rating lists')
   })
 
   await check('output-format enum interpolation matches schema constants', () => {
-    const prompt = promptCompiler.compileWeekPrompt({ pantry: [], components: [], feedback: [], settings }, opts)
+    const prompt = promptCompiler.compileWeekPrompt({ pantry: [], components: [], settings }, opts)
     assert.ok(prompt.includes(schema.COMPONENT_TYPES.join(' | ')))
     assert.ok(prompt.includes(schema.STATIONS.join(' | ')))
   })
 
   await check('constraints section includes notes, servings, weekOf, protein band', () => {
-    const prompt = promptCompiler.compileWeekPrompt({ pantry: [], components: [], feedback: [], settings }, opts)
+    const prompt = promptCompiler.compileWeekPrompt({ pantry: [], components: [], settings }, opts)
     assert.ok(prompt.includes('use up the cabbage'))
     assert.ok(prompt.includes('Lunch servings Mon–Fri: 5'))
     assert.ok(prompt.includes('Week of: 2026-07-19'))

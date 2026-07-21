@@ -301,7 +301,7 @@ try {
     const result = await storage.importState(exported)
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 5)
+    assert.equal(state.schemaVersion, 6)
   })
 
   // ==== nutritionLookup.js: pure mappers ====
@@ -322,7 +322,6 @@ try {
     const mapped = nutritionLookup.mapOffProduct(off)
     assert.ok(mapped)
     assert.equal(mapped.source, 'barcode')
-    assert.equal(mapped.state, 'as_packaged')
     assert.equal(mapped.barcode, '012345678905')
     assert.deepEqual(mapped.perServing, { kcal: 149, protein_g: 8.5, carbs_g: 11, fat_g: 8 })
   })
