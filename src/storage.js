@@ -6,7 +6,7 @@ import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName } from './nutritionOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 6
+const SCHEMA_VERSION = 7
 const COLLECTIONS = ['pantry', 'components', 'weeks', 'logs', 'feedback']
 
 function describe(v) {
@@ -47,8 +47,13 @@ function defaultState() {
 // the original Sunday cook / Wednesday refresh behavior).
 // v5 -> v6: drops the now-unused `role` (pantry items), `origin`/
 // `cuisineTags` (components), and `state` (nutrition objects) keys — pure
-// storage hygiene, safe no-op if a key is already absent. Mutates and
-// returns `state`; chains v1 through v6.
+// storage hygiene, safe no-op if a key is already absent.
+// v6 -> v7: re-runs the seed backfill (same guarantee as v2->v3: never
+// overwrites existing nutrition) against the Phase 13-expanded seed table,
+// so installs that pre-date the expanded library pick up newly-covered
+// items (dals, vegetables, etc.) without the user re-adding them. Does NOT
+// insert new starter pantry items into existing installs. Mutates and
+// returns `state`; chains v1 through v7.
 function migrate(state) {
   if (state.schemaVersion === 1) {
     const pantryItems = Array.isArray(state.pantry) ? state.pantry : []
@@ -100,6 +105,15 @@ function migrate(state) {
       stripNutritionState(component.nutrition)
     }
     state.schemaVersion = 6
+  }
+  if (state.schemaVersion === 6) {
+    for (const item of Array.isArray(state.pantry) ? state.pantry : []) {
+      if (item.nutrition == null) {
+        const seeded = findSeedForName(item.name)
+        if (seeded) item.nutrition = seeded
+      }
+    }
+    state.schemaVersion = 7
   }
   return state
 }

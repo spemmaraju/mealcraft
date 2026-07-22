@@ -301,7 +301,7 @@ try {
     const result = await storage.importState(exported)
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 6)
+    assert.equal(state.schemaVersion, 7)
   })
 
   // ==== nutritionLookup.js: pure mappers ====

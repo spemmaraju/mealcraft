@@ -22,6 +22,7 @@ export default function PantryScreen() {
   const [quickAddName, setQuickAddName] = useState('')
   const [quickAddCategory, setQuickAddCategory] = useState('')
   const [lastCategory, setLastCategory] = useState(null)
+  const [autofillToast, setAutofillToast] = useState(null) // { itemId, text } | null
   // Set by Enter in the quick-add input just before it blurs; blur owns the
   // single commit path so Enter-then-blur can't create the item twice.
   const openEditorRef = useRef(false)
@@ -110,6 +111,7 @@ export default function PantryScreen() {
     setAddingIn(null)
     setLastCategory(category)
     if (openEditor) setEditingItemId(item.id)
+    else if (nutrition) setAutofillToast({ itemId: item.id, text: `Nutrition auto-filled for "${name}"` })
   }
 
   function openQuickAdd() {
@@ -131,11 +133,12 @@ export default function PantryScreen() {
     }
     const category = quickAddCategory || categories[0] || ''
     const nutrition = nutritionOps.findSeedForName(name)
-    const { pantry: nextPantry } = pantryOps.addItem(pantry, { name, category, onHand: true, nutrition })
+    const { pantry: nextPantry, item } = pantryOps.addItem(pantry, { name, category, onHand: true, nutrition })
     persist(nextPantry)
     setLastCategory(category)
     setQuickAdding(false)
     setQuickAddName('')
+    if (nutrition) setAutofillToast({ itemId: item.id, text: `Nutrition auto-filled for "${name}"` })
   }
 
   const filtered = pantryOps.filterItems(pantry, { search, onHandOnly })
@@ -202,6 +205,27 @@ export default function PantryScreen() {
   return (
     <div className="screen">
       <h1>Pantry</h1>
+
+      {autofillToast && (
+        <div className="banner">
+          <span className="banner__text">{autofillToast.text}</span>
+          <div className="banner__actions">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setEditingItemId(autofillToast.itemId)
+                setAutofillToast(null)
+              }}
+            >
+              Tap to review
+            </button>
+            <button type="button" className="btn banner__dismiss" onClick={() => setAutofillToast(null)} aria-label="Dismiss">
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="pantry-filters">
         <input

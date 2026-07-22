@@ -4,6 +4,7 @@
 
 import { createNutritionInfo } from './schema.js'
 import { nameMatches } from './componentOps.js'
+import { VEG_SEEDS } from './nutritionSeedsVeg.js'
 
 function seed(name, aliases, servingDesc, macros, naturalUnits = []) {
   const [kcal, protein_g, carbs_g, fat_g, fiber_g] = macros
@@ -23,7 +24,7 @@ function seed(name, aliases, servingDesc, macros, naturalUnits = []) {
   }
 }
 
-export const NUTRITION_SEEDS = [
+const CORE_SEEDS = [
   seed('canned chickpeas', ['chickpeas (canned)', 'chickpea'], '1/3 cup drained (55 g)', [70, 4, 11, 1, 3], [
     { label: '1/3 cup drained', gramsOrFraction: 55 },
   ]),
@@ -42,7 +43,7 @@ export const NUTRITION_SEEDS = [
   seed('egg', ['eggs', 'whole egg'], '1 egg (50 g)', [72, 6.3, 0.4, 4.8], [
     { label: '1 egg', gramsOrFraction: 50 },
   ]),
-  seed('paneer', ['cottage cheese indian'], '100 g', [265, 18, 1.2, 21], [
+  seed('paneer', [], '100 g', [265, 18, 1.2, 21], [
     { label: '100 g', gramsOrFraction: 100 },
   ]),
   seed('tofu', ['firm tofu', 'tofu block'], '1 block (396 g)', [301, 32, 7.5, 19], [
@@ -80,7 +81,7 @@ export const NUTRITION_SEEDS = [
   seed('frozen peas', ['peas'], '1 cup (145 g)', [117, 7.9, 21, 0.6, 7], [
     { label: '1 cup', gramsOrFraction: 145 },
   ]),
-  seed('frozen spinach', ['spinach'], '1/2 cup cooked (95 g)', [31, 3.8, 5, 0.3, 2.8], [
+  seed('frozen spinach', [], '1/2 cup cooked (95 g)', [31, 3.8, 5, 0.3, 2.8], [
     { label: '1/2 cup cooked', gramsOrFraction: 95 },
   ]),
   seed('onion', ['onions'], '1 medium (110 g)', [44, 1.2, 10, 0.1, 1.9], [
@@ -117,6 +118,16 @@ export const NUTRITION_SEEDS = [
     { label: '1 medium', gramsOrFraction: 118 },
   ]),
 ]
+
+// Ordering invariant (Phase 13 D1): findSeedForName takes the FIRST match in
+// NUTRITION_SEEDS, and nameMatches is a bidirectional token-subset match — a
+// query can match a generic CORE_SEEDS entry (milk, yogurt, cheese, peanut
+// butter...) via simple word overlap even when a more specific VEG_SEEDS
+// entry (coconut milk, greek yogurt, cottage cheese, peanuts...) is the
+// correct hit. Putting VEG_SEEDS first ensures the more specific entries are
+// tried before the generics they'd otherwise subset-match. Do not reverse
+// this order without re-auditing nutritionSeedsVeg.js's GUARD_SEEDS comment.
+export const NUTRITION_SEEDS = [...VEG_SEEDS, ...CORE_SEEDS]
 
 /** @param {string} name @returns {NutritionInfo|null} fresh copy, never shared */
 export function findSeedForName(name) {

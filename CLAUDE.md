@@ -47,12 +47,15 @@ PantryItem {
 
 NutritionInfo {
   source: "barcode" | "label_photo" | "seed_table" | "ai_estimate" | "manual",
-  state: "as_packaged" | "as_prepared",
   servingDesc: string,           // "1/3 cup drained", "100 g", "1 block (396 g)"
   servingsPerContainer: number | null,
   perServing: { kcal, protein_g, carbs_g, fat_g, fiber_g? },
   naturalUnits: [ { label: string, gramsOrFraction } ]   // "1/3 cup" -> 55 g
 }
+// A pantry item whose name matches the seed table (src/nutritionSeeds.js +
+// nutritionSeedsVeg.js) gets nutrition auto-attached with source:'seed_table'
+// — at first seeding, at add-time, and via a backfill migration for existing
+// installs. Never overwrites nutrition that's already set.
 
 Component {                       // also used for composed dishes
   id, name,

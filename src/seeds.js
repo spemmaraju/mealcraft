@@ -57,6 +57,12 @@ export function seedPantryItems() {
     item('Toor dal', 'Legumes'),
     item('Masoor dal', 'Legumes'),
     item('Chana dal', 'Legumes'),
+    item('Moong dal', 'Legumes'),
+    item('Urad dal', 'Legumes'),
+    item('Rajma', 'Legumes'),
+    item('Lobia', 'Legumes'),
+    item('Soy chunks', 'Legumes'),
+    item('Besan', 'Legumes'),
 
     // Proteins
     item('Tofu', 'Proteins', '1 block'),
@@ -69,6 +75,12 @@ export function seedPantryItems() {
     item('Ginger', 'Vegetables'),
     item('Tomatoes', 'Vegetables'),
     item('Seasonal vegetables', 'Vegetables'),
+    item('Potatoes', 'Vegetables'),
+    item('Carrots', 'Vegetables'),
+    item('Cauliflower', 'Vegetables'),
+    item('Capsicum', 'Vegetables'),
+    item('Green beans', 'Vegetables'),
+    item('Bhindi', 'Vegetables'),
 
     // Fruits
     item('Lemons', 'Fruits'),

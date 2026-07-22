@@ -85,7 +85,7 @@ try {
     const result = await storage.importState(JSON.stringify(v3State()))
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 6)
+    assert.equal(state.schemaVersion, 7)
     assert.equal(state.settings.lastExportAt, null)
     assert.equal(state.settings.cookDay, 'Sun')
     assert.equal(state.settings.refreshDay, 'Wed')
