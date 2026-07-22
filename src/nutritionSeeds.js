@@ -3,7 +3,7 @@
 // the name-match lookup consumed by nutritionOps.js.
 
 import { createNutritionInfo } from './schema.js'
-import { nameMatches } from './componentOps.js'
+import { nameMatches, normalizeTokens } from './componentOps.js'
 import { VEG_SEEDS } from './nutritionSeedsVeg.js'
 
 function seed(name, aliases, servingDesc, macros, naturalUnits = []) {
@@ -129,8 +129,24 @@ const CORE_SEEDS = [
 // this order without re-auditing nutritionSeedsVeg.js's GUARD_SEEDS comment.
 export const NUTRITION_SEEDS = [...VEG_SEEDS, ...CORE_SEEDS]
 
+function tokenKey(str) {
+  return normalizeTokens(str).join(' ')
+}
+
 /** @param {string} name @returns {NutritionInfo|null} fresh copy, never shared */
 export function findSeedForName(name) {
+  const queryKey = tokenKey(name)
+  // An exact name/alias token match always wins over a looser subset match,
+  // regardless of array position — this is what lets a generic entry (e.g.
+  // CORE_SEEDS 'milk') and a more specific one that contains its words as a
+  // substring (e.g. VEG_SEEDS 'coconut milk') both resolve correctly for
+  // their own exact queries, even though each also subset-matches the
+  // other's query (nameMatches is bidirectional — see D1 in the execution
+  // plan). Falls back to the first subset match (nameMatches) when nothing
+  // is an exact hit, same as before.
+  const exact = NUTRITION_SEEDS.find((s) => tokenKey(s.name) === queryKey || s.aliases.some((a) => tokenKey(a) === queryKey))
+  if (exact) return exact.build()
+
   const entry = NUTRITION_SEEDS.find((s) => nameMatches(name, s.name) || s.aliases.some((a) => nameMatches(name, a)))
   return entry ? entry.build() : null
 }

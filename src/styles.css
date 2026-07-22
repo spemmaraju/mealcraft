@@ -729,6 +729,29 @@ select {
   flex: 1;
 }
 
+.measure-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.measure-input__qty {
+  flex: 1;
+  min-width: 0;
+}
+
+.measure-input__custom {
+  flex: 2;
+  min-width: 0;
+}
+
+.measure-input__unit {
+  flex: none;
+  width: auto;
+}
+
 .step-list__num {
   flex: none;
   width: 20px;

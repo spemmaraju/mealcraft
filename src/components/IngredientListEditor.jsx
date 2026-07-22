@@ -1,3 +1,5 @@
+import MeasureInput from './MeasureInput.jsx'
+
 export default function IngredientListEditor({ ingredients, onChange }) {
   function updateRow(index, patch) {
     onChange(ingredients.map((row, i) => (i === index ? { ...row, ...patch } : row)))
@@ -23,13 +25,7 @@ export default function IngredientListEditor({ ingredients, onChange }) {
             onChange={(e) => updateRow(i, { name: e.target.value })}
             placeholder="Name"
           />
-          <input
-            type="text"
-            className="ingredient-list__measure"
-            value={row.measure}
-            onChange={(e) => updateRow(i, { measure: e.target.value })}
-            placeholder="Measure (e.g. 1/3 cup)"
-          />
+          <MeasureInput value={row.measure} onChange={(measure) => updateRow(i, { measure })} />
           <button
             type="button"
             className="btn list-row__remove"

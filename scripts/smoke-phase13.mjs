@@ -89,6 +89,18 @@ try {
     assert.notEqual(nutrition.servingDesc, '1 cup (244 g)', 'must not resolve to the dairy milk entry')
   })
 
+  await check('findSeedForName("Milk") (bare) still resolves dairy milk, not coconut/almond/soy milk', () => {
+    const nutrition = findSeedForName('Milk')
+    assert.ok(nutrition)
+    assert.equal(nutrition.servingDesc, '1 cup (244 g)')
+  })
+
+  await check('findSeedForName("Peanut butter") (bare) still resolves peanut butter, not the peanuts entry', () => {
+    const nutrition = findSeedForName('Peanut butter')
+    assert.ok(nutrition)
+    assert.equal(nutrition.servingDesc, '2 tbsp (32 g)')
+  })
+
   await check('findSeedForName("Greek yogurt") resolves greek yogurt, not plain yogurt', () => {
     const nutrition = findSeedForName('Greek yogurt')
     assert.ok(nutrition)

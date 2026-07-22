@@ -34,6 +34,19 @@ const GRAMS_PER_UNIT = {
   pound: 453.592,
 }
 
+export const VOLUME_ML = {
+  tsp: 4.93,
+  teaspoon: 4.93,
+  tbsp: 14.79,
+  tablespoon: 14.79,
+  cup: 236.6,
+  'fl oz': 29.57,
+  ml: 1,
+  milliliter: 1,
+  l: 1000,
+  liter: 1000,
+}
+
 /** @param {string} str e.g. "1/3", "1 1/2", "½", "1½", "2" @returns {number|null} */
 export function parseQty(str) {
   if (typeof str !== 'string') return null
@@ -93,6 +106,15 @@ export function gramsFromMeasure(measure) {
   return qty * perUnit
 }
 
+/** Milliliters for a measure expressed directly in tsp/tbsp/cup/fl oz/ml/l. @returns {number|null} */
+export function mlFromMeasure(measure) {
+  const { qty, unitTokens } = parseMeasure(measure)
+  if (qty == null || unitTokens.length === 0) return null
+  const perUnit = VOLUME_ML[unitTokens.join(' ')]
+  if (perUnit == null) return null
+  return qty * perUnit
+}
+
 /** Grams represented by one serving of `nutrition`, from servingDesc or naturalUnits. @returns {number|null} */
 export function servingGrams(nutrition) {
   if (!nutrition) return null
@@ -125,6 +147,11 @@ export function measureToServings(measure, nutrition) {
   const measureText = measure.trim()
   const { qty: measureQty, unitTokens: measureTokens } = parseMeasure(measureText)
   const measureFullTokens = normalizeTokens(measureText).join(' ')
+
+  // (0) "1 serving" / "2 servings" — count IS the servings, no lookup needed.
+  if (measureQty != null && measureTokens.length === 1 && measureTokens[0] === 'serving') {
+    return measureQty
+  }
 
   // (a) direct servingDesc ratio — same unit words (ignoring any parenthetical
   // gram annotation), no grams involved.
@@ -165,6 +192,20 @@ export function measureToServings(measure, nutrition) {
     const unitQty = parseMeasure(scaledUnit.label).qty ?? 1
     const grams = scaledUnit.gramsOrFraction * (measureQty / unitQty)
     return grams / perServingGrams
+  }
+
+  // (d) volume bridging — the measure's unit is a volume word (tsp/tbsp/cup/
+  // fl oz/ml/l) but doesn't literally match any naturalUnits label (unlike
+  // path c's scaledUnit); if any naturalUnits label is ALSO a volume word
+  // (any volume unit, not just the same one), convert both through ml.
+  const measureMl = mlFromMeasure(measureText)
+  if (measureMl != null) {
+    const anchor = units.find((u) => mlFromMeasure(u.label) != null)
+    if (anchor) {
+      const anchorMl = mlFromMeasure(anchor.label)
+      const grams = anchor.gramsOrFraction * (measureMl / anchorMl)
+      return grams / perServingGrams
+    }
   }
 
   return null

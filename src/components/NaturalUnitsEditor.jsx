@@ -21,7 +21,7 @@ export default function NaturalUnitsEditor({ units, onChange }) {
             className="ingredient-list__name"
             value={row.label}
             onChange={(e) => updateRow(i, { label: e.target.value })}
-            placeholder="Label"
+            placeholder='e.g. "1 cup"'
           />
           <input
             type="text"

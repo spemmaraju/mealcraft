@@ -36,10 +36,16 @@ function seed(name, aliases, servingDesc, macros, naturalUnits = []) {
 // ---- Confusable guards ----------------------------------------------------
 // Ordering invariant: NUTRITION_SEEDS = [...VEG_SEEDS, ...CORE_SEEDS] in
 // nutritionSeeds.js, so every entry in this file is matched BEFORE any
-// CORE_SEEDS entry. These three specifically guard against nameMatches'
+// CORE_SEEDS entry. These specifically guard against nameMatches'
 // bidirectional token-subset matching landing on a generic CORE entry
-// ("coconut milk" / "almond milk" would otherwise subset-match "milk";
-// nothing else in this file needs guarding — see D1 in the execution plan).
+// ("coconut milk" / "almond milk" would otherwise subset-match "milk").
+//
+// A bare single-token 'butter' entry was deliberately NOT added here: under
+// this ordering it would itself become the false positive, intercepting
+// "Peanut butter" queries ahead of CORE_SEEDS' own 'peanut butter' entry
+// (any single-token name/alias is a subset of every multi-word query that
+// contains it, in either matching direction) — see the 'peanuts' comment
+// below for the same trap.
 const GUARD_SEEDS = [
   seed('coconut milk', ['canned coconut milk'], '1/4 cup canned (60 g)', [111, 1.1, 1.6, 11.6], [
     { label: '1/4 cup', gramsOrFraction: 60 },
@@ -47,7 +53,6 @@ const GUARD_SEEDS = [
   seed('almond milk', ['unsweetened almond milk'], '1 cup (240 g)', [39, 1.5, 3.4, 2.9], [
     { label: '1 cup', gramsOrFraction: 240 },
   ]),
-  seed('butter', [], '1 tbsp (14 g)', [102, 0.1, 0, 11.5], [{ label: '1 tbsp', gramsOrFraction: 14 }]),
 ]
 
 // ---- Legumes & vegetarian proteins -----------------------------------------
@@ -170,6 +175,15 @@ const FRUIT_NUT_SEEDS = [
   seed('avocado', [], '1/2 medium (100 g)', [160, 2, 8.5, 14.7, 6.7], [
     { label: '1/2 medium', gramsOrFraction: 100 },
   ]),
+  // Known ordering trade-off (not fully solvable by reordering alone, see
+  // D1 in the execution plan): 'peanuts' precedes CORE_SEEDS' 'peanut
+  // butter', so a bare "Peanuts" query correctly resolves here (fixing the
+  // documented gap), but a "Peanut butter" query ALSO subset-matches this
+  // entry's single-token name and would incorrectly resolve here too,
+  // ahead of the more specific CORE_SEEDS entry. No ordering fixes both
+  // directions at once, since 'peanut' is a literal subset of 'peanut
+  // butter' either way. Reachable and correct once the item's own nutrition
+  // is directly reviewed/edited in the pantry editor.
   seed('peanuts', ['peanut'], '1/4 cup (36 g)', [207, 9.4, 6, 18, 3], [{ label: '1/4 cup', gramsOrFraction: 36 }]),
   seed('sesame seeds', [], '1 tbsp (9 g)', [52, 1.6, 2.1, 4.5, 1.1], [{ label: '1 tbsp', gramsOrFraction: 9 }]),
 ]
