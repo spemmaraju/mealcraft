@@ -6,7 +6,7 @@ import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName } from './nutritionOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 7
+const SCHEMA_VERSION = 8
 const COLLECTIONS = ['pantry', 'components', 'weeks', 'logs', 'feedback']
 
 function describe(v) {
@@ -114,6 +114,30 @@ function migrate(state) {
       }
     }
     state.schemaVersion = 7
+  }
+  // v7 -> v8: LogEntry moves from {meal:'lunch'|'other', componentIds,
+  // portions} to {meal: one of MEALS, items: discriminated union}. Legacy
+  // 'other' logs become 'snack'; since 'other' previously APPENDED rather
+  // than replaced (Phase 5), multiple same-date 'other' entries must merge
+  // into one snack entry rather than colliding on the new (date, meal)
+  // identity. proteinBand only flips 20/35 -> 60/90 when it's still
+  // EXACTLY the factory default — safe because no Settings UI for it has
+  // ever shipped, so every install necessarily still has that default;
+  // this rewrites no user-chosen value.
+  if (state.schemaVersion === 7) {
+    const mealFor = { lunch: 'lunch', other: 'snack' }
+    const merged = new Map()
+    for (const log of Array.isArray(state.logs) ? state.logs : []) {
+      const meal = mealFor[log.meal] ?? 'snack'
+      const items = (log.portions ?? []).map((p) => ({ kind: 'component', componentId: p.componentId, count: p.count }))
+      const key = `${log.date}|${meal}`
+      if (merged.has(key)) merged.get(key).items.push(...items)
+      else merged.set(key, { date: log.date, meal, items, quickRating: log.quickRating ?? null })
+    }
+    state.logs = [...merged.values()]
+    const band = state.settings?.proteinBand
+    if (band && band.low_g === 20 && band.high_g === 35) state.settings.proteinBand = { low_g: 60, high_g: 90 }
+    state.schemaVersion = 8
   }
   return state
 }

@@ -1,24 +1,28 @@
 import { useEffect, useState } from 'react'
 import * as storage from '../storage.js'
 import * as trackOps from '../trackOps.js'
-import LogMealCard from '../components/LogMealCard.jsx'
+import { createLogEntry } from '../schema.js'
+import DayLog from '../components/DayLog.jsx'
 import GaugesPanel from '../components/GaugesPanel.jsx'
 
 export default function TrackScreen() {
   const [components, setComponents] = useState([])
+  const [pantry, setPantry] = useState([])
   const [weeks, setWeeks] = useState([])
   const [logs, setLogs] = useState([])
   const [settings, setSettings] = useState(null)
   const [confirmingRemove, setConfirmingRemove] = useState(null)
 
   async function reload() {
-    const [c, w, l, s] = await Promise.all([
+    const [c, p, w, l, s] = await Promise.all([
       storage.get('components'),
+      storage.get('pantry'),
       storage.get('weeks'),
       storage.get('logs'),
       storage.get('settings'),
     ])
     setComponents(c)
+    setPantry(p)
     setWeeks(w)
     setLogs(l)
     setSettings(s)
@@ -29,31 +33,52 @@ export default function TrackScreen() {
     return storage.subscribe(reload)
   }, [])
 
-  async function handleLogLunch(card, dateISO) {
-    await storage.set('logs', trackOps.upsertLog(logs, trackOps.buildLogFromCard(card, dateISO)))
+  function logOrNew(dateISO, meal) {
+    const entry = trackOps.logFor(logs, dateISO, meal)
+    return entry ? entry.log : null
   }
 
-  async function handleUpdatePortion(dateISO, componentId, count) {
-    const entry = trackOps.logFor(logs, dateISO, 'lunch')
-    if (!entry) return
-    await storage.set('logs', trackOps.upsertLog(logs, trackOps.setPortionCount(entry.log, componentId, count)))
+  async function handleLogFromPlan(dateISO) {
+    const week = trackOps.currentWeek(weeks, dateISO)
+    const card = trackOps.assemblyCardForDate(week, dateISO)
+    if (!card) return
+    await storage.set('logs', trackOps.upsertLog(logs, trackOps.buildLogFromCard(card, dateISO, 'lunch')))
   }
 
-  async function handleSetRating(dateISO, rating) {
-    const entry = trackOps.logFor(logs, dateISO, 'lunch')
-    if (!entry) return
-    await storage.set('logs', trackOps.upsertLog(logs, { ...entry.log, quickRating: rating }))
+  async function handleAddItems(dateISO, meal, items) {
+    const existing = logOrNew(dateISO, meal)
+    const log = existing ? trackOps.mergeItems(existing, items) : createLogEntry({ date: dateISO, meal, items })
+    await storage.set('logs', trackOps.upsertLog(logs, log))
   }
 
-  async function handleRemoveLog(dateISO) {
-    const entry = trackOps.logFor(logs, dateISO, 'lunch')
+  async function handleSetItemCount(dateISO, meal, index, count) {
+    const log = logOrNew(dateISO, meal)
+    if (!log) return
+    await storage.set('logs', trackOps.upsertLog(logs, trackOps.setItemCount(log, index, count)))
+  }
+
+  async function handleSetItemMeasure(dateISO, meal, index, measure) {
+    const log = logOrNew(dateISO, meal)
+    if (!log) return
+    await storage.set('logs', trackOps.upsertLog(logs, trackOps.setItemMeasure(log, index, measure)))
+  }
+
+  async function handleRemoveItem(dateISO, meal, index) {
+    const log = logOrNew(dateISO, meal)
+    if (!log) return
+    await storage.set('logs', trackOps.upsertLog(logs, trackOps.removeItemAt(log, index)))
+  }
+
+  async function handleSetRating(dateISO, meal, rating) {
+    const log = logOrNew(dateISO, meal)
+    if (!log) return
+    await storage.set('logs', trackOps.upsertLog(logs, { ...log, quickRating: rating }))
+  }
+
+  async function handleRemoveLog(dateISO, meal) {
+    const entry = trackOps.logFor(logs, dateISO, meal)
     if (!entry) return
     await storage.set('logs', trackOps.removeLogAt(logs, entry.index))
-  }
-
-  async function handleLogOther(dateISO, componentIds) {
-    if (componentIds.length === 0) return
-    await storage.set('logs', trackOps.upsertLog(logs, trackOps.buildLogFromCard({ componentIds }, dateISO, 'other')))
   }
 
   async function handleRemoveAt(index) {
@@ -65,29 +90,40 @@ export default function TrackScreen() {
 
   const today = trackOps.todayISO()
   const week = trackOps.currentWeek(weeks, today)
-  const byId = Object.fromEntries(components.map((c) => [c.id, c]))
+  const compById = Object.fromEntries(components.map((c) => [c.id, c]))
+  const pantryById = Object.fromEntries(pantry.map((p) => [p.id, p]))
   const recent = logs
     .map((log, index) => ({ log, index }))
+    .filter(({ log }) => log.items.length > 0)
     .sort((a, b) => (a.log.date < b.log.date ? 1 : a.log.date > b.log.date ? -1 : 0))
     .slice(0, 10)
+
+  function itemName(item) {
+    if (item.kind === 'component') return compById[item.componentId]?.name || item.componentId
+    if (item.kind === 'pantry') return pantryById[item.pantryId]?.name || item.pantryId
+    return item.name
+  }
 
   return (
     <div className="screen">
       <h1>Track</h1>
 
-      <LogMealCard
+      <DayLog
         week={week}
         logs={logs}
         components={components}
+        pantry={pantry}
         today={today}
-        onLogLunch={handleLogLunch}
-        onUpdatePortion={handleUpdatePortion}
+        onLogFromPlan={handleLogFromPlan}
+        onAddItems={handleAddItems}
+        onSetItemCount={handleSetItemCount}
+        onSetItemMeasure={handleSetItemMeasure}
+        onRemoveItem={handleRemoveItem}
         onSetRating={handleSetRating}
         onRemoveLog={handleRemoveLog}
-        onLogOther={handleLogOther}
       />
 
-      <GaugesPanel logs={logs} components={components} week={week} settings={settings} today={today} />
+      <GaugesPanel logs={logs} components={components} pantry={pantry} week={week} settings={settings} today={today} />
 
       <div className="plan-section">
         <h2>Recent logs</h2>
@@ -100,9 +136,7 @@ export default function TrackScreen() {
                 <span className="recent-log-row__date">
                   {log.date} · {log.meal}
                 </span>
-                <span className="recent-log-row__components">
-                  {log.componentIds.map((id) => byId[id]?.name || id).join(', ') || '(none)'}
-                </span>
+                <span className="recent-log-row__components">{log.items.map(itemName).join(', ') || '(none)'}</span>
                 {log.quickRating && <span className="chip chip--active recent-log-row__rating">{log.quickRating}</span>}
               </div>
               {confirmingRemove === index ? (

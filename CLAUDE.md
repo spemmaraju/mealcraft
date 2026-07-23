@@ -83,18 +83,25 @@ WeekPlan {
   grocerySuggestions: [ { name, qty, dismissed: bool } ]     // ADVISORY ONLY
 }
 
-LogEntry {
-  date, meal: "lunch" | "other",
-  componentIds: [string],
-  portions: [ { componentId, naturalUnitLabel, count } ],
+LogEntry {                         // Phase 15: multi-meal flexible logging
+  date, meal: "breakfast" | "lunch" | "dinner" | "snack",
+  items: [
+    { kind: "component", componentId: string, count: number },   // count = servings, stepper ±0.5
+    { kind: "pantry",    pantryId: string,    measure: string }, // e.g. "1 cup", "150 g" — same free-text measure as ingredients
+    { kind: "adhoc",     name: string, measure: string,
+      nutrition: NutritionInfo }                                 // snapshot; survives without a pantry save
+  ],
   quickRating: "repeat" | "fine" | "never" | null
 }
+// Identity is (date, meal) — upsertLog replaces the matching entry for
+// every meal, not just lunch. "Log lunch from plan" (one-tap from the
+// week's assembly card) is preserved verbatim as lunch's fast path.
 
 WeeklyFeedback { weekOf, repeatWorthy, diedUneaten, boredomNotes }  // 3 lines
 
 Settings {
-  proteinBand: { low_g, high_g },
-  boughtLunchCost: number,        // for money-saved gauge
+  proteinBand: { low_g, high_g },  // DAILY band across all logged meals (Phase 15) — was per-lunch
+  boughtLunchCost: number,        // for money-saved gauge (still lunch-only — measures the packed-lunch habit)
   apiMode: "paste" | "byok",
   provider: "anthropic" | "google",
   apiKey: string | null

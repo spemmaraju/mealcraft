@@ -7,14 +7,14 @@ const MIX_SEGMENTS = [
   { key: 'other', label: 'Other' },
 ]
 
-export default function GaugesPanel({ logs, components, week, settings, today }) {
+export default function GaugesPanel({ logs, components, pantry, week, settings, today }) {
   const weekOf = week ? week.weekOf : trackOps.currentWeekSundayISO(today)
   const weekLogs = trackOps.logsForWeek(logs, weekOf)
-  const proteinDays = trackOps.proteinByDay(logs, components, weekOf)
-  const mix = trackOps.plateMix(weekLogs, components)
+  const proteinDays = trackOps.proteinByDay(logs, components, pantry, weekOf)
+  const mix = trackOps.plateMix(weekLogs, components, pantry)
   const streak = trackOps.lunchStreak(logs, today)
   const money = trackOps.moneySaved(logs, settings, weekOf)
-  const estimate = trackOps.estimateFraction(weekLogs, components)
+  const estimate = trackOps.estimateFraction(weekLogs, components, pantry)
 
   const { low_g, high_g } = settings.proteinBand
   const maxLogged = Math.max(0, ...proteinDays.map((d) => d.protein_g))
@@ -27,6 +27,7 @@ export default function GaugesPanel({ logs, components, week, settings, today })
       <h2>Gauges</h2>
       {estimate.showHint && <span className="provenance-tag">mostly estimates — treat as directional</span>}
 
+      <p className="field-caption">Protein by day (all meals)</p>
       <div className="protein-chart">
         <div className="protein-chart__band" style={{ bottom: `${bandBottom}%`, height: `${bandHeight}%` }} />
         <div className="protein-chart__bars">
@@ -68,7 +69,7 @@ export default function GaugesPanel({ logs, components, week, settings, today })
           </div>
         </>
       ) : (
-        <p className="placeholder">Log a few lunches to see your plate mix.</p>
+        <p className="placeholder">Log a few meals to see your plate mix.</p>
       )}
 
       <p className="gauges-panel__streak">

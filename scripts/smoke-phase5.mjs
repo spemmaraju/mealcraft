@@ -84,39 +84,61 @@ try {
     assert.equal(trackOps.assemblyCardForDate(null, '2026-01-05'), null)
   })
 
-  // ==== trackOps.js: logging ====
+  // ==== trackOps.js: logging (Phase 15: items[] discriminated union) ====
 
-  await check('buildLogFromCard: defaults meal lunch, portions count 1, validates against LogEntry', () => {
+  await check('buildLogFromCard: defaults meal lunch, component items count 1, validates against LogEntry', () => {
     const entry = trackOps.buildLogFromCard({ componentIds: ['c1', 'c2'] }, '2026-01-05')
     assert.equal(entry.meal, 'lunch')
-    assert.deepEqual(entry.portions, [
-      { componentId: 'c1', naturalUnitLabel: 'serving', count: 1 },
-      { componentId: 'c2', naturalUnitLabel: 'serving', count: 1 },
+    assert.deepEqual(entry.items, [
+      { kind: 'component', componentId: 'c1', count: 1 },
+      { kind: 'component', componentId: 'c2', count: 1 },
     ])
     assert.deepEqual(schema.validate(entry, 'LogEntry'), [])
 
-    const other = trackOps.buildLogFromCard({ componentIds: ['c3'] }, '2026-01-05', 'other')
-    assert.equal(other.meal, 'other')
-    assert.deepEqual(schema.validate(other, 'LogEntry'), [])
+    const snack = trackOps.buildLogFromCard({ componentIds: ['c3'] }, '2026-01-05', 'snack')
+    assert.equal(snack.meal, 'snack')
+    assert.deepEqual(schema.validate(snack, 'LogEntry'), [])
   })
 
-  await check('setPortionCount: immutable, clamps below 0', () => {
+  await check('setItemCount: immutable, clamps below 0', () => {
     const log = trackOps.buildLogFromCard({ componentIds: ['c1'] }, '2026-01-05')
-    const next = trackOps.setPortionCount(log, 'c1', 1.5)
-    assert.equal(next.portions[0].count, 1.5)
-    assert.equal(log.portions[0].count, 1, 'original untouched')
-    assert.equal(trackOps.setPortionCount(log, 'c1', -3).portions[0].count, 0)
+    const next = trackOps.setItemCount(log, 0, 1.5)
+    assert.equal(next.items[0].count, 1.5)
+    assert.equal(log.items[0].count, 1, 'original untouched')
+    assert.equal(trackOps.setItemCount(log, 0, -3).items[0].count, 0)
   })
 
-  await check('upsertLog: lunch replaces same-date entry; other appends', () => {
+  await check('mergeItems / setItemMeasure / removeItemAt: immutable item-list edits', () => {
+    const log = trackOps.buildLogFromCard({ componentIds: ['c1'] }, '2026-01-05')
+    const merged = trackOps.mergeItems(log, [{ kind: 'pantry', pantryId: 'p1', measure: '1 cup' }])
+    assert.equal(merged.items.length, 2)
+    assert.equal(log.items.length, 1, 'original untouched')
+
+    const remeasured = trackOps.setItemMeasure(merged, 1, '2 cup')
+    assert.equal(remeasured.items[1].measure, '2 cup')
+    assert.equal(merged.items[1].measure, '1 cup', 'original untouched')
+
+    const removed = trackOps.removeItemAt(remeasured, 0)
+    assert.equal(removed.items.length, 1)
+    assert.equal(removed.items[0].kind, 'pantry')
+  })
+
+  await check('upsertLog: identity is (date, meal) for every meal — replaces, never appends', () => {
     let logs = [trackOps.buildLogFromCard({ componentIds: ['c1'] }, '2026-01-05')]
     const replacement = trackOps.buildLogFromCard({ componentIds: ['c1', 'c2'] }, '2026-01-05')
     logs = trackOps.upsertLog(logs, replacement)
     assert.equal(logs.length, 1)
     assert.deepEqual(logs[0], replacement)
 
-    logs = trackOps.upsertLog(logs, trackOps.buildLogFromCard({ componentIds: ['c3'] }, '2026-01-05', 'other'))
-    assert.equal(logs.length, 2, 'other meal appends instead of replacing')
+    logs = trackOps.upsertLog(logs, trackOps.buildLogFromCard({ componentIds: ['c3'] }, '2026-01-05', 'snack'))
+    assert.equal(logs.length, 2, 'a different meal on the same date is a distinct entry')
+
+    logs = trackOps.upsertLog(logs, trackOps.buildLogFromCard({ componentIds: ['c4'] }, '2026-01-05', 'snack'))
+    assert.equal(logs.length, 2, 'same (date, meal) replaces, does not append')
+    assert.deepEqual(
+      logs.find((l) => l.meal === 'snack').items.map((i) => i.componentId),
+      ['c4'],
+    )
   })
 
   await check('removeLogAt / logFor: index-based remove and date+meal lookup', () => {
@@ -149,29 +171,82 @@ try {
   const mysteryPaste = component({ id: 'mystery', type: 'sauce', macrosPerServing: null })
   const gaugeComponents = [chickenBowl, riceBase, veg, mysteryPaste]
 
-  await check('logMacros: 1.5x portions sum, unknown-macro portion counts as missing not zero', () => {
+  await check('logMacros: 1.5x count sum, unknown-macro item counts as missing not zero', () => {
     let log = trackOps.buildLogFromCard({ componentIds: ['chicken', 'rice', 'mystery'] }, '2026-01-05')
-    log = trackOps.setPortionCount(log, 'chicken', 1.5)
-    const macros = trackOps.logMacros(log, gaugeComponents)
+    log = trackOps.setItemCount(log, 0, 1.5)
+    const macros = trackOps.logMacros(log, gaugeComponents, [])
     assert.equal(macros.protein_g, 30 * 1.5 + 4 * 1)
     assert.equal(macros.kcal, 300 * 1.5 + 200 * 1)
     assert.equal(macros.missing, 1)
   })
 
-  await check('proteinByDay: per-day totals, logged flag, hasMissing flag', () => {
-    let logs = [trackOps.buildLogFromCard({ componentIds: ['chicken', 'mystery'] }, '2026-01-05')]
-    const days = trackOps.proteinByDay(logs, gaugeComponents, '2026-01-04')
+  const cookedRicePantryItem = schema.createPantryItem({
+    id: 'pantry-rice',
+    name: 'Cooked rice',
+    category: 'Grains & Bases',
+    nutrition: schema.createNutritionInfo({
+      source: 'seed_table',
+      servingDesc: '1 cup (158 g)',
+      perServing: { kcal: 205, protein_g: 4.3, carbs_g: 45, fat_g: 0.4 },
+      naturalUnits: [{ label: '1 cup', gramsOrFraction: 158 }],
+    }),
+  })
+  const gaugePantry = [cookedRicePantryItem]
+
+  await check('logMacros: kind:"pantry" resolves via measureToServings; unresolvable measure counts as missing', () => {
+    const log = { date: '2026-01-05', meal: 'snack', items: [{ kind: 'pantry', pantryId: 'pantry-rice', measure: '1 cup' }], quickRating: null }
+    const macros = trackOps.logMacros(log, [], gaugePantry)
+    assert.equal(macros.kcal, 205)
+    assert.equal(macros.missing, 0)
+
+    const unresolvable = { date: '2026-01-05', meal: 'snack', items: [{ kind: 'pantry', pantryId: 'pantry-rice', measure: 'a handful' }], quickRating: null }
+    assert.equal(trackOps.logMacros(unresolvable, [], gaugePantry).missing, 1)
+  })
+
+  await check('logMacros: kind:"adhoc" resolves against its own embedded nutrition snapshot', () => {
+    const adhocNutrition = schema.createNutritionInfo({
+      source: 'online_search',
+      servingDesc: '100 g',
+      perServing: { kcal: 50, protein_g: 5, carbs_g: 2, fat_g: 1 },
+      naturalUnits: [{ label: '100 g', gramsOrFraction: 100 }],
+    })
+    const log = { date: '2026-01-05', meal: 'snack', items: [{ kind: 'adhoc', name: 'Mystery bar', measure: '1 serving', nutrition: adhocNutrition }], quickRating: null }
+    const macros = trackOps.logMacros(log, [], [])
+    assert.equal(macros.kcal, 50, 'path (0): "1 serving" resolves to the snapshot as-is')
+    assert.equal(macros.missing, 0)
+  })
+
+  await check('dayMacros: sums logMacros across every meal logged that day', () => {
+    const logs = [
+      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-05', 'lunch'),
+      trackOps.buildLogFromCard({ componentIds: ['rice'] }, '2026-01-05', 'dinner'),
+      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-06', 'lunch'),
+    ]
+    const macros = trackOps.dayMacros(logs, gaugeComponents, [], '2026-01-05')
+    assert.equal(macros.kcal, 300 + 200)
+    assert.equal(macros.protein_g, 30 + 4)
+  })
+
+  await check('proteinByDay: per-day totals across ALL meals, logged flag, hasMissing flag', () => {
+    let logs = [
+      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-05', 'lunch'),
+      trackOps.buildLogFromCard({ componentIds: ['mystery'] }, '2026-01-05', 'snack'),
+    ]
+    const days = trackOps.proteinByDay(logs, gaugeComponents, [], '2026-01-04')
     assert.equal(days[0].day, 'Mon')
-    assert.equal(days[0].protein_g, 30)
+    assert.equal(days[0].protein_g, 30, 'both meals summed, mystery contributes 0 (missing, not faked)')
     assert.equal(days[0].logged, true)
     assert.equal(days[0].hasMissing, true)
     assert.equal(days[1].logged, false)
     assert.equal(days[1].protein_g, 0)
   })
 
-  await check('plateMix: fractions sum to 1, base->carbs / protein->protein / veg->veg / sauce->other', () => {
-    const logs = [trackOps.buildLogFromCard({ componentIds: ['chicken', 'rice', 'veg', 'mystery'] }, '2026-01-05')]
-    const mix = trackOps.plateMix(logs, gaugeComponents)
+  await check('plateMix: fractions sum to 1 across ALL meals, base->carbs / protein->protein / veg->veg / sauce->other', () => {
+    const logs = [
+      trackOps.buildLogFromCard({ componentIds: ['chicken', 'rice'] }, '2026-01-05', 'lunch'),
+      trackOps.buildLogFromCard({ componentIds: ['veg', 'mystery'] }, '2026-01-05', 'dinner'),
+    ]
+    const mix = trackOps.plateMix(logs, gaugeComponents, [])
     assert.equal(mix.protein, 0.25)
     assert.equal(mix.carbs, 0.25)
     assert.equal(mix.veg, 0.25)
@@ -179,10 +254,14 @@ try {
     assert.equal(mix.protein + mix.carbs + mix.veg + mix.other, 1)
   })
 
-  await check('plateMix: null when no lunch portions logged', () => {
-    assert.equal(trackOps.plateMix([], gaugeComponents), null)
-    const otherOnly = [trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-05', 'other')]
-    assert.equal(trackOps.plateMix(otherOnly, gaugeComponents), null)
+  await check('plateMix: pantry items bucket by pantry category, weighted by resolved servings', () => {
+    const logs = [{ date: '2026-01-05', meal: 'snack', items: [{ kind: 'pantry', pantryId: 'pantry-rice', measure: '2 cup' }], quickRating: null }]
+    const mix = trackOps.plateMix(logs, [], gaugePantry)
+    assert.equal(mix.carbs, 1, 'Grains & Bases -> carbs, sole item so full weight')
+  })
+
+  await check('plateMix: null when nothing logged', () => {
+    assert.equal(trackOps.plateMix([], gaugeComponents, []), null)
   })
 
   await check('lunchStreak: consecutive weekdays, weekend does not break, unlogged today does not break', () => {
@@ -222,16 +301,32 @@ try {
     assert.equal(result.allTime, 36)
   })
 
-  await check('estimateFraction: threshold both sides of 50%, unknown-macro portions excluded', () => {
+  await check('estimateFraction: threshold both sides of 50%, unknown-macro items excluded', () => {
     const majorityEstimate = [trackOps.buildLogFromCard({ componentIds: ['chicken', 'veg', 'mystery'] }, '2026-01-05')]
-    const est = trackOps.estimateFraction(majorityEstimate, gaugeComponents)
-    assert.equal(est.fraction, 1, 'both resolvable portions are ai_estimate/seed_table')
+    const est = trackOps.estimateFraction(majorityEstimate, gaugeComponents, [])
+    assert.equal(est.fraction, 1, 'both resolvable items are ai_estimate/seed_table')
     assert.equal(est.showHint, true)
 
     const minorityEstimate = [trackOps.buildLogFromCard({ componentIds: ['chicken', 'rice'] }, '2026-01-05')]
-    const est2 = trackOps.estimateFraction(minorityEstimate, gaugeComponents)
+    const est2 = trackOps.estimateFraction(minorityEstimate, gaugeComponents, [])
     assert.equal(est2.fraction, 0.5)
     assert.equal(est2.showHint, false, 'exactly 50% does not trigger the hint')
+  })
+
+  await check('estimateFraction: pantry/adhoc read nutrition.source; barcode/label_photo/manual count as measured', () => {
+    const measured = [{ date: '2026-01-05', meal: 'snack', items: [{ kind: 'pantry', pantryId: 'pantry-rice', measure: '1 cup' }], quickRating: null }]
+    assert.equal(trackOps.estimateFraction(measured, [], gaugePantry).fraction, 1, 'pantry-rice is seed_table -> estimate')
+
+    const manualPantry = [
+      schema.createPantryItem({
+        id: 'pantry-manual',
+        name: 'Homemade granola',
+        category: 'Grains & Bases',
+        nutrition: schema.createNutritionInfo({ source: 'manual', servingDesc: '1 cup', perServing: { kcal: 1, protein_g: 1, carbs_g: 1, fat_g: 1 }, naturalUnits: [{ label: '1 cup', gramsOrFraction: 100 }] }),
+      }),
+    ]
+    const manualLog = [{ date: '2026-01-05', meal: 'snack', items: [{ kind: 'pantry', pantryId: 'pantry-manual', measure: '1 cup' }], quickRating: null }]
+    assert.equal(trackOps.estimateFraction(manualLog, [], manualPantry).fraction, 0, 'manual counts as measured, not estimate')
   })
 
   // ==== trackOps.js: feedback ====
