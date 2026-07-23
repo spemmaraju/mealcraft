@@ -21,7 +21,11 @@ export async function lookupBarcode(code, { fdcKey } = {}) {
     if (res.ok) {
       const json = await res.json()
       const mapped = mapOffProduct(json)
-      if (mapped) return { ok: true, nutrition: mapped }
+      // `name` is additive (Round 2: AddLogItemSheet's cold-start "Scan
+      // barcode" has no existing item name to prefill, unlike
+      // NutritionInfoEditor's scan-into-an-already-named-item flow) —
+      // existing callers destructure {ok, nutrition} and ignore it.
+      if (mapped) return { ok: true, nutrition: mapped, name: json.product?.product_name || null }
     }
   } catch {
     // offline or blocked — fall through to FDC
@@ -36,7 +40,7 @@ export async function lookupBarcode(code, { fdcKey } = {}) {
         const foods = json.foods || []
         const food = foods.find((f) => f.gtinUpc === code) || foods[0] || null
         const mapped = food ? mapFdcFood(food) : null
-        if (mapped) return { ok: true, nutrition: mapped }
+        if (mapped) return { ok: true, nutrition: mapped, name: food?.description || null }
       }
     } catch {
       // offline or blocked
@@ -44,6 +48,12 @@ export async function lookupBarcode(code, { fdcKey } = {}) {
   }
 
   return { ok: false }
+}
+
+/** True when `err` looks like a real network failure (offline/DNS/CORS — the shape a browser `fetch` throws), or the browser has told us we're offline outright. Distinguishes "can't reach the internet" from "reached it, got an error" for the honest error states below. */
+function isOfflineError(err) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true
+  return err instanceof TypeError
 }
 
 /**
@@ -75,23 +85,37 @@ export async function lookupLabelPhoto({ provider, apiKey, mediaType, data }) {
  * key). Each endpoint individually try/caught so one failing/offline
  * endpoint doesn't block the other. Fires only on explicit submit — no
  * per-keystroke fetches (OFF etiquette + CLAUDE.md §2 user-triggered spirit).
- * @returns {Promise<{ok: true, results: {name: string, brand: string|null, source: 'off'|'fdc', nutrition: NutritionInfo}[]} | {ok: false}>}
+ *
+ * Round 2 honest error states: a genuine "0 matches" (an endpoint
+ * responded, just found nothing) is `{ok:true, results:[]}`, NOT the same
+ * shape as a failure — the caller (FoodSearchSheet) needs to tell "no
+ * matches, try fewer words" apart from "you're offline" and "the food
+ * database is busy, retry". When every attempted endpoint fails, `reason`
+ * is 'upstream' if any of them came back with a 5xx/429, else 'offline'
+ * (covers real network failures and the offline flag).
+ * @returns {Promise<{ok: true, results: {name: string, brand: string|null, source: 'off'|'fdc', nutrition: NutritionInfo}[]} | {ok: false, reason: 'offline'|'upstream'}>}
  */
 export async function searchFoods(query, { fdcKey } = {}) {
   const results = []
+  let sawSuccess = false
+  let sawUpstreamError = false
+  let sawOfflineError = false
 
   try {
     const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=8&fields=code,product_name,brands,serving_size,nutriments`
     const res = await fetch(url)
     if (res.ok) {
+      sawSuccess = true
       const json = await res.json()
       for (const product of json.products || []) {
         const nutrition = mapOffSearchProduct(product)
         if (nutrition) results.push({ name: product.product_name || query, brand: product.brands || null, source: 'off', nutrition })
       }
+    } else if (res.status === 429 || res.status >= 500) {
+      sawUpstreamError = true
     }
-  } catch {
-    // offline or blocked — OFF results simply don't appear
+  } catch (err) {
+    if (isOfflineError(err)) sawOfflineError = true
   }
 
   if (fdcKey) {
@@ -99,16 +123,25 @@ export async function searchFoods(query, { fdcKey } = {}) {
       const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(fdcKey)}&query=${encodeURIComponent(query)}&dataType=Foundation,SR%20Legacy,Branded&pageSize=8`
       const res = await fetch(url)
       if (res.ok) {
+        sawSuccess = true
         const json = await res.json()
         for (const food of json.foods || []) {
           const nutrition = mapFdcSearchFood(food)
           if (nutrition) results.push({ name: food.description || query, brand: food.brandOwner || null, source: 'fdc', nutrition })
         }
+      } else if (res.status === 429 || res.status >= 500) {
+        sawUpstreamError = true
       }
-    } catch {
-      // offline or blocked
+    } catch (err) {
+      if (isOfflineError(err)) sawOfflineError = true
     }
   }
 
-  return results.length > 0 ? { ok: true, results } : { ok: false }
+  if (results.length > 0 || sawSuccess) return { ok: true, results }
+  // Prefer 'upstream' only when we're confident it's not simply offline —
+  // a busy-server message is misleading if the real problem is no
+  // connection at all. Anything else caught (neither flagged) still
+  // defaults to the safe generic offline-style advice.
+  if (sawUpstreamError && !sawOfflineError) return { ok: false, reason: 'upstream' }
+  return { ok: false, reason: 'offline' }
 }

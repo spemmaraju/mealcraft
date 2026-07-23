@@ -1,41 +1,43 @@
 import { useState } from 'react'
 import { searchFoods } from '../nutritionLookup.js'
-import { guessCategory } from '../pantryOps.js'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 
-// Text search against Open Food Facts (keyless) + USDA FDC (with a key),
-// wired into AddLogItemSheet's "Search online" tab. Results are loggable as
-// one-off ad-hoc items (embedding a NutritionInfo snapshot so the log never
-// dangles) or saved to the pantry first (so the same food resolves offline
-// next time). Degrades to a manual-entry fallback when offline/no results.
-export default function FoodSearchSheet({ categories, fdcKey, onLogAdhoc, onSaveToPantry }) {
-  const [query, setQuery] = useState('')
+const ERROR_TEXT = {
+  offline: "You're offline — add from pantry or enter manually.",
+  upstream: 'Food database is busy — tap to retry.',
+  empty: 'No matches — try fewer words or enter manually.',
+}
+
+// Online text search (Open Food Facts keyless + USDA FDC with a key),
+// embedded in AddLogItemSheet's "Search online" step (Round 2 — no longer a
+// tab, and no longer its own category-picker save flow: the duplicate guard
+// and category guess now live in AddLogItemSheet so every result routes
+// through the SAME amount step as every other group). "Add" is the
+// log-and-save default (onSaveAndStage); "Log without saving" keeps the
+// one-off path for a food you won't repeat (onAdhocStage). Degrades to a
+// manual-entry fallback offline/on 0 results, with honest, distinct error
+// states instead of one collapsed "needs a connection" message.
+export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, onAdhocStage, onBack }) {
+  const [query, setQuery] = useState(initialQuery || '')
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState(null)
-  const [failed, setFailed] = useState(false)
-  const [savingIndex, setSavingIndex] = useState(null)
-  const [saveCategory, setSaveCategory] = useState('')
+  const [error, setError] = useState(null)
   const [manualEntry, setManualEntry] = useState(false)
 
   async function handleSearch() {
     const q = query.trim()
     if (!q) return
     setSearching(true)
-    setFailed(false)
+    setError(null)
     setResults(null)
     const result = await searchFoods(q, { fdcKey })
     setSearching(false)
-    if (result.ok) setResults(result.results)
-    else setFailed(true)
-  }
-
-  function handleLogIt(food) {
-    onLogAdhoc({ kind: 'adhoc', name: food.name, measure: '1 serving', nutrition: food.nutrition })
-  }
-
-  async function handleConfirmSaveToPantry(food) {
-    await onSaveToPantry(food.name, saveCategory, food.nutrition)
-    setSavingIndex(null)
+    if (result.ok) {
+      setResults(result.results)
+      if (result.results.length === 0) setError('empty')
+    } else {
+      setError(result.reason || 'offline')
+    }
   }
 
   if (manualEntry) {
@@ -46,7 +48,7 @@ export default function FoodSearchSheet({ categories, fdcKey, onLogAdhoc, onSave
         fdcKey={fdcKey}
         byok={null}
         onSave={(nutrition) => {
-          if (nutrition) onLogAdhoc({ kind: 'adhoc', name: query.trim() || 'New food', measure: '1 serving', nutrition })
+          if (nutrition) onAdhocStage({ name: query.trim() || 'New food', nutrition })
           setManualEntry(false)
         }}
         onCancel={() => setManualEntry(false)}
@@ -73,16 +75,21 @@ export default function FoodSearchSheet({ categories, fdcKey, onLogAdhoc, onSave
 
       {!fdcKey && <p className="field-caption">Add an FDC key in Settings for USDA results — Open Food Facts works keyless.</p>}
 
-      {failed && (
+      {error && (
         <>
-          <p className="placeholder">Search needs a connection — add from the pantry or enter it manually.</p>
-          <button type="button" className="btn" onClick={() => setManualEntry(true)}>
-            Manual entry
-          </button>
+          <p className="placeholder">{ERROR_TEXT[error] || ERROR_TEXT.offline}</p>
+          <div className="button-row">
+            {error === 'upstream' && (
+              <button type="button" className="btn" onClick={handleSearch}>
+                Retry
+              </button>
+            )}
+            <button type="button" className="btn" onClick={() => setManualEntry(true)}>
+              Enter manually
+            </button>
+          </div>
         </>
       )}
-
-      {results && results.length === 0 && <p className="library-empty">No results.</p>}
 
       {results && results.length > 0 && (
         <div className="picker-sheet__list">
@@ -97,48 +104,23 @@ export default function FoodSearchSheet({ categories, fdcKey, onLogAdhoc, onSave
                 </div>
               </div>
               <div className="button-row">
-                <button type="button" className="btn btn--primary" onClick={() => handleLogIt(food)}>
-                  Log it
+                <button type="button" className="btn btn--primary" onClick={() => onSaveAndStage(food)}>
+                  Add
                 </button>
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => {
-                    if (savingIndex === i) {
-                      setSavingIndex(null)
-                    } else {
-                      setSavingIndex(i)
-                      setSaveCategory(guessCategory(food.name, categories))
-                    }
-                  }}
-                >
-                  Save to pantry
+                <button type="button" className="btn" onClick={() => onAdhocStage(food)}>
+                  Log without saving
                 </button>
               </div>
-              {savingIndex === i && (
-                <div className="button-row">
-                  <select value={saveCategory} onChange={(e) => setSaveCategory(e.target.value)}>
-                    <option value="">Pick a category…</option>
-                    {(categories || []).map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="btn btn--primary"
-                    onClick={() => handleConfirmSaveToPantry(food)}
-                    disabled={!saveCategory}
-                  >
-                    Confirm
-                  </button>
-                </div>
-              )}
             </div>
           ))}
         </div>
       )}
+
+      <div className="button-row">
+        <button type="button" className="btn" onClick={onBack}>
+          Back
+        </button>
+      </div>
     </div>
   )
 }

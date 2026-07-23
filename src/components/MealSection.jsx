@@ -54,6 +54,8 @@ export default function MealSection({
   meal,
   label,
   log,
+  logs,
+  today,
   components,
   pantry,
   categories,
@@ -67,6 +69,7 @@ export default function MealSection({
   onSetRating,
   onRemoveLog,
   onSaveToPantry,
+  onAttachNutrition,
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -214,9 +217,13 @@ export default function MealSection({
           pantry={pantry}
           categories={categories}
           fdcKey={fdcKey}
+          logs={logs}
+          today={today}
+          label={label}
           existingComponentIds={existingComponentIds}
           onPick={handlePick}
           onSaveToPantry={onSaveToPantry}
+          onAttachNutrition={onAttachNutrition}
           onClose={() => setAdding(false)}
         />
       )}

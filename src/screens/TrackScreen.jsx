@@ -99,6 +99,13 @@ export default function TrackScreen() {
     return item.id
   }
 
+  // Round 2 duplicate guard (AddLogItemSheet): an online/barcode find that
+  // matches an existing pantry item by name/barcode attaches its nutrition
+  // only if that item has none yet — never overwrites (CLAUDE.md §3).
+  async function handleAttachNutrition(pantryId, nutrition) {
+    await storage.set('pantry', pantryOps.attachNutritionIfMissing(pantry, pantryId, nutrition))
+  }
+
   if (!settings) return null
 
   const today = trackOps.todayISO()
@@ -137,6 +144,7 @@ export default function TrackScreen() {
         onSetRating={handleSetRating}
         onRemoveLog={handleRemoveLog}
         onSaveToPantry={handleSaveToPantry}
+        onAttachNutrition={handleAttachNutrition}
       />
 
       <GaugesPanel logs={logs} components={components} pantry={pantry} week={week} settings={settings} today={today} />

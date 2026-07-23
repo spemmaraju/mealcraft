@@ -64,6 +64,26 @@ const CATEGORY_GUESS_RULES = [
   { pattern: /condiment|sauce/i, keywords: ['syrup', 'sauce', 'ketchup', 'chutney', 'salsa', 'jam'] },
   { pattern: /nut|seed|finisher/i, keywords: ['nut', 'butter', 'seed', 'tahini', 'almond', 'cashew', 'peanut', 'walnut'] },
   { pattern: /grain|base/i, keywords: ['oats', 'oat', 'rice', 'quinoa', 'bread', 'pasta', 'noodle'] },
+  // Round 2 addition: same bug pattern Round 1 fixed (an unmatched name
+  // silently landing on categories[0]) recurred for produce, since no rule
+  // covered it — the flagship "broccoli" example (CLAUDE.md Round 2 spec)
+  // would otherwise land in "Spices" via the categories[0] fallback.
+  {
+    pattern: /vegetable/i,
+    keywords: [
+      'potato', 'carrot', 'cauliflower', 'gobi', 'broccoli', 'cabbage', 'pepper', 'capsicum', 'beans', 'okra',
+      'bhindi', 'cucumber', 'eggplant', 'brinjal', 'baingan', 'mushroom', 'spinach', 'gourd', 'lauki', 'dudhi',
+      'tomato', 'onion', 'garlic', 'ginger', 'chili', 'chilli', 'cilantro', 'coriander', 'zucchini', 'beet',
+      'radish', 'peas', 'corn', 'pumpkin', 'squash', 'kale', 'lettuce',
+    ],
+  },
+  {
+    pattern: /fruit/i,
+    keywords: [
+      'banana', 'apple', 'mango', 'grape', 'orange', 'lemon', 'lime', 'avocado', 'berry', 'berries', 'melon',
+      'papaya', 'guava', 'pineapple', 'pear', 'peach', 'plum', 'kiwi', 'pomegranate',
+    ],
+  },
 ]
 
 /** @returns {string} a matching category name from `categories`, or '' if nothing plausible matched */
@@ -76,6 +96,50 @@ export function guessCategory(name, categories) {
     if (match) return match
   }
   return ''
+}
+
+// ---- Duplicate guard for online/barcode saves (Round 2) -------------------
+// nameMatches (componentOps.js) is deliberately fuzzy (bidirectional token
+// subset) for ingredient resolution; the duplicate guard needs a stricter
+// identity check so "Rice" doesn't collapse into an existing "Brown rice".
+
+/** Exact (case-insensitive, trimmed) name match. @returns {object|null} */
+export function findByExactName(pantry, name) {
+  const needle = (name || '').trim().toLowerCase()
+  if (!needle) return null
+  return (pantry || []).find((p) => p.name.trim().toLowerCase() === needle) || null
+}
+
+/** Pantry item already carrying this barcode, if any — a stronger identity signal than name for the barcode-scan duplicate guard. @returns {object|null} */
+export function findByBarcode(pantry, code) {
+  if (!code) return null
+  return (pantry || []).find((p) => p.nutrition && p.nutrition.barcode === code) || null
+}
+
+/** Attaches `nutrition` to pantry item `id` only if it currently has none — never overwrites existing nutrition (CLAUDE.md §3 invariant). */
+export function attachNutritionIfMissing(pantry, id, nutrition) {
+  return pantry.map((item) => (item.id === id && !item.nutrition ? { ...item, nutrition } : item))
+}
+
+/**
+ * Decides what SHOULD happen to the pantry for an online/barcode/seed find
+ * — WITHOUT performing any write. Round 2 hot-fix #1: picking a result used
+ * to write to the pantry immediately (at pick-time), so backing out of the
+ * amount step without pressing Add still permanently created the
+ * PantryItem. Callers must hold onto this plan and execute it only when the
+ * log is actually committed (see AddLogItemSheet's handleAmountConfirm).
+ * @returns {{ planKind: 'existing', pantryId: string, nutrition: object }
+ *         | { planKind: 'attach', pantryId: string, nutrition: object }
+ *         | { planKind: 'create', name: string, category: string, nutrition: object }}
+ */
+export function planPantrySave(pantry, categories, name, nutrition, code) {
+  const existing = (code && findByBarcode(pantry, code)) || findByExactName(pantry, name)
+  if (existing) {
+    if (existing.nutrition) return { planKind: 'existing', pantryId: existing.id, nutrition: existing.nutrition }
+    return { planKind: 'attach', pantryId: existing.id, nutrition }
+  }
+  const category = guessCategory(name, categories) || categories[0] || ''
+  return { planKind: 'create', name, category, nutrition }
 }
 
 export function filterItems(pantry, { search = '', role = null, onHandOnly = false } = {}) {

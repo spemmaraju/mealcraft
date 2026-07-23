@@ -23,6 +23,7 @@ export default function DayLog({
   onSetRating,
   onRemoveLog,
   onSaveToPantry,
+  onAttachNutrition,
 }) {
   const weekOf = week ? week.weekOf : trackOps.currentWeekSundayISO(today)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -57,6 +58,8 @@ export default function DayLog({
             meal={meal}
             label={MEAL_LABELS[meal]}
             log={entry ? entry.log : null}
+            logs={logs}
+            today={today}
             components={components}
             pantry={pantry}
             categories={categories}
@@ -70,6 +73,7 @@ export default function DayLog({
             onSetRating={(rating) => onSetRating(selectedDate, meal, rating)}
             onRemoveLog={() => onRemoveLog(selectedDate, meal)}
             onSaveToPantry={onSaveToPantry}
+            onAttachNutrition={onAttachNutrition}
           />
         )
       })}

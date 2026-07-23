@@ -243,13 +243,64 @@ export function resolvableUnitsFor(nutrition) {
  * The quantity of `unit` that represents the same amount as `servings`
  * servings of `nutrition` — the inverse of measureToServings for scalar
  * (freely re-scalable) units. Used to rescale qty when the user switches
- * units, so the represented amount (and macros) stay constant.
+ * units, so the represented amount (and macros) stay constant. `unit` may
+ * also be a whole naturalUnits phrase label ("1 cup chopped", "half
+ * block") — see isPhraseLabel below — in which case the phrase itself
+ * (not "1 <phrase>") is the "one unit" being scaled.
  * @returns {number|null}
  */
 export function qtyForUnit(servings, unit, nutrition) {
   if (servings == null || !nutrition) return null
   if (unit === 'serving') return servings
-  const perUnitServings = measureToServings(`1 ${unit}`, nutrition)
+  const perUnitServings = isPhraseLabel(unit, nutrition) ? measureToServings(unit, nutrition) : measureToServings(`1 ${unit}`, nutrition)
   if (perUnitServings == null || perUnitServings === 0) return null
   return servings / perUnitServings
+}
+
+// ---- Scalable phrase units (Round 2 hot-fix #3) ------------------------
+// A naturalUnits phrase like "1 cup chopped" or "half block" used to be
+// offered as a single fixed, non-scalable unit (exactly 1x) — violating
+// CLAUDE.md §5's free-text-measure rule (no unit should be forced to a
+// single fixed quantity). measureToServings' existing path (c) "scaledUnit"
+// already resolves e.g. "1/4 cup chopped" against the naturalUnits label
+// "1 cup chopped" (same tail tokens, different leading qty) — nothing
+// needed there. What was missing was the UI/matching layer: recognizing
+// that a phrase IS a scalable unit whose "tail" (the words after its own
+// leading qty, if it has one) is the reusable unit text.
+
+/** Whether `unit` is a recognized whole-phrase naturalUnits label for this nutrition (e.g. "1 cup chopped", "half block"), as opposed to a plain scalar unit word (g, cup, serving...). */
+export function isPhraseLabel(unit, nutrition) {
+  return (nutrition?.naturalUnits || []).some((nu) => nu.label === unit)
+}
+
+/** The portion of `measure` after its leading quantity (if any), trimmed — e.g. "1 cup chopped" -> "cup chopped", "half block" -> "half block" (no leading digit/fraction to strip, returned as-is). Preserves original wording/casing, unlike parseMeasure's normalized unitTokens. */
+export function stripLeadingQty(measure) {
+  const s = (measure || '').trim()
+  const match = s.match(QTY_PREFIX_RE)
+  if (!match) return s
+  return s.slice(match[0].length).trim()
+}
+
+/**
+ * Matches free-typed/composed text against a list of naturalUnits phrase
+ * labels, tolerating a scaling qty prefix — e.g. "1/4 cup chopped" against
+ * label "1 cup chopped" (tail "cup chopped"), or a bare whole-phrase match
+ * like "half block" against itself. Used to recognize a previously-scaled
+ * phrase measure on mount/re-render so its dropdown selection and qty box
+ * round-trip correctly.
+ * @returns {{label: string, qty: number}|null}
+ */
+export function matchPhrase(raw, phrases) {
+  const trimmed = (raw || '').trim()
+  if (!trimmed || !phrases || phrases.length === 0) return null
+  const key = normalizeTokens(trimmed).join(' ')
+
+  const wholeHit = phrases.find((p) => normalizeTokens(p).join(' ') === key)
+  if (wholeHit) return { label: wholeHit, qty: parseMeasure(wholeHit).qty ?? 1 }
+
+  const { qty, unitTokens } = parseMeasure(trimmed)
+  if (qty == null || unitTokens.length === 0) return null
+  const tailKey = unitTokens.join(' ')
+  const tailHit = phrases.find((p) => normalizeTokens(stripLeadingQty(p)).join(' ') === tailKey)
+  return tailHit ? { label: tailHit, qty } : null
 }

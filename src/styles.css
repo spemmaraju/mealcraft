@@ -738,8 +738,13 @@ select {
 }
 
 .measure-input__qty {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
+  /* Round 2 hot-fix #4: min-width:0 let this shrink below its own content
+     ("22 3/4" rendering clipped to "2") whenever siblings (name label, unit
+     select, remove button) crowded it in a narrow flex row. calc() keeps a
+     guaranteed content width regardless of the box's padding/border
+     (box-sizing: border-box, see the `*` reset above). */
+  min-width: calc(6ch + 24px);
 }
 
 .measure-input__custom {
@@ -1202,6 +1207,32 @@ select {
   margin-bottom: 12px;
 }
 
+/* ---- Unified add-item search (Round 2) ---- */
+
+.add-sheet__group {
+  margin-bottom: 10px;
+}
+
+.add-sheet__group-title {
+  margin: 0 0 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.add-sheet__row-sub {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.add-sheet__row-plus {
+  flex: none;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
 .picker-sheet__list {
   max-height: 45vh;
   overflow-y: auto;
@@ -1300,11 +1331,6 @@ select {
 
 .measure-input__custom-wrap .measure-input__custom {
   width: 100%;
-}
-
-.measure-input__phrase {
-  font-size: 0.85rem;
-  color: var(--text-muted);
 }
 
 /* ---- Grocery list ---- */

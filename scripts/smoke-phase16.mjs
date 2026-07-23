@@ -80,14 +80,14 @@ try {
 
   // ==== searchFoods: offline degrade, no network in this test ====
 
-  await check('searchFoods: both endpoints failing (offline) returns {ok:false}, no throw', async () => {
+  await check('searchFoods: both endpoints failing (offline) returns {ok:false, reason:"offline"}, no throw (Round 2 honest error states)', async () => {
     const originalFetch = globalThis.fetch
     globalThis.fetch = async () => {
       throw new Error('simulated offline')
     }
     try {
       const result = await searchFoods('paneer', { fdcKey: 'fake-key' })
-      assert.deepEqual(result, { ok: false })
+      assert.deepEqual(result, { ok: false, reason: 'offline' })
     } finally {
       globalThis.fetch = originalFetch
     }
@@ -103,7 +103,7 @@ try {
     }
     try {
       const result = await searchFoods('paneer')
-      assert.deepEqual(result, { ok: false })
+      assert.deepEqual(result, { ok: false, reason: 'offline' })
       assert.equal(fetchCount, 1, 'exactly one fetch attempt: OFF only')
     } finally {
       globalThis.fetch = originalFetch
