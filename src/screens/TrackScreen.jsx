@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as storage from '../storage.js'
 import * as trackOps from '../trackOps.js'
+import * as pantryOps from '../pantryOps.js'
 import { createLogEntry } from '../schema.js'
 import DayLog from '../components/DayLog.jsx'
 import GaugesPanel from '../components/GaugesPanel.jsx'
@@ -8,21 +9,24 @@ import GaugesPanel from '../components/GaugesPanel.jsx'
 export default function TrackScreen() {
   const [components, setComponents] = useState([])
   const [pantry, setPantry] = useState([])
+  const [categories, setCategories] = useState([])
   const [weeks, setWeeks] = useState([])
   const [logs, setLogs] = useState([])
   const [settings, setSettings] = useState(null)
   const [confirmingRemove, setConfirmingRemove] = useState(null)
 
   async function reload() {
-    const [c, p, w, l, s] = await Promise.all([
+    const [c, p, cat, w, l, s] = await Promise.all([
       storage.get('components'),
       storage.get('pantry'),
+      storage.get('categories'),
       storage.get('weeks'),
       storage.get('logs'),
       storage.get('settings'),
     ])
     setComponents(c)
     setPantry(p)
+    setCategories(cat)
     setWeeks(w)
     setLogs(l)
     setSettings(s)
@@ -86,6 +90,15 @@ export default function TrackScreen() {
     setConfirmingRemove(null)
   }
 
+  // Saving a search result to the pantry (Phase 16) makes it resolve
+  // offline next time; addItem's synchronously-returned id sidesteps any
+  // read-after-write race with the freshly-created pantry item.
+  async function handleSaveToPantry(name, category, nutrition) {
+    const { pantry: nextPantry, item } = pantryOps.addItem(pantry, { name, category, onHand: true, nutrition })
+    await storage.set('pantry', nextPantry)
+    return item.id
+  }
+
   if (!settings) return null
 
   const today = trackOps.todayISO()
@@ -113,6 +126,8 @@ export default function TrackScreen() {
         logs={logs}
         components={components}
         pantry={pantry}
+        categories={categories}
+        fdcKey={settings.fdcKey}
         today={today}
         onLogFromPlan={handleLogFromPlan}
         onAddItems={handleAddItems}
@@ -121,6 +136,7 @@ export default function TrackScreen() {
         onRemoveItem={handleRemoveItem}
         onSetRating={handleSetRating}
         onRemoveLog={handleRemoveLog}
+        onSaveToPantry={handleSaveToPantry}
       />
 
       <GaugesPanel logs={logs} components={components} pantry={pantry} week={week} settings={settings} today={today} />

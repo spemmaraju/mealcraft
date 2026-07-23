@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ComponentPickerSheet from './ComponentPickerSheet.jsx'
 import MeasureInput from './MeasureInput.jsx'
+import FoodSearchSheet from './FoodSearchSheet.jsx'
 
 const TABS = [
   { key: 'plan', label: "Today's plan" },
@@ -13,7 +14,7 @@ const TABS = [
 // (any meal, not just lunch), the component library, a pantry item with an
 // amount, or (Phase 16) online search. onPick receives a ready-to-merge
 // items[] array (see LogEntry.items in CLAUDE.md §3).
-export default function AddLogItemSheet({ card, components, pantry, existingComponentIds, onPick, onClose }) {
+export default function AddLogItemSheet({ card, components, pantry, categories, fdcKey, existingComponentIds, onPick, onSaveToPantry, onClose }) {
   const [tab, setTab] = useState(card && card.componentIds.length > 0 ? 'plan' : 'library')
   const [pantrySearch, setPantrySearch] = useState('')
   const [pantryPickId, setPantryPickId] = useState(null)
@@ -31,6 +32,11 @@ export default function AddLogItemSheet({ card, components, pantry, existingComp
   function confirmPantryPick() {
     if (!pantryPickId) return
     onPick([{ kind: 'pantry', pantryId: pantryPickId, measure: pantryMeasure.trim() || '1 serving' }])
+  }
+
+  async function handleSaveToPantry(name, category, nutrition) {
+    const pantryId = await onSaveToPantry(name, category, nutrition)
+    onPick([{ kind: 'pantry', pantryId, measure: '1 serving' }])
   }
 
   if (tab === 'library') {
@@ -109,10 +115,12 @@ export default function AddLogItemSheet({ card, components, pantry, existingComp
         )}
 
         {tab === 'search' && (
-          <p className="placeholder">
-            Online search is coming in a future update — add it from the Pantry tab, or the Library if it's a saved
-            recipe.
-          </p>
+          <FoodSearchSheet
+            categories={categories}
+            fdcKey={fdcKey}
+            onLogAdhoc={(item) => onPick([item])}
+            onSaveToPantry={handleSaveToPantry}
+          />
         )}
 
         <div className="button-row">

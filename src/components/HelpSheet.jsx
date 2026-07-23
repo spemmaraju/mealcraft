@@ -64,7 +64,16 @@ export default function HelpSheet({ onClose }) {
         <section className="help-section">
           <h3>📈 Track</h3>
           <p>
-            Log what you actually ate straight from the day's assembly card. The
+            Log breakfast, lunch, dinner, and snacks separately — lunch keeps a
+            one-tap "log from plan" shortcut straight from the day's assembly card.
+            For anything else, tap <strong>+ Add</strong> and pick a source: today's
+            plan, your library, a pantry item (with an amount), or an online search.
+            Search results can be logged as a one-off or saved to the pantry so the
+            same food resolves offline next time. The small tag under each macro
+            number shows where it came from — <strong>seed_table</strong>/
+            <strong>ai_estimate</strong> are rough estimates,{' '}
+            <strong>barcode</strong>/<strong>label_photo</strong>/
+            <strong>online_search</strong>/<strong>manual</strong> are measured. The
             gauges (protein band, plate mix, streak, money saved) are directional —
             meant to build awareness, not to be a precise ledger. On Fridays you'll
             get a short 3-line weekly feedback prompt.
