@@ -20,10 +20,10 @@ export default function DayLog({
   onSetItemCount,
   onSetItemMeasure,
   onRemoveItem,
-  onSetRating,
   onRemoveLog,
   onSaveToPantry,
   onAttachNutrition,
+  onGoToSettings,
 }) {
   const weekOf = week ? week.weekOf : trackOps.currentWeekSundayISO(today)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -70,10 +70,10 @@ export default function DayLog({
             onSetItemCount={(index, count) => onSetItemCount(selectedDate, meal, index, count)}
             onSetItemMeasure={(index, measure) => onSetItemMeasure(selectedDate, meal, index, measure)}
             onRemoveItem={(index) => onRemoveItem(selectedDate, meal, index)}
-            onSetRating={(rating) => onSetRating(selectedDate, meal, rating)}
             onRemoveLog={() => onRemoveLog(selectedDate, meal)}
             onSaveToPantry={onSaveToPantry}
             onAttachNutrition={onAttachNutrition}
+            onGoToSettings={onGoToSettings}
           />
         )
       })}

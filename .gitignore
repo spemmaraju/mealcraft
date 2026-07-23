@@ -3,3 +3,7 @@ dist
 dist-ghpages
 .DS_Store
 *.local
+
+# Local UX reference material — never commit
+Sample References/
+.Rhistory

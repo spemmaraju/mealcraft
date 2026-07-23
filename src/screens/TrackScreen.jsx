@@ -6,7 +6,7 @@ import { createLogEntry } from '../schema.js'
 import DayLog from '../components/DayLog.jsx'
 import GaugesPanel from '../components/GaugesPanel.jsx'
 
-export default function TrackScreen() {
+export default function TrackScreen({ onGoToSettings }) {
   const [components, setComponents] = useState([])
   const [pantry, setPantry] = useState([])
   const [categories, setCategories] = useState([])
@@ -73,12 +73,6 @@ export default function TrackScreen() {
     await storage.set('logs', trackOps.upsertLog(logs, trackOps.removeItemAt(log, index)))
   }
 
-  async function handleSetRating(dateISO, meal, rating) {
-    const log = logOrNew(dateISO, meal)
-    if (!log) return
-    await storage.set('logs', trackOps.upsertLog(logs, { ...log, quickRating: rating }))
-  }
-
   async function handleRemoveLog(dateISO, meal) {
     const entry = trackOps.logFor(logs, dateISO, meal)
     if (!entry) return
@@ -141,10 +135,10 @@ export default function TrackScreen() {
         onSetItemCount={handleSetItemCount}
         onSetItemMeasure={handleSetItemMeasure}
         onRemoveItem={handleRemoveItem}
-        onSetRating={handleSetRating}
         onRemoveLog={handleRemoveLog}
         onSaveToPantry={handleSaveToPantry}
         onAttachNutrition={handleAttachNutrition}
+        onGoToSettings={onGoToSettings}
       />
 
       <GaugesPanel logs={logs} components={components} pantry={pantry} week={week} settings={settings} today={today} />
@@ -161,7 +155,6 @@ export default function TrackScreen() {
                   {log.date} · {log.meal}
                 </span>
                 <span className="recent-log-row__components">{log.items.map(itemName).join(', ') || '(none)'}</span>
-                {log.quickRating && <span className="chip chip--active recent-log-row__rating">{log.quickRating}</span>}
               </div>
               {confirmingRemove === index ? (
                 <span className="recent-log-row__confirm">

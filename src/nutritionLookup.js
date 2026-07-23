@@ -56,6 +56,45 @@ function isOfflineError(err) {
   return err instanceof TypeError
 }
 
+// ---- Round 2.5 §6: search ranking + dedupe (pure, exported for smoke tests) --
+
+/** 0 exact, 1 prefix, 2 substring, 3 no textual relation to `query` at all (still worth keeping — the API decided it was relevant). */
+export function matchTier(name, query) {
+  const n = (name || '').toLowerCase().trim()
+  const q = (query || '').toLowerCase().trim()
+  if (!q) return 1
+  if (n === q) return 0
+  if (n.startsWith(q)) return 1
+  if (n.includes(q)) return 2
+  return 3
+}
+
+/** Stable-sorts search results by match tier against `query` (exact -> prefix -> substring -> other), ties keep arrival order. */
+export function rankSearchResults(items, query) {
+  return items
+    .map((item, i) => ({ item, i, tier: matchTier(item.name, query) }))
+    .sort((a, b) => a.tier - b.tier || a.i - b.i)
+    .map((x) => x.item)
+}
+
+/** Case-insensitive trimmed name+brand key — a "Rolled Oats" from OFF and an identically-named/branded FDC hit collapse to one entry. */
+function dedupeKey(item) {
+  return `${(item.name || '').trim().toLowerCase()}|${(item.brand || '').trim().toLowerCase()}`
+}
+
+/** Drops later near-identical (case-insensitive name+brand) entries, keeping whichever occurrence comes first in `items` — callers order higher-ranked/higher-priority-source results first so those survive. */
+export function dedupeSearchResults(items) {
+  const seen = new Set()
+  const out = []
+  for (const item of items) {
+    const key = dedupeKey(item)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(item)
+  }
+  return out
+}
+
 /**
  * BYOK label-photo lookup, same {ok, nutrition} contract as lookupBarcode.
  * @returns {Promise<{ok:true, nutrition: NutritionInfo} | {ok:false}>}
@@ -93,10 +132,21 @@ export async function lookupLabelPhoto({ provider, apiKey, mediaType, data }) {
  * database is busy, retry". When every attempted endpoint fails, `reason`
  * is 'upstream' if any of them came back with a 5xx/429, else 'offline'
  * (covers real network failures and the offline flag).
+ *
+ * Round 2.5 §6 ranking: when an FDC key is present, USDA (generally the
+ * more reliable, less duplicate-riddled source for branded US products —
+ * the motivating case is a query like "trader joe's rolled oats") is
+ * ranked ABOVE Open Food Facts; within each source, results are ordered
+ * exact match -> prefix match -> substring match -> other. Near-identical
+ * results (same name+brand, case-insensitive) across sources are deduped,
+ * keeping whichever occurrence ranked first. Barcode lookups
+ * (lookupBarcode) are unaffected — that stays OFF-first, unranked (a
+ * barcode has exactly one right answer, not a ranked list).
  * @returns {Promise<{ok: true, results: {name: string, brand: string|null, source: 'off'|'fdc', nutrition: NutritionInfo}[]} | {ok: false, reason: 'offline'|'upstream'}>}
  */
 export async function searchFoods(query, { fdcKey } = {}) {
-  const results = []
+  const offResults = []
+  const fdcResults = []
   let sawSuccess = false
   let sawUpstreamError = false
   let sawOfflineError = false
@@ -109,7 +159,7 @@ export async function searchFoods(query, { fdcKey } = {}) {
       const json = await res.json()
       for (const product of json.products || []) {
         const nutrition = mapOffSearchProduct(product)
-        if (nutrition) results.push({ name: product.product_name || query, brand: product.brands || null, source: 'off', nutrition })
+        if (nutrition) offResults.push({ name: product.product_name || query, brand: product.brands || null, source: 'off', nutrition })
       }
     } else if (res.status === 429 || res.status >= 500) {
       sawUpstreamError = true
@@ -127,7 +177,7 @@ export async function searchFoods(query, { fdcKey } = {}) {
         const json = await res.json()
         for (const food of json.foods || []) {
           const nutrition = mapFdcSearchFood(food)
-          if (nutrition) results.push({ name: food.description || query, brand: food.brandOwner || null, source: 'fdc', nutrition })
+          if (nutrition) fdcResults.push({ name: food.description || query, brand: food.brandOwner || null, source: 'fdc', nutrition })
         }
       } else if (res.status === 429 || res.status >= 500) {
         sawUpstreamError = true
@@ -136,6 +186,11 @@ export async function searchFoods(query, { fdcKey } = {}) {
       if (isOfflineError(err)) sawOfflineError = true
     }
   }
+
+  const rankedOff = rankSearchResults(offResults, query)
+  const rankedFdc = rankSearchResults(fdcResults, query)
+  const ordered = fdcKey ? [...rankedFdc, ...rankedOff] : [...rankedOff, ...rankedFdc]
+  const results = dedupeSearchResults(ordered)
 
   if (results.length > 0 || sawSuccess) return { ok: true, results }
   // Prefer 'upstream' only when we're confident it's not simply offline —

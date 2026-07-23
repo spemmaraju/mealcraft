@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import * as pantryOps from '../pantryOps.js'
 import * as logSearchOps from '../logSearchOps.js'
+import * as trackOps from '../trackOps.js'
 import { filterComponents } from '../componentOps.js'
 import { lookupBarcode } from '../nutritionLookup.js'
 import AddSheetResults from './AddSheetResults.jsx'
@@ -27,6 +28,7 @@ export default function AddLogItemSheet({
   onPick,
   onSaveToPantry,
   onAttachNutrition,
+  onGoToSettings,
   onClose,
 }) {
   const [query, setQuery] = useState('')
@@ -70,11 +72,18 @@ export default function AddLogItemSheet({
         ).map((id) => ({ id, label: byId[id]?.name || id }))
       : []
 
+  // Round 2.5 §5: RECENT rows show last measure AND kcal (itemMacros
+  // already handles component/pantry/adhoc uniformly, including adhoc's
+  // snapshot nutrition) — null when unresolvable (deleted pantry item,
+  // unconvertible measure), same "don't fake it" rule as everywhere else.
   const recentRows = rankByPrefix(
     recents.filter((r) => matchesQuery(recentDisplay(r.item).label, query)),
     query,
     (r) => recentDisplay(r.item).label,
-  ).map((r) => ({ id: r.key, ...recentDisplay(r.item) }))
+  ).map((r) => {
+    const macro = trackOps.itemMacros(r.item, components, pantry)
+    return { id: r.key, ...recentDisplay(r.item), kcal: macro ? macro.kcal : null }
+  })
 
   const pantryRows = !hasQuery
     ? []
@@ -261,6 +270,7 @@ export default function AddLogItemSheet({
             fdcKey={fdcKey}
             onSaveAndStage={handleOnlineSaveAndStage}
             onAdhocStage={handleOnlineAdhocStage}
+            onGoToSettings={onGoToSettings}
             onBack={() => setShowOnline(false)}
           />
         )}

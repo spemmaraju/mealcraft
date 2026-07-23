@@ -13,13 +13,19 @@ export default function PantryItemRow({ item, onToggleOnHand, onOpenEditor }) {
         {item.onHand ? '✓' : ''}
       </button>
       <button type="button" className="pantry-row__body" onClick={() => onOpenEditor(item.id)}>
-        <span className="pantry-row__name">{item.name}</span>
-        {item.roughQty && <span className="pantry-row__qty">{item.roughQty}</span>}
-        {item.nutrition && (
-          <span className="provenance-tag provenance-tag--tiny">
-            {NUTRITION_SOURCE_LABELS[item.nutrition.source] || item.nutrition.source}
-          </span>
-        )}
+        <span className="row2__main">
+          <span className="row2__name">{item.name}</span>
+          {(item.roughQty || item.nutrition) && (
+            <span className="row2__sub">
+              {item.roughQty && <span>{item.roughQty}</span>}
+              {item.nutrition && (
+                <span className="provenance-tag provenance-tag--tiny">
+                  {NUTRITION_SOURCE_LABELS[item.nutrition.source] || item.nutrition.source}
+                </span>
+              )}
+            </span>
+          )}
+        </span>
       </button>
     </div>
   )

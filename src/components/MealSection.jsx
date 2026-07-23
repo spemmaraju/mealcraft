@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RATINGS, NUTRITION_SOURCE_LABELS } from '../schema.js'
+import { NUTRITION_SOURCE_LABELS } from '../schema.js'
 import * as trackOps from '../trackOps.js'
 import { measureToServings, parseMeasure } from '../measures.js'
 import MeasureInput from './MeasureInput.jsx'
@@ -45,11 +45,14 @@ function itemMeasureWarning(item, pantry) {
   return `couldn't convert "${failedUnit}" — pick g or serving`
 }
 
-// One meal within DayLog: summary + item rows (component -> ±0.5 stepper;
-// pantry/adhoc -> MeasureInput), quickRating chips, remove-item/remove-log,
-// and the "+ Add" entry point into AddLogItemSheet. Lunch keeps the
-// existing one-tap "Log lunch from plan" flow when an assembly card exists
-// and nothing's logged yet for the day.
+// One meal within DayLog: header (label + meal kcal total) + summary +
+// item rows (component -> ±0.5 stepper; pantry/adhoc -> MeasureInput),
+// remove-item/remove-log, and the "+ Add" entry point into
+// AddLogItemSheet. Lunch keeps the existing one-tap "Log lunch from plan"
+// flow when an assembly card exists and nothing's logged yet for the day.
+// Round 2.5: the quickRating chip row was removed from this view (misclick
+// hazard right under the qty fields) — LogEntry.quickRating itself is
+// untouched, it just isn't rendered here anymore.
 export default function MealSection({
   meal,
   label,
@@ -66,10 +69,10 @@ export default function MealSection({
   onSetItemCount,
   onSetItemMeasure,
   onRemoveItem,
-  onSetRating,
   onRemoveLog,
   onSaveToPantry,
   onAttachNutrition,
+  onGoToSettings,
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -86,7 +89,10 @@ export default function MealSection({
 
   return (
     <div className="meal-section">
-      <h3 className="meal-section__title">{label}</h3>
+      <div className="meal-section__header">
+        <h3 className="meal-section__title">{label}</h3>
+        {macros && macros.kcal > 0 && <span className="row2__num">{Math.round(macros.kcal)} kcal</span>}
+      </div>
 
       {showLogFromPlan ? (
         <>
@@ -113,7 +119,7 @@ export default function MealSection({
             {macros && (
               <span className="meal-section__subtotal">
                 {' — '}
-                {Math.round(macros.kcal)} kcal, {Math.round(macros.protein_g)}g protein
+                {Math.round(macros.protein_g)}g protein
                 {macros.missing > 0 && (
                   <span className="provenance-tag">
                     {' '}
@@ -129,56 +135,47 @@ export default function MealSection({
             const provenance = itemProvenance(item, components, pantry)
             const warning = itemMeasureWarning(item, pantry)
             return (
-              <div key={index} className="meal-section__item-block">
-                <div className="meal-section__item-row">
-                  <span className="meal-section__item-name">{itemLabel(item, components, pantry)}</span>
-                  {item.kind === 'component' ? (
-                    <div className="stepper">
-                      <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count - 0.5)}>
-                        −
-                      </button>
-                      <span className="stepper__value">{item.count}</span>
-                      <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count + 0.5)}>
-                        +
+              <div key={index} className="row2 meal-section__item-row2">
+                <div className="row2__main">
+                  <div className="row2__line1">
+                    <span className="row2__name">{itemLabel(item, components, pantry)}</span>
+                    {provenance && <span className="provenance-tag provenance-tag--tiny row2__tag">{provenance}</span>}
+                    <span className="row2__num">{itemMacro ? `${Math.round(itemMacro.kcal)} kcal` : '—'}</span>
+                  </div>
+                  <div className="row2__line2">
+                    <div className="row2__controls">
+                      {item.kind === 'component' ? (
+                        <div className="stepper">
+                          <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count - 0.5)}>
+                            −
+                          </button>
+                          <span className="stepper__value">{item.count}</span>
+                          <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count + 0.5)}>
+                            +
+                          </button>
+                        </div>
+                      ) : (
+                        <MeasureInput
+                          value={item.measure}
+                          onChange={(measure) => onSetItemMeasure(index, measure)}
+                          nutrition={itemNutrition(item, pantry)}
+                        />
+                      )}
+                      <button
+                        type="button"
+                        className="btn list-row__remove"
+                        onClick={() => onRemoveItem(index)}
+                        aria-label={`Remove ${itemLabel(item, components, pantry)}`}
+                      >
+                        ✕
                       </button>
                     </div>
-                  ) : (
-                    <MeasureInput
-                      value={item.measure}
-                      onChange={(measure) => onSetItemMeasure(index, measure)}
-                      nutrition={itemNutrition(item, pantry)}
-                    />
-                  )}
-                  <button
-                    type="button"
-                    className="btn list-row__remove"
-                    onClick={() => onRemoveItem(index)}
-                    aria-label={`Remove ${itemLabel(item, components, pantry)}`}
-                  >
-                    ✕
-                  </button>
+                  </div>
+                  {warning && <p className="inline-warning">{warning}</p>}
                 </div>
-                <p className="meal-section__item-meta">
-                  {itemMacro ? `${Math.round(itemMacro.kcal)} kcal` : '—'}
-                  {provenance && <span className="provenance-tag provenance-tag--tiny">{provenance}</span>}
-                </p>
-                {warning && <p className="inline-warning">{warning}</p>}
               </div>
             )
           })}
-
-          <div className="chip-row">
-            {RATINGS.map((r) => (
-              <button
-                key={r}
-                type="button"
-                className={`chip${log.quickRating === r ? ' chip--active' : ''}`}
-                onClick={() => onSetRating(log.quickRating === r ? null : r)}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
 
           {confirmingRemove ? (
             <div className="button-row">
@@ -224,6 +221,7 @@ export default function MealSection({
           onPick={handlePick}
           onSaveToPantry={onSaveToPantry}
           onAttachNutrition={onAttachNutrition}
+          onGoToSettings={onGoToSettings}
           onClose={() => setAdding(false)}
         />
       )}

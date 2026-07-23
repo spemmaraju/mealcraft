@@ -21,7 +21,28 @@
   --teal: #3f8f8a;
   --shadow-sm: 0 1px 2px rgba(31, 35, 32, 0.06);
   --shadow-md: 0 4px 14px rgba(31, 35, 32, 0.1);
+
+  /* Round 2.5 type scale (CLAUDE.md §5 legibility + MyFitnessPal reference
+     density): five roles cover every text size in the app. --fs-num is the
+     one deliberately bold, slightly-larger role for kcal numerals — MFP's
+     "big bold number, tiny quiet label" pattern. Base 17px (mobile-primary
+     per CLAUDE.md §1) so every rem below is relative to that, not the
+     browser's 16px default. */
+  --fs-title: 1.6rem;
+  --fs-section: 1.2rem;
+  --fs-body: 1.05rem;
+  --fs-sub: 0.85rem;
+  --fs-micro: 0.7rem;
+  --fs-num: 1.2rem;
+
+  /* One card radius for every bordered section/sheet/card container
+     (Round 2.5 §7) — distinct from the smaller control radius buttons and
+     inputs use inline (8-10px), which is a separate, intentionally smaller
+     scale. */
+  --radius-card: 16px;
+
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 17px;
 }
 
 * {
@@ -66,7 +87,7 @@ body {
 
 .app-header__title {
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: var(--fs-section);
 }
 
 .app-header__help {
@@ -82,7 +103,7 @@ body {
 }
 
 .screen h1 {
-  font-size: 1.4rem;
+  font-size: var(--fs-title);
   font-weight: 700;
   margin: 4px 0 12px;
 }
@@ -93,7 +114,7 @@ body {
 
 .field-caption {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
   margin: -4px 0 8px;
 }
 
@@ -127,7 +148,7 @@ details.field[open] summary {
   border: none;
   background: none;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: var(--fs-micro);
   cursor: pointer;
   transition: color 0.15s ease, transform 0.1s ease;
 }
@@ -157,7 +178,7 @@ button {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  font-size: 1rem;
+  font-size: var(--fs-body);
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
@@ -200,7 +221,7 @@ button {
 
 textarea, input[type="text"] {
   font-family: inherit;
-  font-size: 1rem;
+  font-size: var(--fs-body);
   padding: 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -211,14 +232,14 @@ textarea, input[type="text"] {
 .settings-section {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-card);
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: var(--shadow-md);
 }
 
 .settings-section h2 {
-  font-size: 1.05rem;
+  font-size: var(--fs-section);
   font-weight: 700;
   margin: 0 0 12px;
 }
@@ -230,7 +251,7 @@ textarea, input[type="text"] {
 .settings-advanced > summary {
   cursor: pointer;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: var(--fs-section);
   padding: 12px 4px;
   list-style: revert;
 }
@@ -248,7 +269,7 @@ textarea, input[type="text"] {
 .message {
   border-radius: 8px;
   padding: 10px 12px;
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   margin-top: 10px;
 }
 
@@ -265,7 +286,7 @@ textarea, input[type="text"] {
 }
 
 .diff-summary {
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   color: var(--text);
   background: var(--bg);
   border: 1px solid var(--border);
@@ -325,7 +346,7 @@ textarea, input[type="text"] {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
@@ -346,7 +367,7 @@ textarea, input[type="text"] {
 }
 
 .pantry-section__title {
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   margin: 0 0 4px;
 }
 
@@ -373,7 +394,7 @@ textarea, input[type="text"] {
 
 .pantry-section__count {
   margin-left: auto;
-  font-size: 0.8rem;
+  font-size: var(--fs-micro);
   color: var(--text-muted);
   text-transform: none;
 }
@@ -425,17 +446,12 @@ textarea, input[type="text"] {
   background: none;
   text-align: left;
   color: var(--text);
-  font-size: 1rem;
   cursor: pointer;
   padding: 4px 0;
 }
 
-.pantry-row__name {
-  flex: 1;
-}
-
 .pantry-row__badge {
-  font-size: 0.7rem;
+  font-size: var(--fs-micro);
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--bg);
@@ -448,11 +464,6 @@ textarea, input[type="text"] {
   border-color: var(--accent);
 }
 
-.pantry-row__qty {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
 .pantry-fast-add__btn {
   min-height: 44px;
   width: 100%;
@@ -460,7 +471,7 @@ textarea, input[type="text"] {
   border-radius: 8px;
   background: none;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   cursor: pointer;
   margin-top: 6px;
 }
@@ -470,7 +481,7 @@ textarea, input[type="text"] {
   width: 100%;
   margin-top: 6px;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: var(--fs-body);
   padding: 10px;
   border-radius: 8px;
   border: 1px solid var(--brand);
@@ -503,7 +514,7 @@ textarea, input[type="text"] {
 
 .sheet h2 {
   margin: 0 0 16px;
-  font-size: 1.15rem;
+  font-size: var(--fs-section);
   font-weight: 700;
 }
 
@@ -518,12 +529,12 @@ textarea, input[type="text"] {
 
 .help-sheet .help-section h3 {
   margin: 0 0 6px;
-  font-size: 1rem;
+  font-size: var(--fs-body);
 }
 
 .help-sheet .help-section p,
 .help-sheet .help-section li {
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   color: var(--text);
 }
 
@@ -534,7 +545,7 @@ textarea, input[type="text"] {
 }
 
 .sheet__confirm-text {
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   color: var(--danger);
 }
 
@@ -553,7 +564,7 @@ textarea, input[type="text"] {
 select {
   min-height: 44px;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: var(--fs-body);
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -652,12 +663,12 @@ select {
 
 .component-row__name {
   flex: 1;
-  font-size: 1rem;
+  font-size: var(--fs-body);
   font-weight: 600;
 }
 
 .component-row__badge {
-  font-size: 0.7rem;
+  font-size: var(--fs-micro);
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--bg);
@@ -669,7 +680,7 @@ select {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
   color: var(--text-muted);
 }
 
@@ -684,12 +695,12 @@ select {
 
 .rating-segment {
   flex: 1;
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--fs-sub);
   cursor: pointer;
 }
 
@@ -761,7 +772,7 @@ select {
   flex: none;
   width: 20px;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
 }
 
 .step-list__text {
@@ -771,19 +782,19 @@ select {
 .list-row__remove,
 .list-row__move {
   flex: none;
-  min-height: 36px;
-  min-width: 36px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 0;
 }
 
 .list-add-btn {
-  min-height: 40px;
+  min-height: 44px;
   width: 100%;
   border: 1px dashed var(--border);
   border-radius: 8px;
   background: none;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   cursor: pointer;
   margin-top: 4px;
 }
@@ -818,7 +829,7 @@ select {
 }
 
 .component-detail__title {
-  font-size: 1.3rem;
+  font-size: var(--fs-title);
   margin: 0 0 10px;
 }
 
@@ -834,7 +845,7 @@ select {
 }
 
 .component-detail__section h2 {
-  font-size: 1rem;
+  font-size: var(--fs-section);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -849,6 +860,9 @@ select {
   border-bottom: 1px solid var(--border);
 }
 
+/* Deliberately bigger than --fs-body: recipe steps are read stove-side,
+   phone propped on the counter (CLAUDE.md §1 "kitchen-friendly") — an
+   intentional exception to the 5-role scale, not an oversight. */
 .component-detail__steps {
   font-size: 1.25rem;
   line-height: 1.5;
@@ -863,12 +877,12 @@ select {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
 }
 
 .provenance-tag {
   display: inline-block;
-  font-size: 0.7rem;
+  font-size: var(--fs-micro);
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--bg);
@@ -881,14 +895,14 @@ select {
 .plan-section {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-card);
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: var(--shadow-md);
 }
 
 .plan-section h2 {
-  font-size: 1.05rem;
+  font-size: var(--fs-section);
   font-weight: 700;
   margin: 0 0 12px;
 }
@@ -900,7 +914,7 @@ select {
 }
 
 .plan-generate-step h3 {
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   font-weight: 700;
   margin: 0 0 10px;
 }
@@ -931,7 +945,7 @@ select {
 .stepper__value {
   min-width: 2ch;
   text-align: center;
-  font-size: 1.05rem;
+  font-size: var(--fs-body);
   font-weight: 600;
 }
 
@@ -951,7 +965,7 @@ select {
 }
 
 .conflict-row__names {
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   margin-bottom: 8px;
 }
 
@@ -964,7 +978,7 @@ select {
 }
 
 .week-summary__group h3 {
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -975,7 +989,7 @@ select {
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
-  font-size: 0.85rem;
+  font-size: var(--fs-sub);
   color: var(--text-muted);
   margin-bottom: 16px;
 }
@@ -991,7 +1005,7 @@ select {
 }
 
 .week-view__weekof {
-  font-size: 1.1rem;
+  font-size: var(--fs-section);
   margin: 0;
 }
 
@@ -1014,7 +1028,7 @@ select {
 /* ---- Run sheet ---- */
 
 .run-sheet__progress {
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   color: var(--text-muted);
   margin-bottom: 6px;
 }
@@ -1038,7 +1052,7 @@ select {
 }
 
 .run-sheet__station {
-  font-size: 0.85rem;
+  font-size: var(--fs-sub);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -1080,14 +1094,14 @@ select {
 
 .run-sheet__time {
   flex: none;
-  font-size: 0.85rem;
+  font-size: var(--fs-sub);
   color: var(--text-muted);
   min-width: 3.5ch;
 }
 
 .run-sheet__action {
   flex: 1;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
 }
 
 .run-sheet__component {
@@ -1098,7 +1112,7 @@ select {
 
 .assembly-card {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   padding: 12px;
   margin-bottom: 12px;
   background: var(--surface);
@@ -1127,14 +1141,14 @@ select {
 }
 
 .assembly-card__header h3 {
-  font-size: 1rem;
+  font-size: var(--fs-body);
   margin: 0;
 }
 
 .assembly-card__swap-btn {
-  min-height: 40px;
+  min-height: 44px;
   padding: 6px 12px;
-  font-size: 0.85rem;
+  font-size: var(--fs-sub);
 }
 
 .assembly-card__row {
@@ -1152,7 +1166,7 @@ select {
   background: none;
   text-align: left;
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   cursor: pointer;
   padding: 4px 0;
 }
@@ -1163,15 +1177,15 @@ select {
 
 .assembly-card__change-btn {
   flex: none;
-  min-height: 36px;
+  min-height: 44px;
   padding: 4px 10px;
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
 }
 
 .assembly-card__x {
   flex: none;
-  min-height: 40px;
-  min-width: 40px;
+  min-height: 44px;
+  min-width: 44px;
   border: none;
   background: none;
   color: var(--danger);
@@ -1190,13 +1204,13 @@ select {
 }
 
 .assembly-card__note {
-  font-size: 0.85rem;
+  font-size: var(--fs-sub);
   color: var(--text-muted);
   margin: 8px 0;
 }
 
 .assembly-card__steps {
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   margin: 8px 0 0;
   padding-left: 1.2em;
 }
@@ -1215,22 +1229,27 @@ select {
 
 .add-sheet__group-title {
   margin: 0 0 2px;
-  font-size: 0.72rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
-.add-sheet__row-sub {
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
+/* Round 2.5 §5: a proper 44px round tap target, MFP-style, instead of a
+   bare "+" glyph floating at whatever size the row's font-size implied. */
 .add-sheet__row-plus {
   flex: none;
-  font-size: 1.1rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--accent);
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .picker-sheet__list {
@@ -1251,7 +1270,7 @@ select {
   background: none;
   text-align: left;
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   cursor: pointer;
   padding: 4px 0;
 }
@@ -1265,6 +1284,100 @@ select {
   color: var(--accent);
 }
 
+/* ---- Universal two-line row (Round 2.5 §2) ----
+   One shared pattern for every list row that shows an item + its macro:
+   logged meal items (MealSection), the add sheet's recents/grouped
+   results (AddSheetResults), pantry rows (PantryItemRow), and online
+   search results (FoodSearchSheet). Line 1: bold name (+ the row's own
+   right-aligned control, e.g. a stepper, or a bold kcal numeral). Line 2:
+   quiet gray measure/provenance, with any interactive control (stepper,
+   MeasureInput, "+" button) right-aligned. Kills the clipped/variable-
+   width look a from bespoke per-surface row markup. */
+.row2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  background: none;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.row2__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.row2__line1,
+.row2__line2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.row2__name {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.row2__sub {
+  font-size: var(--fs-sub);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.row2__controls {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.row2__side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.row2__num {
+  font-size: var(--fs-num);
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.row2__submeta {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+}
+
 /* ---- Day log / meal sections (Phase 15) ---- */
 
 .meal-section {
@@ -1273,8 +1386,16 @@ select {
   margin-top: 10px;
 }
 
-.meal-section__title {
+.meal-section__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   margin: 0 0 6px;
+}
+
+.meal-section__title {
+  margin: 0;
 }
 
 .meal-section__preview {
@@ -1287,39 +1408,34 @@ select {
 
 .meal-section__subtotal {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--fs-sub);
 }
 
-.meal-section__item-block {
-  margin-bottom: 8px;
+.meal-section__item-row2 {
+  align-items: stretch;
+  flex-direction: column;
+  cursor: default;
 }
 
-.meal-section__item-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 2px;
+.meal-section__item-row2 .row2__line1 {
+  align-items: baseline;
 }
 
-.meal-section__item-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* Logged-item rows carry an editable control (stepper/MeasureInput) on
+   line 2 instead of a static sub-label — too wide to share the line with
+   anything else at mobile widths, so it just gets the full line,
+   right-aligned. The provenance tag moves up to line 1 instead (see
+   MealSection.jsx). */
+.meal-section__item-row2 .row2__line2 {
+  justify-content: flex-end;
 }
 
-.meal-section__item-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin: 0;
+.row2__tag {
+  flex: none;
 }
 
 .inline-warning {
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   color: var(--amber);
   margin: 2px 0 0;
 }
@@ -1362,7 +1478,7 @@ select {
 
 .grocery-row__label {
   flex: 1;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
 }
 
 .grocery-row__label--dismissed {
@@ -1382,10 +1498,12 @@ select {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   margin: 6px 0;
 }
 
+/* Intentionally smaller than --fs-micro: an inline tag riding alongside
+   body text (e.g. next to a pantry row name), not a standalone label. */
 .provenance-tag--tiny {
   font-size: 0.62rem;
   padding: 1px 6px;
@@ -1409,12 +1527,12 @@ select {
 
 .day-strip__day {
   flex: 1;
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: var(--fs-sub);
   cursor: pointer;
 }
 
@@ -1449,10 +1567,6 @@ select {
   color: var(--text);
 }
 
-.log-meal-card__summary-rating {
-  font-size: 0.75rem;
-}
-
 .log-meal-card__log-btn {
   width: 100%;
 }
@@ -1464,13 +1578,6 @@ select {
   gap: 8px;
   min-height: 44px;
   border-bottom: 1px solid var(--border);
-}
-
-.chip-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 12px 0;
 }
 
 .log-meal-card__other {
@@ -1487,11 +1594,24 @@ select {
   gap: 10px;
   min-height: 44px;
   border-bottom: 1px solid var(--border);
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
 }
 
 .gauges-panel {
   position: relative;
+}
+
+.gauges-panel__today {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.gauges-panel__today-label {
+  font-size: var(--fs-sub);
+  color: var(--text-muted);
 }
 
 .protein-chart {
@@ -1569,7 +1689,7 @@ select {
 }
 
 .protein-chart__day-label {
-  font-size: 0.7rem;
+  font-size: var(--fs-micro);
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -1578,7 +1698,7 @@ select {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  font-size: 0.75rem;
+  font-size: var(--fs-micro);
   color: var(--text-muted);
   margin-bottom: 8px;
 }
@@ -1617,7 +1737,7 @@ select {
 }
 
 .gauges-panel__streak, .gauges-panel__money {
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   margin: 8px 0;
   color: var(--text);
 }
@@ -1638,19 +1758,12 @@ select {
 }
 
 .recent-log-row__date {
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
   color: var(--text-muted);
 }
 
 .recent-log-row__components {
-  font-size: 0.95rem;
-}
-
-.recent-log-row__rating {
-  align-self: flex-start;
-  min-height: auto;
-  padding: 2px 10px;
-  font-size: 0.75rem;
+  font-size: var(--fs-body);
 }
 
 .recent-log-row__confirm {
@@ -1669,7 +1782,7 @@ select {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 6px 12px;
-  font-size: 0.78rem;
+  font-size: var(--fs-micro);
   line-height: 1.2;
   color: var(--text);
   min-height: 32px;
@@ -1693,7 +1806,7 @@ select {
 
 .banner__actions .btn {
   padding: 4px 8px;
-  font-size: 0.78rem;
+  font-size: var(--fs-micro);
 }
 
 .banner__dismiss {
@@ -1710,13 +1823,31 @@ select {
 
 .micro-action-preview h3 {
   margin: 0 0 8px;
-  font-size: 1rem;
+  font-size: var(--fs-section);
 }
 
 .micro-action-preview p {
-  font-size: 0.9rem;
+  font-size: var(--fs-sub);
   color: var(--text-muted);
   margin: 6px 0 0;
+}
+
+/* ---- Online food search (Phase 16 / Round 2.5 §6) ---- */
+
+.food-search__count {
+  font-size: var(--fs-sub);
+  color: var(--text-muted);
+  margin: 4px 0 10px;
+}
+
+.food-search__row {
+  align-items: flex-start;
+  cursor: default;
+}
+
+.food-search__actions {
+  width: 100%;
+  margin-top: 6px;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -12,7 +12,7 @@ import * as pantryOps from '../src/pantryOps.js'
 import * as logSearchOps from '../src/logSearchOps.js'
 import * as measures from '../src/measures.js'
 import { findSeedForName } from '../src/nutritionSeeds.js'
-import { searchFoods } from '../src/nutritionLookup.js'
+import { searchFoods, matchTier, rankSearchResults, dedupeSearchResults } from '../src/nutritionLookup.js'
 
 let passed = 0
 async function check(label, fn) {
@@ -298,6 +298,90 @@ try {
     ]
     const plan = pantryOps.planPantrySave(pantry, [], 'Snack Bar', schema.createNutritionInfo(), '111')
     assert.equal(plan.pantryId, 'byCode')
+  })
+
+  // ==== nutritionLookup.matchTier / rankSearchResults / dedupeSearchResults (Round 2.5 §6) ====
+
+  await check('matchTier: exact < prefix < substring < unrelated, case/whitespace-insensitive', () => {
+    assert.equal(matchTier('Rolled Oats', '  rolled oats '), 0)
+    assert.equal(matchTier('Rolled Oats Cereal', 'rolled oats'), 1)
+    assert.equal(matchTier('Trader Joe\'s Rolled Oats', 'rolled oats'), 2)
+    assert.equal(matchTier('Quinoa', 'rolled oats'), 3)
+  })
+
+  await check('matchTier: an empty query ranks everything as tier 1 (no-op ordering)', () => {
+    assert.equal(matchTier('Anything', ''), 1)
+  })
+
+  await check('rankSearchResults: exact -> prefix -> substring -> other, ties keep arrival order', () => {
+    const items = [
+      { name: 'Cinnamon Rolled Oats' }, // substring
+      { name: 'Rolled Oats' }, // exact
+      { name: 'Rolled Oats Cereal' }, // prefix
+      { name: 'Quinoa' }, // unrelated
+    ]
+    const ranked = rankSearchResults(items, 'rolled oats')
+    assert.deepEqual(
+      ranked.map((x) => x.name),
+      ['Rolled Oats', 'Rolled Oats Cereal', 'Cinnamon Rolled Oats', 'Quinoa'],
+    )
+  })
+
+  await check('dedupeSearchResults: drops a later case-insensitive name+brand duplicate, keeps the earlier (higher-ranked) one', () => {
+    const first = { name: 'Rolled Oats', brand: "Trader Joe's", source: 'fdc' }
+    const dup = { name: 'rolled oats', brand: "trader joe's", source: 'off' }
+    const distinct = { name: 'Rolled Oats', brand: 'Quaker', source: 'off' }
+    const deduped = dedupeSearchResults([first, dup, distinct])
+    assert.deepEqual(deduped, [first, distinct])
+  })
+
+  await check('dedupeSearchResults: treats a missing brand consistently (null vs undefined vs "")', () => {
+    const a = { name: 'Broccoli', brand: null }
+    const b = { name: 'broccoli', brand: '' }
+    assert.deepEqual(dedupeSearchResults([a, b]), [a])
+  })
+
+  await check('searchFoods: with an fdcKey, FDC results rank above OFF results even when OFF responds first', async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async (url) => {
+      if (url.includes('openfoodfacts')) {
+        return {
+          ok: true,
+          json: async () => ({
+            products: [{ product_name: 'Rolled Oats (generic)', brands: 'GenericBrand', nutriments: { 'energy-kcal_100g': 389, proteins_100g: 17, carbohydrates_100g: 66, fat_100g: 7 } }],
+          }),
+        }
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          foods: [{ description: "Trader Joe's Rolled Oats", brandOwner: "Trader Joe's", foodNutrients: [{ nutrientId: 1008, value: 150 }, { nutrientId: 1003, value: 5 }, { nutrientId: 1005, value: 27 }, { nutrientId: 1004, value: 3 }] }],
+        }),
+      }
+    }
+    try {
+      const result = await searchFoods("trader joe's rolled oats", { fdcKey: 'fake-key' })
+      assert.equal(result.ok, true)
+      assert.equal(result.results.length, 2, 'both distinct results survive (different name+brand)')
+      assert.equal(result.results[0].source, 'fdc', 'FDC must be ranked above OFF when a key is present')
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  await check('searchFoods: without an fdcKey, only OFF is queried/returned (unaffected by the new ranking)', async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ products: [{ product_name: 'Oats', brands: null, nutriments: { 'energy-kcal_100g': 389, proteins_100g: 17, carbohydrates_100g: 66, fat_100g: 7 } }] }),
+    })
+    try {
+      const result = await searchFoods('oats')
+      assert.equal(result.ok, true)
+      assert.deepEqual(result.results.map((r) => r.source), ['off'])
+    } finally {
+      globalThis.fetch = originalFetch
+    }
   })
 
   console.log(`\n${passed} checks passed.`)

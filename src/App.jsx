@@ -29,7 +29,7 @@ export default function App() {
       <BackupNudge onGoSettings={() => setActiveTab('settings')} />
       <InstallHint />
       <main className="app-content">
-        <Screen />
+        <Screen onGoToSettings={() => setActiveTab('settings')} />
       </main>
       <TabBar active={activeTab} onChange={setActiveTab} />
       {showHelp && <HelpSheet onClose={() => setShowHelp(false)} />}
