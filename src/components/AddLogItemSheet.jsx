@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import ComponentPickerSheet from './ComponentPickerSheet.jsx'
+import { COMPONENT_TYPES } from '../schema.js'
+import { filterComponents } from '../componentOps.js'
 import MeasureInput from './MeasureInput.jsx'
 import FoodSearchSheet from './FoodSearchSheet.jsx'
 
@@ -15,15 +16,21 @@ const TABS = [
 // amount, or (Phase 16) online search. onPick receives a ready-to-merge
 // items[] array (see LogEntry.items in CLAUDE.md §3).
 export default function AddLogItemSheet({ card, components, pantry, categories, fdcKey, existingComponentIds, onPick, onSaveToPantry, onClose }) {
-  const [tab, setTab] = useState(card && card.componentIds.length > 0 ? 'plan' : 'library')
+  const [tab, setTab] = useState(card && card.componentIds.length > 0 ? 'plan' : 'pantry')
   const [pantrySearch, setPantrySearch] = useState('')
   const [pantryPickId, setPantryPickId] = useState(null)
   const [pantryMeasure, setPantryMeasure] = useState('1 serving')
+  const [librarySearch, setLibrarySearch] = useState('')
+  const [libraryType, setLibraryType] = useState(null)
 
   const byId = Object.fromEntries(components.map((c) => [c.id, c]))
   const pantryFiltered = (pantry || [])
     .filter((p) => p.nutrition)
     .filter((p) => p.name.toLowerCase().includes(pantrySearch.trim().toLowerCase()))
+  const excludedComponentIds = new Set(existingComponentIds || [])
+  const libraryFiltered = filterComponents(components, { search: librarySearch, type: libraryType }).filter(
+    (c) => !excludedComponentIds.has(c.id),
+  )
 
   function pickComponent(componentId) {
     onPick([{ kind: 'component', componentId, count: 1 }])
@@ -37,17 +44,6 @@ export default function AddLogItemSheet({ card, components, pantry, categories, 
   async function handleSaveToPantry(name, category, nutrition) {
     const pantryId = await onSaveToPantry(name, category, nutrition)
     onPick([{ kind: 'pantry', pantryId, measure: '1 serving' }])
-  }
-
-  if (tab === 'library') {
-    return (
-      <ComponentPickerSheet
-        components={components}
-        excludeIds={existingComponentIds || []}
-        onPick={pickComponent}
-        onClose={() => setTab('pantry')}
-      />
-    )
   }
 
   return (
@@ -75,6 +71,43 @@ export default function AddLogItemSheet({ card, components, pantry, categories, 
               ))}
             </div>
           ))}
+
+        {tab === 'library' && (
+          <>
+            <input
+              type="text"
+              className="library-filters__search"
+              value={librarySearch}
+              onChange={(e) => setLibrarySearch(e.target.value)}
+              placeholder="Search by name or ingredient"
+              autoFocus
+            />
+            <div className="library-filters__chips picker-sheet__chips">
+              {COMPONENT_TYPES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`chip${libraryType === t ? ' chip--active' : ''}`}
+                  onClick={() => setLibraryType(libraryType === t ? null : t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            {libraryFiltered.length === 0 ? (
+              <p className="library-empty">No matching components.</p>
+            ) : (
+              <div className="picker-sheet__list">
+                {libraryFiltered.map((c) => (
+                  <button key={c.id} type="button" className="picker-sheet__row" onClick={() => pickComponent(c.id)}>
+                    <span className="picker-sheet__name">{c.name}</span>
+                    <span className="component-row__badge">{c.type}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
         {tab === 'pantry' && (
           <>
@@ -105,7 +138,12 @@ export default function AddLogItemSheet({ card, components, pantry, categories, 
             {pantryPickId && (
               <div className="field">
                 <span>Amount</span>
-                <MeasureInput value={pantryMeasure} onChange={setPantryMeasure} />
+                <MeasureInput
+                  key={pantryPickId}
+                  value={pantryMeasure}
+                  onChange={setPantryMeasure}
+                  nutrition={pantry.find((p) => p.id === pantryPickId)?.nutrition}
+                />
                 <button type="button" className="btn btn--primary" onClick={confirmPantryPick}>
                   Add
                 </button>

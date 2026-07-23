@@ -122,43 +122,51 @@ export function logsForWeek(logs, weekOf) {
 // nutrition, unresolvable measure) count toward `missing`, never toward
 // totals — no faked precision.
 
+function scaleMacros(perServing, servings) {
+  return {
+    kcal: perServing.kcal * servings,
+    protein_g: perServing.protein_g * servings,
+    carbs_g: perServing.carbs_g * servings,
+    fat_g: perServing.fat_g * servings,
+  }
+}
+
+/**
+ * One LogEntry item's own macro contribution, independent of its siblings
+ * (powers per-item macro/provenance display in the Track view).
+ * @returns {{kcal, protein_g, carbs_g, fat_g}|null} null when unresolvable
+ * (missing component macros, no pantry nutrition, unresolvable measure).
+ */
+export function itemMacros(item, components, pantry) {
+  if (item.kind === 'component') {
+    const macros = components.find((c) => c.id === item.componentId)?.macrosPerServing
+    return macros ? scaleMacros(macros, item.count) : null
+  }
+  if (item.kind === 'pantry') {
+    const nutrition = pantry.find((p) => p.id === item.pantryId)?.nutrition
+    const servings = nutrition ? measureToServings(item.measure, nutrition) : null
+    return servings == null ? null : scaleMacros(nutrition.perServing, servings)
+  }
+  if (item.kind === 'adhoc') {
+    const servings = measureToServings(item.measure, item.nutrition)
+    return servings == null ? null : scaleMacros(item.nutrition.perServing, servings)
+  }
+  return null
+}
+
 /** Per-kind macro resolution + sum for one LogEntry's items. */
 export function logMacros(log, components, pantry) {
-  const compById = Object.fromEntries(components.map((c) => [c.id, c]))
-  const pantryById = Object.fromEntries((pantry || []).map((p) => [p.id, p]))
   const totals = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, missing: 0 }
-
-  function add(perServing, servings) {
-    totals.kcal += perServing.kcal * servings
-    totals.protein_g += perServing.protein_g * servings
-    totals.carbs_g += perServing.carbs_g * servings
-    totals.fat_g += perServing.fat_g * servings
-  }
-
   for (const item of log.items) {
-    if (item.kind === 'component') {
-      const macros = compById[item.componentId]?.macrosPerServing
-      if (!macros) {
-        totals.missing += 1
-        continue
-      }
-      add(macros, item.count)
-    } else if (item.kind === 'pantry') {
-      const nutrition = pantryById[item.pantryId]?.nutrition
-      const servings = nutrition ? measureToServings(item.measure, nutrition) : null
-      if (servings == null) {
-        totals.missing += 1
-        continue
-      }
-      add(nutrition.perServing, servings)
-    } else if (item.kind === 'adhoc') {
-      const servings = measureToServings(item.measure, item.nutrition)
-      if (servings == null) {
-        totals.missing += 1
-        continue
-      }
-      add(item.nutrition.perServing, servings)
+    const macros = itemMacros(item, components, pantry || [])
+    if (!macros) {
+      totals.missing += 1
+      continue
     }
+    totals.kcal += macros.kcal
+    totals.protein_g += macros.protein_g
+    totals.carbs_g += macros.carbs_g
+    totals.fat_g += macros.fat_g
   }
   return totals
 }

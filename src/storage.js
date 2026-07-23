@@ -6,7 +6,7 @@ import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName } from './nutritionOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 8
+const SCHEMA_VERSION = 9
 const COLLECTIONS = ['pantry', 'components', 'weeks', 'logs', 'feedback']
 
 function describe(v) {
@@ -141,6 +141,16 @@ function migrate(state) {
     const band = state.settings?.proteinBand
     if (band && band.low_g === 20 && band.high_g === 35) state.settings.proteinBand = { low_g: 60, high_g: 90 }
     state.schemaVersion = 8
+  }
+  // v8 -> v9: NUTRITION_SOURCES gains 'online_search' for items saved from
+  // FoodSearchSheet's text search (previously mistagged 'barcode' via
+  // mapOffProduct, a Round-1 correctness fix — new saves tag correctly
+  // going forward). Existing data can't be retroactively told apart
+  // (a genuine scan and a search save both landed as 'barcode'), so there
+  // is nothing to rewrite here; this step only bumps the version so older
+  // exports keep importing cleanly once the enum accepts the new value.
+  if (state.schemaVersion === 8) {
+    state.schemaVersion = 9
   }
   return state
 }

@@ -210,3 +210,46 @@ export function measureToServings(measure, nutrition) {
 
   return null
 }
+
+// ---- Unit-picker support (Round 1 fixes #3/#4) -------------------------
+// A logged pantry/adhoc item's unit dropdown must only ever offer units
+// that CAN be converted for that item's nutrition data — offering one that
+// silently resolves to null (and so drops out of the macro totals as
+// "missing") is a correctness bug, not a UX nicety. These helpers restrict
+// the picker and rescale the quantity when the unit changes, so switching
+// units never silently changes the represented amount (and therefore the
+// calories) of what was logged.
+
+/** Fixed units worth testing for resolvability against a given nutrition. */
+const SCALAR_UNIT_CANDIDATES = ['serving', 'g', 'kg', 'ml', 'tsp', 'tbsp', 'cup', 'fl oz', 'piece']
+
+/**
+ * @param {object} nutrition
+ * @returns {{scalar: string[], phrases: string[]}} `scalar` units are freely
+ * re-scalable by quantity (g, cup, serving, ...); `phrases` are whole
+ * naturalUnits labels (e.g. "1/3 cup drained") that already encode their
+ * own fixed quantity and are offered as-is, not scaled.
+ */
+export function resolvableUnitsFor(nutrition) {
+  if (!nutrition) return { scalar: [], phrases: [] }
+  const scalar = SCALAR_UNIT_CANDIDATES.filter((u) => u === 'serving' || measureToServings(`1 ${u}`, nutrition) != null)
+  const phrases = (nutrition.naturalUnits || [])
+    .map((nu) => nu.label)
+    .filter((label) => label && measureToServings(label, nutrition) != null)
+  return { scalar, phrases }
+}
+
+/**
+ * The quantity of `unit` that represents the same amount as `servings`
+ * servings of `nutrition` — the inverse of measureToServings for scalar
+ * (freely re-scalable) units. Used to rescale qty when the user switches
+ * units, so the represented amount (and macros) stay constant.
+ * @returns {number|null}
+ */
+export function qtyForUnit(servings, unit, nutrition) {
+  if (servings == null || !nutrition) return null
+  if (unit === 'serving') return servings
+  const perUnitServings = measureToServings(`1 ${unit}`, nutrition)
+  if (perUnitServings == null || perUnitServings === 0) return null
+  return servings / perUnitServings
+}

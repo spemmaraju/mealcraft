@@ -52,6 +52,18 @@ export function mapOffProduct(json) {
   return null
 }
 
+/**
+ * Open Food Facts text-search hit (nutritionLookup.searchFoods), mapped via
+ * mapOffProduct then re-tagged 'online_search' — mapOffProduct itself stays
+ * 'barcode' for the real barcode-scan flow (lookupBarcode).
+ * @param {object} product one entry of an OFF /cgi/search.pl `products` array
+ * @returns {NutritionInfo|null}
+ */
+export function mapOffSearchProduct(product) {
+  const mapped = mapOffProduct({ product })
+  return mapped ? { ...mapped, source: 'online_search' } : null
+}
+
 /** @param {object} food a USDA FDC branded-food search result @returns {NutritionInfo|null} */
 export function mapFdcFood(food) {
   const ln = food && food.labelNutrients

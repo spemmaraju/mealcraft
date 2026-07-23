@@ -1259,11 +1259,15 @@ select {
   font-size: 0.85rem;
 }
 
+.meal-section__item-block {
+  margin-bottom: 8px;
+}
+
 .meal-section__item-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .meal-section__item-name {
@@ -1272,6 +1276,35 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.meal-section__item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.inline-warning {
+  font-size: 0.78rem;
+  color: var(--amber);
+  margin: 2px 0 0;
+}
+
+.measure-input__custom-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.measure-input__custom-wrap .measure-input__custom {
+  width: 100%;
+}
+
+.measure-input__phrase {
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 /* ---- Grocery list ---- */

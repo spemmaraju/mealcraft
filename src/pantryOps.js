@@ -51,6 +51,33 @@ export function deleteCategory(categories, pantry, name) {
   return { categories: categories.filter((c) => c !== name) }
 }
 
+// Keyword -> category-name-pattern rules for guessing a save-to-pantry
+// category from a food's name (Round 1 fix: FoodSearchSheet previously
+// defaulted to categories[0], which happens to be 'Spices' in the seed
+// list — silently wrong for almost everything saved). Matched against the
+// USER'S ACTUAL category list at runtime (case-insensitive), since
+// categories are user-editable and may not exist/may be renamed. Returns
+// '' (no guess) rather than ever picking a category the name doesn't
+// plausibly belong to — the caller must show an explicit "pick one" state.
+const CATEGORY_GUESS_RULES = [
+  { pattern: /dairy/i, keywords: ['milk', 'yogurt', 'yoghurt', 'paneer', 'cheese', 'curd', 'cream'] },
+  { pattern: /condiment|sauce/i, keywords: ['syrup', 'sauce', 'ketchup', 'chutney', 'salsa', 'jam'] },
+  { pattern: /nut|seed|finisher/i, keywords: ['nut', 'butter', 'seed', 'tahini', 'almond', 'cashew', 'peanut', 'walnut'] },
+  { pattern: /grain|base/i, keywords: ['oats', 'oat', 'rice', 'quinoa', 'bread', 'pasta', 'noodle'] },
+]
+
+/** @returns {string} a matching category name from `categories`, or '' if nothing plausible matched */
+export function guessCategory(name, categories) {
+  const needle = (name || '').toLowerCase()
+  if (!needle) return ''
+  for (const rule of CATEGORY_GUESS_RULES) {
+    if (!rule.keywords.some((kw) => needle.includes(kw))) continue
+    const match = (categories || []).find((c) => rule.pattern.test(c))
+    if (match) return match
+  }
+  return ''
+}
+
 export function filterItems(pantry, { search = '', role = null, onHandOnly = false } = {}) {
   const needle = search.trim().toLowerCase()
   return pantry.filter((item) => {

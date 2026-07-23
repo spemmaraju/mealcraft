@@ -1,3 +1,5 @@
+import { NUTRITION_SOURCE_LABELS } from '../schema.js'
+
 export default function PantryItemRow({ item, onToggleOnHand, onOpenEditor }) {
   return (
     <div className="pantry-row">
@@ -13,7 +15,11 @@ export default function PantryItemRow({ item, onToggleOnHand, onOpenEditor }) {
       <button type="button" className="pantry-row__body" onClick={() => onOpenEditor(item.id)}>
         <span className="pantry-row__name">{item.name}</span>
         {item.roughQty && <span className="pantry-row__qty">{item.roughQty}</span>}
-        {item.nutrition && <span className="provenance-tag provenance-tag--tiny">{item.nutrition.source}</span>}
+        {item.nutrition && (
+          <span className="provenance-tag provenance-tag--tiny">
+            {NUTRITION_SOURCE_LABELS[item.nutrition.source] || item.nutrition.source}
+          </span>
+        )}
       </button>
     </div>
   )

@@ -6,9 +6,9 @@
 // NutritionInfoEditor.jsx) keep working unchanged.
 
 import { chat } from './aiClient.js'
-import { mapOffProduct, mapFdcFood, mapFdcSearchFood, mapLabelReply, LABEL_PROMPT } from './nutritionMappers.js'
+import { mapOffProduct, mapOffSearchProduct, mapFdcFood, mapFdcSearchFood, mapLabelReply, LABEL_PROMPT } from './nutritionMappers.js'
 
-export { mapOffProduct, mapFdcFood, mapFdcSearchFood, mapLabelReply, LABEL_PROMPT }
+export { mapOffProduct, mapOffSearchProduct, mapFdcFood, mapFdcSearchFood, mapLabelReply, LABEL_PROMPT }
 
 /**
  * OFF -> FDC (if fdcKey given) -> {ok:false}. Each step try/caught so
@@ -86,7 +86,7 @@ export async function searchFoods(query, { fdcKey } = {}) {
     if (res.ok) {
       const json = await res.json()
       for (const product of json.products || []) {
-        const nutrition = mapOffProduct({ product })
+        const nutrition = mapOffSearchProduct(product)
         if (nutrition) results.push({ name: product.product_name || query, brand: product.brands || null, source: 'off', nutrition })
       }
     }

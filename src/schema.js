@@ -24,6 +24,19 @@ export const COLLECTION_SHAPES = {
 }
 
 export const NUTRITION_SOURCES = ['barcode', 'label_photo', 'seed_table', 'ai_estimate', 'manual', 'online_search']
+// Human-readable labels for provenance chips (Pantry tags, Track view, etc.)
+// — falls back to the raw source string for anything not listed here.
+// Keyed by MACRO_SOURCES (NUTRITION_SOURCES + 'derived') since Component
+// macro provenance reuses the same display.
+export const NUTRITION_SOURCE_LABELS = {
+  barcode: 'barcode scan',
+  label_photo: 'label photo',
+  seed_table: 'seed data',
+  ai_estimate: 'AI estimate',
+  manual: 'manual',
+  online_search: 'online',
+  derived: 'derived',
+}
 export const COMPONENT_TYPES = ['base', 'protein', 'veg', 'sauce', 'finisher', 'dish']
 export const STATIONS = ['stovetop', 'oven', 'instant_pot', 'none']
 export const MACRO_SOURCES = [...NUTRITION_SOURCES, 'derived']

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { searchFoods } from '../nutritionLookup.js'
+import { guessCategory } from '../pantryOps.js'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 
 // Text search against Open Food Facts (keyless) + USDA FDC (with a key),
@@ -13,7 +14,7 @@ export default function FoodSearchSheet({ categories, fdcKey, onLogAdhoc, onSave
   const [results, setResults] = useState(null)
   const [failed, setFailed] = useState(false)
   const [savingIndex, setSavingIndex] = useState(null)
-  const [saveCategory, setSaveCategory] = useState(categories?.[0] ?? '')
+  const [saveCategory, setSaveCategory] = useState('')
   const [manualEntry, setManualEntry] = useState(false)
 
   async function handleSearch() {
@@ -99,20 +100,37 @@ export default function FoodSearchSheet({ categories, fdcKey, onLogAdhoc, onSave
                 <button type="button" className="btn btn--primary" onClick={() => handleLogIt(food)}>
                   Log it
                 </button>
-                <button type="button" className="btn" onClick={() => setSavingIndex(savingIndex === i ? null : i)}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    if (savingIndex === i) {
+                      setSavingIndex(null)
+                    } else {
+                      setSavingIndex(i)
+                      setSaveCategory(guessCategory(food.name, categories))
+                    }
+                  }}
+                >
                   Save to pantry
                 </button>
               </div>
               {savingIndex === i && (
                 <div className="button-row">
                   <select value={saveCategory} onChange={(e) => setSaveCategory(e.target.value)}>
+                    <option value="">Pick a category…</option>
                     {(categories || []).map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
                     ))}
                   </select>
-                  <button type="button" className="btn btn--primary" onClick={() => handleConfirmSaveToPantry(food)}>
+                  <button
+                    type="button"
+                    className="btn btn--primary"
+                    onClick={() => handleConfirmSaveToPantry(food)}
+                    disabled={!saveCategory}
+                  >
                     Confirm
                   </button>
                 </div>

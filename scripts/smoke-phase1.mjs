@@ -116,7 +116,7 @@ try {
     assert.equal(result.ok, true, `import failed: ${JSON.stringify(result.errors)}`)
 
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 8)
+    assert.equal(state.schemaVersion, 9)
     assert.ok(state.categories.includes('Homemade Sauces'))
     assert.ok(DEFAULT_CATEGORIES.every((c) => state.categories.includes(c)))
   })
@@ -129,7 +129,7 @@ try {
     await storage.set('categories', ['Dairy', 'Custom'])
 
     const before = await storage.getFullState()
-    assert.equal(before.schemaVersion, 8)
+    assert.equal(before.schemaVersion, 9)
     const exported = await storage.exportState()
 
     await storage.resetState()
