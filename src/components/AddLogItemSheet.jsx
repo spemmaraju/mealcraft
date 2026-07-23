@@ -39,7 +39,7 @@ export default function AddLogItemSheet({ card, components, pantry, existingComp
         components={components}
         excludeIds={existingComponentIds || []}
         onPick={pickComponent}
-        onClose={onClose}
+        onClose={() => setTab('pantry')}
       />
     )
   }
