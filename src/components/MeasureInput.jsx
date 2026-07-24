@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripLeadingQty, matchPhrase, matchScalarUnit, formatQty } from '../measures.js'
+import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripLeadingQty, matchPhrase, matchScalarUnit, formatQty, formatQtyForUnit, METRIC_UNITS } from '../measures.js'
 
 // CLAUDE.md §5: measures stay free text at the schema level. This is a UI
 // affordance only — it composes/decomposes canonical strings ("1.5 cup",
@@ -47,6 +47,17 @@ const FRACTION_CHIPS = [
   ['¾', '3/4'],
 ]
 
+// METRIC_UNITS lives in measures.js (shared with formatQtyForUnit) — metric
+// units are always typed as decimals (nobody measures "1/3 kg" of anything),
+// and the fracbar exists solely to work around the iOS decimal keypad
+// missing a "/" key for kitchen units like cup/tbsp/piece, so it's
+// meaningless (and clutters the qty box) for g/kg/ml.
+
+/** Whether the currently-selected unit is one kitchen fractions make sense for. */
+function isFractionFriendlyUnit(state) {
+  return state.isPhraseUnit || !METRIC_UNITS.has(state.unit)
+}
+
 function unitFromTokens(tokens, allowed) {
   const joined = tokens.join(' ')
   return allowed.includes(joined) ? joined : null
@@ -73,7 +84,7 @@ function deriveInitial(value, allowedUnits, nutrition) {
     // just as the scalar unit ("cup") + qty it's honestly equivalent to,
     // instead of falling through to an unnecessary custom/warning state.
     const scalarHit = matchScalarUnit(raw, allowedUnits.scalar)
-    if (scalarHit) return { mode: 'structured', qtyText: formatQty(scalarHit.qty), unit: scalarHit.unit, custom: raw, isPhraseUnit: false }
+    if (scalarHit) return { mode: 'structured', qtyText: formatQtyForUnit(scalarHit.qty, scalarHit.unit), unit: scalarHit.unit, custom: raw, isPhraseUnit: false }
     // Round 4.5: legacy/stored "N serving(s)" with 'serving' no longer
     // offered — re-express as the equivalent amount of the first offered
     // unit ("1 serving" -> "1/3 cup") instead of dropping to raw-text mode.
@@ -82,7 +93,7 @@ function deriveInitial(value, allowedUnits, nutrition) {
       const unit = allowedUnits.scalar[0] || allowedUnits.phrases[0]
       const rescaled = unit ? qtyForUnit(parsed.qty, unit, nutrition) : null
       if (rescaled != null) {
-        return { mode: 'structured', qtyText: formatQty(rescaled), unit, custom: raw, isPhraseUnit: allowedUnits.phrases.includes(unit) }
+        return { mode: 'structured', qtyText: formatQtyForUnit(rescaled, unit), unit, custom: raw, isPhraseUnit: allowedUnits.phrases.includes(unit) }
       }
     }
     return { mode: 'custom', qtyText: '', unit: defaultUnit, custom: raw, isPhraseUnit: false }
@@ -160,8 +171,8 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
       const currentServings = measureToServings(composedValue(state), nutrition)
       const rescaledQty = currentServings != null ? qtyForUnit(currentServings, next, nutrition) : null
       let qtyText
-      if (rescaledQty != null) qtyText = formatQty(rescaledQty)
-      else if (nextIsPhrase) qtyText = formatQty(parseMeasure(next).qty ?? 1)
+      if (rescaledQty != null) qtyText = formatQtyForUnit(rescaledQty, next)
+      else if (nextIsPhrase) qtyText = formatQtyForUnit(parseMeasure(next).qty ?? 1, next)
       else qtyText = state.qtyText || '1'
       const nextState = { mode: 'structured', qtyText, unit: next, isPhraseUnit: nextIsPhrase }
       setState({ ...nextState, custom: `${qtyText} ${unitTextFor(nextState)}`.trim() })
@@ -259,7 +270,7 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
         }}
         placeholder="qty"
       />
-      {qtyFocused && (
+      {qtyFocused && isFractionFriendlyUnit(state) && (
         // preventDefault on pointerdown keeps the qty input focused (no blur,
         // keyboard stays up, selection intact) so onClick still fires after.
         <div className="measure-input__fracbar" onPointerDown={(e) => e.preventDefault()}>

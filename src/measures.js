@@ -329,7 +329,7 @@ export function defaultMeasureFor(nutrition) {
   if (isPhraseLabel(unit, nutrition)) return unit
   const qty = qtyForUnit(1, unit, nutrition)
   if (qty == null) return '1 serving'
-  return `${formatQty(qty)} ${unit}`
+  return `${formatQtyForUnit(qty, unit)} ${unit}`
 }
 
 /**
@@ -457,4 +457,25 @@ export function formatQty(qty) {
   const match = FRACTION_DISPLAY.find(([v]) => Math.abs(v - frac) < FRACTION_TOLERANCE)
   if (match) return whole > 0 ? `${whole} ${match[1]}` : match[1]
   return String(Math.round(qty * 100) / 100)
+}
+
+// Metric units are always typed/read as decimals — nobody measures "53 1/3
+// g" of anything. Kitchen fractions (formatQty's mixed-number output) are a
+// cup/tbsp/tsp/fl-oz/piece/phrase-unit affordance only. Shared with
+// MeasureInput.jsx (fracbar visibility) so the "which units are decimal"
+// list lives in exactly one place.
+export const METRIC_UNITS = new Set(['g', 'kg', 'ml'])
+
+/**
+ * Like formatQty, but unit-aware: metric units (g/kg/ml) always render as a
+ * plain decimal (rounded to 1 place, trailing ".0" dropped by the number
+ * coercion itself) since fractional grams/ml are never typed by a human.
+ * Every other unit — cup/tbsp/tsp/fl oz/piece, and naturalUnits phrase
+ * labels — delegates to formatQty's kitchen-fraction rendering.
+ * @param {number} qty @param {string} unit @returns {string}
+ */
+export function formatQtyForUnit(qty, unit) {
+  if (!METRIC_UNITS.has(unit)) return formatQty(qty)
+  if (qty == null || Number.isNaN(qty)) return ''
+  return String(Math.round(qty * 10) / 10)
 }

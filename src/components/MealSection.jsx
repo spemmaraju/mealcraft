@@ -198,7 +198,7 @@ export default function MealSection({
             </p>
           )}
 
-          {confirmingRemove ? (
+          {confirmingRemove && (
             <div className="button-row">
               <button
                 type="button"
@@ -214,10 +214,6 @@ export default function MealSection({
                 Keep
               </button>
             </div>
-          ) : (
-            <button type="button" className="btn" onClick={() => setConfirmingRemove(true)}>
-              Remove log
-            </button>
           )}
         </>
       )}
@@ -230,6 +226,11 @@ export default function MealSection({
           {hasItems && log.items.length >= 2 && (
             <button type="button" className="link-btn" onClick={onOpenSaveDish}>
               Save as dish
+            </button>
+          )}
+          {hasItems && !confirmingRemove && (
+            <button type="button" className="pill-quiet pill-quiet--danger" onClick={() => setConfirmingRemove(true)}>
+              Remove log
             </button>
           )}
         </div>

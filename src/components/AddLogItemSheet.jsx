@@ -206,7 +206,9 @@ export default function AddLogItemSheet({
 
   return (
     <div className="sheet-backdrop sheet-backdrop--stacked" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      {/* sheet--tall (fix #2): pins this sheet's height so it doesn't
+          shrink-and-slide-down as the suggestion list shrinks while typing. */}
+      <div className="sheet sheet--tall" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <button type="button" className="sheet-head__close" onClick={onClose} aria-label="Close">
             <CloseIcon size={16} />

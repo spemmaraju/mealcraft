@@ -326,6 +326,14 @@ button {
   cursor: pointer;
 }
 
+/* Fix #3: resting "Remove log" — same pill geometry as .pill-quiet, tinted
+   with the existing danger tokens (message--error uses the same pair) so it
+   reads as a same-size sibling to "+ Add more" instead of a mismatched .btn. */
+.pill-quiet--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -665,6 +673,16 @@ textarea, input[type="text"], input[type="password"], input[type="file"] {
   border-radius: 24px 24px 0 0;
   padding: 28px 20px calc(20px + env(safe-area-inset-bottom, 0));
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Fix #2: the unified add sheet (AddLogItemSheet) is otherwise
+   content-driven up to max-height, so it visibly shrinks — and its top
+   edge/search box slides downward — as the suggestion list shrinks while
+   typing. Pin its height instead. dvh tracks the mobile keyboard/visual
+   viewport; the vh line stays first as a fallback for browsers without dvh. */
+.sheet--tall {
+  height: 88vh;
+  height: 88dvh;
 }
 
 /* Drag-handle grabber — every sheet gets it for free, matching the bundle's

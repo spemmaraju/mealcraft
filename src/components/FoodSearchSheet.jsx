@@ -117,6 +117,9 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
                 ? 'USDA'
                 : 'Open Food Facts'}
           </p>
+          <p className="field-caption">
+            “Add” also saves the food to your pantry for quick logging next time. “Log without saving” logs it just this once.
+          </p>
           <div className="picker-sheet__list">
             {results.map((food, i) => (
               <div key={i} className="row2 food-search__row">
