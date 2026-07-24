@@ -44,7 +44,9 @@ function recentItemKey(item) {
  * Derived purely from existing logs; no schema change. `todayISO` is an
  * explicit param (not read from Date.now() internally) so this stays
  * deterministic and easy to smoke-test.
- * @returns {{key: string, item: object}[]}
+ * @returns {{key: string, item: object, date: string, meal: string}[]} `date`/`meal`
+ * are the source log's own (Round 3.5 — powers the RECENT rows' when-context
+ * subline, "Tue, breakfast"/"yesterday, lunch").
  */
 export function deriveRecents(logs, todayISO, { days = 14, limit = 8 } = {}) {
   const inWindow = (logs || []).filter((l) => {
@@ -57,10 +59,10 @@ export function deriveRecents(logs, todayISO, { days = 14, limit = 8 } = {}) {
   for (const log of sorted) {
     for (const item of log.items) {
       const key = recentItemKey(item)
-      if (!seen.has(key)) seen.set(key, item)
+      if (!seen.has(key)) seen.set(key, { item, date: log.date, meal: log.meal })
     }
   }
-  return [...seen.entries()].slice(0, limit).map(([key, item]) => ({ key, item }))
+  return [...seen.entries()].slice(0, limit).map(([key, v]) => ({ key, ...v }))
 }
 
 /**

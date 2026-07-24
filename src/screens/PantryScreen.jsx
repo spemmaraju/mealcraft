@@ -166,7 +166,7 @@ export default function PantryScreen() {
           >
             <span className="pantry-section__name">{category}</span>
             <span className="pantry-section__count">
-              {items.length === 0 ? 'empty' : `${onHandCount}/${items.length} on hand`}
+              {items.length === 0 ? 'empty' : `${onHandCount} of ${items.length} on hand`}
             </span>
             <span className={`pantry-section__chevron${open ? ' pantry-section__chevron--open' : ''}`} aria-hidden="true">
               ▸

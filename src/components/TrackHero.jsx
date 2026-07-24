@@ -10,13 +10,12 @@ const DONUT_C = 2 * Math.PI * DONUT_R
 // lunchStreak/moneySaved) but the visual is the approved bundle's, not the
 // old per-weekday bars.
 //
-// Round 2.6 ambiguity: the bundle's day-strip shows Sun-Sat (7 circles), but
-// this app's WeekPlan/log model only ever deals in a Mon-Fri work week
-// (trackOps.weekDates) — weekend lunch plans don't exist as a concept here.
-// Kept to 5 days rather than inventing weekend slots; the day-strip still
-// only controls which day's meal cards show below, never the hero's own
-// stats (those are always "today", exactly like the GaugesPanel it
-// replaces).
+// Round 3.5 design sync: the day-strip is now the full Sun-Sat 7 days
+// (trackOps.weekDatesFull) — logging isn't a Mon-Fri-only concept even
+// though WeekPlan/run-sheet logic still is, so weekDates itself (Mon-Fri)
+// stays untouched for those callers. The strip still only controls which
+// day's meal cards show below, never the hero's own stats (those are
+// always "today", exactly like the GaugesPanel it replaces).
 //
 // Also deliberately dropped: the old plate-mix (protein/carbs/veg/other)
 // bar. It's a different axis (food-group mix) than the donut (macro-kcal
@@ -34,7 +33,7 @@ export default function TrackHero({ logs, components, pantry, settings, today, w
 
   const weekLogs = trackOps.logsForWeek(logs, weekOf)
   const estimate = trackOps.estimateFraction(weekLogs, components, pantry)
-  const streak = trackOps.lunchStreak(logs, today)
+  const streak = trackOps.loggingStreak(logs, today)
   const money = trackOps.moneySaved(logs, settings, weekOf)
 
   const carbsArc = donut.carbsPct * DONUT_C
@@ -44,7 +43,7 @@ export default function TrackHero({ logs, components, pantry, settings, today, w
   return (
     <div className="track-hero">
       <div className="track-hero__daystrip">
-        {trackOps.weekDates(weekOf).map(({ day, date }) => {
+        {trackOps.weekDatesFull(weekOf).map(({ day, date }) => {
           const logged = logs.some((l) => l.date === date && l.items.length > 0)
           const isSelected = date === selectedDate
           const isToday = date === today
@@ -159,8 +158,8 @@ export default function TrackHero({ logs, components, pantry, settings, today, w
 
       <div className="track-hero__footerline">
         <StreakIcon size={15} />
-        {streak > 0 ? `${streak}-day lunch streak` : 'No lunch streak yet'} · ${money.allTime.toFixed(2)} saved vs. bought
-        lunch
+        {streak > 0 ? `${streak}-day logging streak` : 'No logging streak yet'} · ${money.allTime.toFixed(2)} saved vs.
+        bought lunch
       </div>
     </div>
   )

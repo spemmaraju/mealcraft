@@ -14,7 +14,7 @@ export default function ProvenanceTag({ source, tiny }) {
   const label = NUTRITION_SOURCE_LABELS[source] || source
   return (
     <span className={`badge badge--${cls}${tiny ? ' badge--tiny' : ''}`}>
-      <Icon size={tiny ? 10 : 12} strokeWidth={cls === 'seed' ? 2.5 : 2} />
+      <Icon size={tiny ? 11 : 12} strokeWidth={cls === 'seed' ? 2.5 : 2} />
       {label}
     </span>
   )

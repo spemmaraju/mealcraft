@@ -106,9 +106,15 @@ try {
     assert.equal(measures.measureToServings('198 g', nutrition), 0.5)
   })
 
-  await check('measureToServings: unmatched unit words give null', () => {
+  await check('Round 3.5: "2 tbsp" of chickpeas now resolves via the descriptor-tolerant volume family (its "1/3 cup drained" naturalUnit anchors tbsp too, same volume-bridging path as cup/tsp/ml)', () => {
+    // Pre-Round-3.5 this was null — mlFromMeasure needed an exact "cup"
+    // match, so the descriptor word "drained" on chickpeas' own naturalUnits
+    // label broke the anchor lookup entirely (the root cause behind the
+    // reported "serving, g, kg, 1/2 cup dry" picker bug). A genuinely
+    // unmatched (non-volume) unit still gives null — see 'a handful' above.
     const nutrition = chickpeaNutrition()
-    assert.equal(measures.measureToServings('2 tbsp', nutrition), null)
+    const servings = measures.measureToServings('2 tbsp', nutrition)
+    assert.ok(servings != null && Math.abs(servings - 0.375063398) < 1e-6, `got ${servings}`)
   })
 
   // ==== nutritionSeeds.js ====

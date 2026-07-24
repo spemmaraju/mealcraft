@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripLeadingQty, matchPhrase } from '../measures.js'
+import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripLeadingQty, matchPhrase, matchScalarUnit, formatQty } from '../measures.js'
 
 // CLAUDE.md §5: measures stay free text at the schema level. This is a UI
 // affordance only — it composes/decomposes canonical strings ("1.5 cup",
@@ -21,32 +21,19 @@ import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripL
 // label (so the dropdown selection matches), and the composed/emitted
 // measure is "<qty> <phrase tail>" (e.g. "1/4 cup chopped"), which
 // measureToServings already resolves via its scaledUnit path.
+// Free-text ingredient measures (no `nutrition` prop — e.g. recipe
+// ingredients in IngredientListEditor) keep kg/fl oz in the picker and an
+// exact (non-descriptor-tolerant) unit match: CLAUDE.md §5 says free-text
+// measures are never restructured, so "1 cup chopped onions" must stay
+// exactly that, not get quietly reduced to "1 cup". The tolerant match
+// (measures.js matchScalarUnit) is only used on the nutrition-aware path
+// below, where the descriptor really is safe to drop (the scalar unit
+// already covers the same honest math — see resolvableUnitsFor).
 const UNIT_OPTIONS = ['g', 'kg', 'ml', 'tsp', 'tbsp', 'cup', 'fl oz', 'piece', 'serving']
 
 function unitFromTokens(tokens, allowed) {
   const joined = tokens.join(' ')
   return allowed.includes(joined) ? joined : null
-}
-
-const FRACTION_DISPLAY = [
-  [1 / 8, '1/8'],
-  [1 / 4, '1/4'],
-  [1 / 3, '1/3'],
-  [3 / 8, '3/8'],
-  [1 / 2, '1/2'],
-  [5 / 8, '5/8'],
-  [2 / 3, '2/3'],
-  [3 / 4, '3/4'],
-  [7 / 8, '7/8'],
-]
-
-function formatQty(qty) {
-  if (Number.isInteger(qty)) return String(qty)
-  const whole = Math.floor(qty)
-  const frac = qty - whole
-  const match = FRACTION_DISPLAY.find(([v]) => Math.abs(v - frac) < 0.001)
-  if (match) return whole > 0 ? `${whole} ${match[1]}` : match[1]
-  return String(Math.round(qty * 100) / 100)
 }
 
 /** unit text to compose into the emitted measure string: the phrase's own tail when isPhraseUnit, else the plain unit token as-is. */
@@ -64,6 +51,14 @@ function deriveInitial(value, allowedUnits) {
   if (allowedUnits) {
     const phrase = matchPhrase(raw, allowedUnits.phrases)
     if (phrase) return { mode: 'structured', qtyText: formatQty(phrase.qty), unit: phrase.label, custom: raw, isPhraseUnit: true }
+    // Round 3.5: a stored/legacy measure whose naturalUnits phrase is no
+    // longer offered directly (hidden by resolvableUnitsFor because a
+    // scalar unit now covers it, e.g. "1 cup chopped") still round-trips —
+    // just as the scalar unit ("cup") + qty it's honestly equivalent to,
+    // instead of falling through to an unnecessary custom/warning state.
+    const scalarHit = matchScalarUnit(raw, allowedUnits.scalar)
+    if (scalarHit) return { mode: 'structured', qtyText: formatQty(scalarHit.qty), unit: scalarHit.unit, custom: raw, isPhraseUnit: false }
+    return { mode: 'custom', qtyText: '', unit: defaultUnit, custom: raw, isPhraseUnit: false }
   }
 
   const { qty, unitTokens } = parseMeasure(raw)
@@ -169,6 +164,11 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
   if (state.mode === 'custom') {
     const { unitTokens } = parseMeasure(state.custom)
     const failedUnit = unitTokens.length ? unitTokens.join(' ') : state.custom.trim()
+    // Round 3.5: "custom mode" no longer implies "unconvertible" — kg/fl oz
+    // (still valid via free text, just not in the picker) and other
+    // measures the picker doesn't happen to recognize can still resolve via
+    // measureToServings. Only show the warning when it genuinely can't.
+    const trulyUnresolvable = nutrition ? measureToServings(state.custom, nutrition) == null : false
     return (
       <div className="measure-input">
         <div className="measure-input__custom-wrap">
@@ -179,7 +179,7 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
             onChange={handleCustomChange}
             placeholder={placeholder || 'Measure (e.g. 1/3 cup)'}
           />
-          {nutrition && failedUnit && (
+          {nutrition && failedUnit && trulyUnresolvable && (
             <p className="inline-warning">couldn't convert "{failedUnit}" — pick g or serving</p>
           )}
         </div>

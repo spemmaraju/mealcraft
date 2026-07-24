@@ -13,6 +13,13 @@ function recentDisplay(item, byId, pantryById) {
   return { label: item.name, sublabel: item.measure }
 }
 
+/** "on hand · {roughQty or serving info}" for the add sheet's PANTRY group rows; undefined when the item isn't on hand (no on-hand line to show). */
+function pantrySubline(p) {
+  if (!p.onHand) return undefined
+  const detail = p.roughQty || p.nutrition?.servingDesc || null
+  return detail ? `on hand · ${detail}` : 'on hand'
+}
+
 /**
  * Computes the 5 ranked/filtered groups (TODAY'S PLAN, RECENT, PANTRY,
  * COMMON FOODS, MY DISHES) plus the lookups AddLogItemSheet's handlers need
@@ -40,26 +47,35 @@ export function buildAddSheetData({ card, components, pantry, logs, today, query
         ).map((id) => ({ id, label: byId[id]?.name || id }))
       : []
 
-  // Round 2.5 §5: RECENT rows show last measure AND kcal (itemMacros
-  // already handles component/pantry/adhoc uniformly, including adhoc's
-  // snapshot nutrition) — null when unresolvable (deleted pantry item,
-  // unconvertible measure), same "don't fake it" rule as everywhere else.
+  // Round 2.5 §5 / Round 3.5 when-context: RECENT rows show last measure,
+  // kcal, AND when/which-meal it was logged ("219 cal · 1/2 cup · Tue,
+  // breakfast") — itemMacros already handles component/pantry/adhoc
+  // uniformly, including adhoc's snapshot nutrition; null kcal when
+  // unresolvable (deleted pantry item, unconvertible measure), same "don't
+  // fake it" rule as everywhere else.
   const recentRows = rankByPrefix(
     recents.filter((r) => matchesQuery(recentDisplay(r.item, byId, pantryById).label, query)),
     query,
     (r) => recentDisplay(r.item, byId, pantryById).label,
   ).map((r) => {
+    const { label, sublabel: measureText } = recentDisplay(r.item, byId, pantryById)
     const macro = trackOps.itemMacros(r.item, components, pantry)
-    return { id: r.key, ...recentDisplay(r.item, byId, pantryById), kcal: macro ? macro.kcal : null }
+    const kcalText = macro ? `${Math.round(macro.kcal)} cal` : null
+    const when = `${trackOps.relativeDayLabel(r.date, today)}, ${r.meal}`
+    return { id: r.key, label, kcal: macro ? macro.kcal : null, sublabel: [kcalText, measureText, when].filter(Boolean).join(' · ') }
   })
 
+  // Round 3.5: a pantry group row's sub-line shows on-hand status + how much
+  // ("on hand · 1/2 cup", falling back to the item's own serving
+  // description when it has no roughQty note) — off-hand items still
+  // surface (searchable, just no "on hand" line).
   const pantryRows = !hasQuery
     ? []
     : rankByPrefix(
         pantry.filter((p) => p.nutrition && matchesQuery(p.name, query)),
         query,
         (p) => p.name,
-      ).map((p) => ({ id: p.id, label: p.name }))
+      ).map((p) => ({ id: p.id, label: p.name, sublabel: pantrySubline(p) }))
 
   const seedCandidates = logSearchOps.seedFoodCandidates(pantry)
   const seedRows = !hasQuery

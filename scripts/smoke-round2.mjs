@@ -255,9 +255,10 @@ try {
     assert.equal(measures.measureToServings(`${qty} half block`, tofu), 2, 'round-trips back to 2 servings')
   })
 
-  await check('resolvableUnitsFor phrases are unaffected by the scaling changes (still the raw naturalUnits labels)', () => {
+  await check('resolvableUnitsFor: Round 3.5 superseded this — "1 cup chopped" is now hidden because "cup" (a scalar unit) covers it with the same honest math; see smoke-round3.5.mjs', () => {
     const broccoli = findSeedForName('broccoli')
-    assert.deepEqual(measures.resolvableUnitsFor(broccoli).phrases, ['1 cup chopped'])
+    assert.deepEqual(measures.resolvableUnitsFor(broccoli).phrases, [], '"1 cup chopped" is covered by the scalar "cup" unit, so it is hidden, not duplicated')
+    assert.ok(measures.resolvableUnitsFor(broccoli).scalar.includes('cup'), 'cup must resolve for broccoli via the descriptor-tolerant volume anchor')
   })
 
   // ==== pantryOps.planPantrySave (hot-fix #1: no write until Add) ====

@@ -34,8 +34,16 @@ try {
     assert.equal(measureToServings('to taste', findSeedForName('rice')), null)
   })
 
-  await check('"1/3 cup drained" against an unrelated food stays unresolvable (no faked precision)', () => {
-    assert.equal(measureToServings('1/3 cup drained', findSeedForName('rice')), null)
+  await check('Round 3.5: "1/3 cup drained" against rice now resolves via rice\'s OWN cup anchor (descriptor-tolerant volume bridging) — "drained" is just ignored as a descriptor, not borrowed from chickpeas\' phrase', () => {
+    // Pre-Round-3.5 this was null: mlFromMeasure required an exact volume-word
+    // match, so any trailing descriptor ("drained") broke path (d) entirely —
+    // that was the root cause of the "serving, g, kg, 1/2 cup dry" picker bug.
+    // Now it honestly resolves to 1/3 cup of rice via rice's own "1 cup"
+    // naturalUnit, same as measureToServings('1/3 cup', rice) would.
+    const rice = findSeedForName('rice')
+    const servings = measureToServings('1/3 cup drained', rice)
+    assert.ok(Math.abs(servings - 1 / 3) < 0.001, `got ${servings}`)
+    assert.equal(servings, measureToServings('1/3 cup', rice), 'the descriptor word must not change the result')
   })
 
   await check('"2 tbsp" against peanut butter (has a literal "1 tbsp" naturalUnit) — unchanged path (c)', () => {

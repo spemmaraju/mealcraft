@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as trackOps from '../trackOps.js'
-import { measureToServings, parseMeasure } from '../measures.js'
+import { measureToServings, parseMeasure, formatQty } from '../measures.js'
 import { MEAL_ICONS } from './Icons.jsx'
 import ProvenanceTag from './ProvenanceTag.jsx'
 import MeasureInput from './MeasureInput.jsx'
@@ -49,6 +49,15 @@ function itemMeasureWarning(item, pantry) {
   const { unitTokens } = parseMeasure(item.measure)
   const failedUnit = unitTokens.length ? unitTokens.join(' ') : (item.measure || '').trim()
   return `couldn't convert "${failedUnit}" — pick g or serving`
+}
+
+// Round 3.5 design sync: the item row's sub-line text ("kcal · descriptor")
+// — a component's descriptor is its serving count in words, a pantry/adhoc
+// item's is its own logged measure (already fraction-formatted by
+// MeasureInput, e.g. "1/2 cup").
+function itemDescriptor(item) {
+  if (item.kind === 'component') return `${formatQty(item.count)} serving${item.count === 1 ? '' : 's'}`
+  return item.measure
 }
 
 // One meal card (components/cards.html / screens/track.html): icon + name +
@@ -143,35 +152,37 @@ export default function MealSection({
                     {provenanceSource && <ProvenanceTag source={provenanceSource} tiny />}
                   </div>
                   <div className="itemrow__sub">
-                    {item.kind === 'component' ? (
-                      <div className="stepper">
-                        <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count - 0.5)}>
-                          −
-                        </button>
-                        <span className="stepper__value">{item.count}</span>
-                        <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count + 0.5)}>
-                          +
-                        </button>
-                      </div>
-                    ) : (
-                      <MeasureInput
-                        value={item.measure}
-                        onChange={(measure) => onSetItemMeasure(index, measure)}
-                        nutrition={itemNutrition(item, pantry)}
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className="btn list-row__remove"
-                      onClick={() => onRemoveItem(index)}
-                      aria-label={`Remove ${itemLabel(item, components, pantry)}`}
-                    >
-                      ✕
-                    </button>
+                    {itemMacro ? Math.round(itemMacro.kcal) : '—'} kcal · {itemDescriptor(item)}
                   </div>
                   {warning && <p className="inline-warning">{warning}</p>}
                 </div>
-                <span className="itemrow__kcal">{itemMacro ? Math.round(itemMacro.kcal) : '—'}</span>
+                <div className="itemrow__controls">
+                  {item.kind === 'component' ? (
+                    <div className="stepper">
+                      <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count - 0.5)}>
+                        −
+                      </button>
+                      <span className="stepper__value">{formatQty(item.count)}</span>
+                      <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count + 0.5)}>
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <MeasureInput
+                      value={item.measure}
+                      onChange={(measure) => onSetItemMeasure(index, measure)}
+                      nutrition={itemNutrition(item, pantry)}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className="itemrow__remove"
+                    onClick={() => onRemoveItem(index)}
+                    aria-label={`Remove ${itemLabel(item, components, pantry)}`}
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             )
           })}

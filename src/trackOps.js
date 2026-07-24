@@ -7,6 +7,7 @@ import { createLogEntry, DAYS, DAY_NAMES } from './schema.js'
 import { measureToServings } from './measures.js'
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+const FULL_WEEK_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const ESTIMATE_SOURCES = ['ai_estimate', 'seed_table']
 const TYPE_BUCKET = { base: 'carbs', protein: 'protein', veg: 'veg' }
 const CATEGORY_BUCKET = { Proteins: 'protein', Legumes: 'protein', Dairy: 'protein', 'Grains & Bases': 'carbs', Vegetables: 'veg', Frozen: 'veg' }
@@ -52,6 +53,18 @@ export function weekdayName(dateISO) {
 /** @param {string} weekOf Sunday ISO date @returns {{day:string, date:string}[]} Mon..Fri */
 export function weekDates(weekOf) {
   return WEEKDAY_LABELS.map((day, i) => ({ day, date: addDaysISO(weekOf, i + 1) }))
+}
+
+/**
+ * Round 3.5 design sync: the Track hero's day-strip is Sun-Sat (7 circles),
+ * not the Mon-Fri work week `weekDates` returns for plan/run-sheet logic —
+ * added as a separate function rather than changing weekDates itself so
+ * every existing Mon-Fri caller (assemblyCardForDate, logsForWeek,
+ * proteinByDay, WeekPlan/run-sheet UI) is untouched.
+ * @param {string} weekOf Sunday ISO date @returns {{day:string, date:string}[]} Sun..Sat
+ */
+export function weekDatesFull(weekOf) {
+  return FULL_WEEK_LABELS.map((day, i) => ({ day, date: addDaysISO(weekOf, i) }))
 }
 
 /** Sunday on/before `dateISO` — the WeekPlan.weekOf the current calendar week would use. */
@@ -338,6 +351,38 @@ export function lunchStreak(logs, today) {
     cursor = addDaysISO(cursor, -1)
   }
   return streak
+}
+
+/**
+ * Round 3.5: the hero footer's streak is now ANY logged meal, any day of the
+ * week (not lunch-only/weekday-only like `lunchStreak`, kept above for its
+ * own money-saved-adjacent semantics) — consecutive calendar days ending at
+ * today with >= 1 logged item. An unlogged today doesn't break it (today
+ * may not be over yet), same convention as lunchStreak.
+ */
+export function loggingStreak(logs, today) {
+  const loggedDates = new Set(logs.filter((l) => l.items.length > 0).map((l) => l.date))
+  let cursor = today
+  if (!loggedDates.has(cursor)) cursor = addDaysISO(cursor, -1)
+  let streak = 0
+  while (loggedDates.has(cursor)) {
+    streak += 1
+    cursor = addDaysISO(cursor, -1)
+  }
+  return streak
+}
+
+/**
+ * Short "when" label for a past log date relative to today — "today",
+ * "yesterday", else the 3-letter weekday abbreviation. Powers the add
+ * sheet's RECENT rows' when-context subline ("Tue, breakfast" / "yesterday,
+ * lunch").
+ */
+export function relativeDayLabel(dateISO, todayISO) {
+  const daysAgo = daysBetweenISO(dateISO, todayISO)
+  if (daysAgo === 0) return 'today'
+  if (daysAgo === 1) return 'yesterday'
+  return DAYS[dayOfWeekISO(dateISO)]
 }
 
 /** @returns {{week:number, allTime:number}} lunch count x boughtLunchCost. Deliberately still lunch-only. */

@@ -1850,8 +1850,9 @@ select {
   flex-wrap: wrap;
 }
 
-/* Item row: name+badge on line 1, editable measure/stepper control on line
-   2, kcal as its own right-aligned column spanning the row (itemkcal). */
+/* Item row (Round 3.5 design sync): name+badge on line 1, "kcal ·
+   descriptor" quiet sub-line on line 2, controls (qty+unit or stepper,
+   circular remove) right-aligned as their own column. */
 .itemrow {
   display: flex;
   align-items: center;
@@ -1875,18 +1876,59 @@ select {
 }
 
 .itemrow__sub {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 3px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.itemrow__kcal {
+.itemrow__controls {
   flex: none;
-  font-size: 14px;
-  color: var(--text-muted);
-  font-weight: 500;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Compact qty/unit sizing scoped to this row only — MeasureInput's other
+   consumers (AddItemAmountStep's full-width amount step, IngredientListEditor's
+   recipe rows) keep their own default sizing. */
+.itemrow__controls .measure-input__qty {
+  width: 44px;
+  min-width: 44px;
+  height: 36px;
+  min-height: 36px;
+  text-align: center;
+  border-radius: 10px;
+  padding: 0 4px;
+}
+
+.itemrow__controls .measure-input__unit {
+  height: 36px;
+  min-height: 36px;
+  max-width: 74px;
+  border-radius: 10px;
+  padding: 0 4px;
+}
+
+.itemrow__remove {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--danger);
+  font-size: 15px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .inline-warning {
@@ -1965,26 +2007,40 @@ select {
   object-fit: cover;
 }
 
-/* ---- Add-sheet action grid (components/actions.html) ---- */
+/* ---- Add-sheet action grid (components/actions.html) ----
+   Round 3.5: horizontally scrollable on narrow screens instead of a rigid
+   4-column grid, so a 5th+ action never squeezes existing ones illegibly
+   small — each button keeps a quarter-width-ish flex basis and snaps into
+   place, but can scroll if the sheet is too narrow to fit all of them. */
 
 .actiongrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
   margin-bottom: 20px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.actiongrid::-webkit-scrollbar {
+  display: none;
 }
 
 .actionbtn {
   background: var(--surface-3);
   border: none;
   border-radius: var(--radius-row);
-  height: 72px;
+  flex: 0 0 auto;
+  width: calc((100% - 24px) / 4);
+  min-width: 76px;
+  height: 68px;
+  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 44px;
   cursor: pointer;
   color: var(--brand);
 }
