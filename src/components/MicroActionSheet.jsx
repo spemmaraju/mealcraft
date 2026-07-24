@@ -7,7 +7,7 @@ const DEFAULT_INSTRUCTION = {
   substitute: 'Suggest a different component for this slot — different cuisine or flavor profile.',
 }
 
-const BUSY_ASKING = 'Asking Claude… this can take a minute'
+const busyAskingFor = (provider) => `Asking ${provider === 'google' ? 'Gemini' : 'Claude'}… this can take a minute`
 const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
 
 // Same backdrop pattern as NutritionInfoEditor. Nothing persists until Apply —
@@ -15,13 +15,13 @@ const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
 export default function MicroActionSheet({ mode, component, pantry, settings, onApply, onCancel }) {
   const [instruction, setInstruction] = useState(DEFAULT_INSTRUCTION[mode])
   const [generating, setGenerating] = useState(false)
-  const [busyMsg, setBusyMsg] = useState(BUSY_ASKING)
+  const [busyMsg, setBusyMsg] = useState('')
   const [preview, setPreview] = useState(null)
   const [error, setError] = useState(null)
 
   async function handleGenerate() {
     setGenerating(true)
-    setBusyMsg(BUSY_ASKING)
+    setBusyMsg(busyAskingFor(settings.provider))
     setError(null)
     setPreview(null)
     const prompt = compileComponentPrompt({ component, pantry, settings }, { mode, instruction })

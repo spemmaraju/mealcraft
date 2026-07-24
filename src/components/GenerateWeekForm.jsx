@@ -4,7 +4,7 @@ import { DAY_NAMES } from '../schema.js'
 import { generateWeekViaApi } from '../byok.js'
 import WeekImportBox from './WeekImportBox.jsx'
 
-const BUSY_ASKING = 'Asking Claude… this can take a minute'
+const busyAskingFor = (provider) => `Asking ${provider === 'google' ? 'Gemini' : 'Claude'}… this can take a minute`
 const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
 
 export default function GenerateWeekForm({ state, onGenerated, components, weeks, onImported }) {
@@ -17,7 +17,7 @@ export default function GenerateWeekForm({ state, onGenerated, components, weeks
   const [copyMsg, setCopyMsg] = useState(null)
   const [showFallback, setShowFallback] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [busyMsg, setBusyMsg] = useState(BUSY_ASKING)
+  const [busyMsg, setBusyMsg] = useState('')
 
   const byokActive = state.settings.apiMode === 'byok' && !!state.settings.apiKey
   const cookName = DAY_NAMES[state.settings.cookDay] ?? 'Sunday'
@@ -39,7 +39,7 @@ export default function GenerateWeekForm({ state, onGenerated, components, weeks
   async function handleGenerate() {
     const text = compileWeekPrompt(state, { servings, cook: cookEnabled, refresh: refreshEnabled, notes, weekOf })
     setGenerating(true)
-    setBusyMsg(BUSY_ASKING)
+    setBusyMsg(busyAskingFor(state.settings.provider))
     const result = await generateWeekViaApi({
       provider: state.settings.provider,
       apiKey: state.settings.apiKey,
