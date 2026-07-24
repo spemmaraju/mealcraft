@@ -57,7 +57,11 @@ export default function App() {
       <AppHeader onHelp={() => setShowHelp(true)} />
       <InstallHint />
       <main className="app-content">
-        <Screen onGoToSettings={() => setActiveTab('settings')} fabSignal={activeTab === 'track' ? fabSignal : null} />
+        <Screen
+          onGoToSettings={() => setActiveTab('settings')}
+          onGoToPlan={() => setActiveTab('plan')}
+          fabSignal={activeTab === 'track' ? fabSignal : null}
+        />
       </main>
       <TabBar active={activeTab} onChange={setActiveTab} onFab={handleFab} backupOverdue={backupOverdue} />
       {showHelp && <HelpSheet onClose={() => setShowHelp(false)} />}

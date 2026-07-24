@@ -33,6 +33,7 @@ export default function AddLogItemSheet({
   onSaveToPantry,
   onAttachNutrition,
   onGoToSettings,
+  onGoToPlan,
   onClose,
 }) {
   const [query, setQuery] = useState('')
@@ -60,7 +61,7 @@ export default function AddLogItemSheet({
   // backing out of the amount step (Back/close) never touches storage.
   const [pending, setPending] = useState(null)
 
-  const { groups, recents, byId, pantryById, seedCandidates, hasQuery } = buildAddSheetData({
+  const { groups, recents, byId, pantryById, seedCandidates, hasQuery, hasPlanCard } = buildAddSheetData({
     card,
     components,
     pantry,
@@ -69,6 +70,10 @@ export default function AddLogItemSheet({
     query,
     existingComponentIds,
   })
+
+  // Round 4: CTA only when there's genuinely no plan for today (not just a
+  // search with no matches) — see addSheetOps' hasPlanCard.
+  const planCta = !hasPlanCard && onGoToPlan ? { onGoToPlan: () => { onGoToPlan(); onClose() } } : null
 
   function handleGroupPick(groupKey, id) {
     if (groupKey === 'plan') {
@@ -282,7 +287,14 @@ export default function AddLogItemSheet({
               </button>
             </div>
 
-            <AddSheetResults groups={groups} query={query} onPick={handleGroupPick} hasQuery={hasQuery} onGroupRef={(key, el) => (groupRefs.current[key] = el)} />
+            <AddSheetResults
+              groups={groups}
+              query={query}
+              onPick={handleGroupPick}
+              hasQuery={hasQuery}
+              onGroupRef={(key, el) => (groupRefs.current[key] = el)}
+              planCta={planCta}
+            />
             {scanError && <p className="inline-warning">{scanError}</p>}
           </>
         ) : (

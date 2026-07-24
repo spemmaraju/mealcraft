@@ -7,7 +7,7 @@ import { createLogEntry } from '../schema.js'
 import DayLog from '../components/DayLog.jsx'
 import TrackHero from '../components/TrackHero.jsx'
 
-export default function TrackScreen({ onGoToSettings, fabSignal }) {
+export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
   const [components, setComponents] = useState([])
   const [pantry, setPantry] = useState([])
   const [categories, setCategories] = useState([])
@@ -187,6 +187,7 @@ export default function TrackScreen({ onGoToSettings, fabSignal }) {
         onAttachNutrition={handleAttachNutrition}
         onSaveDish={handleSaveDish}
         onGoToSettings={onGoToSettings}
+        onGoToPlan={onGoToPlan}
       />
 
       <div className="plan-section">

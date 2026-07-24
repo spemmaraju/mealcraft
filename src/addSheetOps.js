@@ -102,7 +102,14 @@ export function buildAddSheetData({ card, components, pantry, logs, today, query
     { key: 'dish', title: 'MY DISHES', rows: dishRows },
   ]
 
-  return { groups, recents, byId, pantryById, seedCandidates, hasQuery }
+  // Round 4: whether today actually has an assembly card with dishes on it —
+  // independent of `query` (planRows is search-filtered, so it can be empty
+  // either because there's genuinely no plan for today, or just because
+  // nothing matches the current search). Only the former should show the
+  // "no plan yet" CTA (AddSheetResults), so it's surfaced separately here.
+  const hasPlanCard = !!(card && card.componentIds.length > 0)
+
+  return { groups, recents, byId, pantryById, seedCandidates, hasQuery, hasPlanCard }
 }
 
 /**

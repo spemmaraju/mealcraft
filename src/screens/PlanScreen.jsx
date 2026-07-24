@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import * as storage from '../storage.js'
 import * as weekOps from '../weekOps.js'
 import * as componentOps from '../componentOps.js'
+import * as trackOps from '../trackOps.js'
 import GenerateWeekForm from '../components/GenerateWeekForm.jsx'
 import WeekView from '../components/WeekView.jsx'
 import ImportReview from '../components/ImportReview.jsx'
+import AddDishToPlanSheet from '../components/AddDishToPlanSheet.jsx'
 
 export default function PlanScreen() {
   const [pantry, setPantry] = useState([])
@@ -14,6 +16,7 @@ export default function PlanScreen() {
   const [settings, setSettings] = useState(null)
   const [showGenerate, setShowGenerate] = useState(false)
   const [generateResult, setGenerateResult] = useState(null)
+  const [addingToPlan, setAddingToPlan] = useState(false)
 
   async function reload() {
     const [p, c, w, f, s] = await Promise.all([
@@ -52,6 +55,19 @@ export default function PlanScreen() {
     await storage.set('weeks', weekOps.replaceWeek(weeks, nextWeek))
   }
 
+  // Round 4: "Add dish to plan" — no AI round trip. Targets whichever week
+  // WeekView is currently showing (latestWeek); if none exists yet, creates
+  // a minimal one for the CURRENT week (trackOps' Sunday-anchored convention,
+  // same one TrackScreen/DayLog use to find "today's plan") so the dish
+  // immediately shows up in the add sheet's TODAY'S PLAN group.
+  async function handleAddDishToPlan(componentId, days) {
+    const baseWeek = latestWeek || weekOps.emptyWeek(trackOps.currentWeekSundayISO(trackOps.todayISO()))
+    const nextWeek = weekOps.addComponentToPlan(baseWeek, componentId, days)
+    const nextWeeks = latestWeek ? weekOps.replaceWeek(weeks, nextWeek) : [...weeks, nextWeek]
+    await storage.set('weeks', nextWeeks)
+    setAddingToPlan(false)
+  }
+
   async function handleCopyRawResponse() {
     try {
       await navigator.clipboard.writeText(generateResult.rawText)
@@ -69,15 +85,22 @@ export default function PlanScreen() {
       <h1>Plan</h1>
 
       {latestWeek && !showGenerate ? (
-        <WeekView
-          week={latestWeek}
-          components={components}
-          pantry={pantry}
-          settings={settings}
-          onCommit={handleCommitWeek}
-          onGenerateNew={() => setShowGenerate(true)}
-          onSubstituteComponent={handleSubstituteComponent}
-        />
+        <>
+          <div className="button-row">
+            <button type="button" className="btn" onClick={() => setAddingToPlan(true)}>
+              ＋ Add dish to plan
+            </button>
+          </div>
+          <WeekView
+            week={latestWeek}
+            components={components}
+            pantry={pantry}
+            settings={settings}
+            onCommit={handleCommitWeek}
+            onGenerateNew={() => setShowGenerate(true)}
+            onSubstituteComponent={handleSubstituteComponent}
+          />
+        </>
       ) : (
         <>
           {weeks.length === 0 && (
@@ -91,6 +114,11 @@ export default function PlanScreen() {
                 <li>Paste the JSON reply into the import box.</li>
               </ol>
               <p>Your week — run sheet, daily lunches, grocery suggestions — appears here, fully editable.</p>
+              <div className="button-row">
+                <button type="button" className="btn btn--primary" onClick={() => setAddingToPlan(true)}>
+                  ＋ Add dish to plan
+                </button>
+              </div>
             </div>
           )}
           {latestWeek && (
@@ -154,6 +182,10 @@ export default function PlanScreen() {
             </div>
           )}
         </>
+      )}
+
+      {addingToPlan && (
+        <AddDishToPlanSheet components={components} onConfirm={handleAddDishToPlan} onClose={() => setAddingToPlan(false)} />
       )}
     </div>
   )

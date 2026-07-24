@@ -37,6 +37,7 @@ export default function DayLog({
   onAttachNutrition,
   onSaveDish,
   onGoToSettings,
+  onGoToPlan,
 }) {
   const card = week ? trackOps.assemblyCardForDate(week, selectedDate) : null
   // null | { meal }. `meal` is retargetable via the sheet's own header picker
@@ -135,6 +136,7 @@ export default function DayLog({
           onSaveToPantry={onSaveToPantry}
           onAttachNutrition={onAttachNutrition}
           onGoToSettings={onGoToSettings}
+          onGoToPlan={onGoToPlan}
           onClose={() => setAddSheet(null)}
         />
       )}

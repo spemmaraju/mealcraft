@@ -1609,6 +1609,19 @@ select {
   color: var(--text);
 }
 
+/* Round 4: TODAY'S PLAN group's empty state (add sheet) — a short line plus
+   the CTA that takes the user to the Plan tab instead of the group just
+   vanishing with no explanation. */
+.add-sheet__plan-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-row);
+  background: var(--surface);
+}
+
 .picker-sheet__row {
   display: flex;
   align-items: center;

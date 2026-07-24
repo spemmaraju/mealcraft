@@ -2,10 +2,29 @@
 // No DOM, no storage imports — callers (UI or smoke script) own persistence.
 // Mirrors pantryOps.js / componentOps.js.
 
-import { STATIONS } from './schema.js'
+import { STATIONS, REFRESH_DAYS, createWeekPlan } from './schema.js'
 
 export function replaceWeek(weeks, nextWeek) {
   return weeks.map((w) => (w.weekOf === nextWeek.weekOf ? nextWeek : w))
+}
+
+// Round 4 ("lightweight plan editing"): the minimal valid WeekPlan for a week
+// nobody has generated/imported yet — 5 empty Mon-Fri assembly cards, no run
+// sheet, no refresh, no groceries. Just data (CLAUDE.md §3 — no schema
+// change); lets "Add dish to plan" create a plan without the AI round trip.
+export function emptyWeek(weekOf) {
+  return createWeekPlan({
+    weekOf,
+    assembly: REFRESH_DAYS.map((day) => ({ day, componentIds: [], note: '' })),
+  })
+}
+
+// Round 4: appends `componentId` to every listed day's assembly card (and to
+// week.componentIds via recomputeComponentIds inside addComponentToDay) —
+// dedupes per day exactly like a single addComponentToDay call, since that's
+// what this loops over. Days the week doesn't have a card for are no-ops.
+export function addComponentToPlan(week, componentId, days) {
+  return days.reduce((w, day) => addComponentToDay(w, day, componentId), week)
 }
 
 export function toggleRunSheetStep(week, stepIndex) {
