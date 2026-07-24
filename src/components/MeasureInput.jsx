@@ -53,9 +53,18 @@ const FRACTION_CHIPS = [
 // missing a "/" key for kitchen units like cup/tbsp/piece, so it's
 // meaningless (and clutters the qty box) for g/kg/ml.
 
-/** Whether the currently-selected unit is one kitchen fractions make sense for. */
+/**
+ * Whether the currently-selected unit is one kitchen fractions make sense
+ * for. A phrase unit is NOT automatically fraction-friendly (Round 5 fix —
+ * a naturalUnits phrase like "100 g" or "250 ml" is metric-typed exactly
+ * like the plain "g"/"ml" scalars and should render/type the same way);
+ * look at the phrase's tail's first unit token and hide chips when THAT is
+ * metric. Non-metric phrases ("half block", "1 cup chopped") keep chips.
+ */
 function isFractionFriendlyUnit(state) {
-  return state.isPhraseUnit || !METRIC_UNITS.has(state.unit)
+  if (!state.isPhraseUnit) return !METRIC_UNITS.has(state.unit)
+  const tailUnit = parseMeasure(state.unit).unitTokens[0]
+  return tailUnit ? !METRIC_UNITS.has(tailUnit) : true
 }
 
 function unitFromTokens(tokens, allowed) {

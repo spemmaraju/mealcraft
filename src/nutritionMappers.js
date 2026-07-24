@@ -6,6 +6,7 @@
 
 import { createNutritionInfo } from './schema.js'
 import { extractJson } from './weekImport.js'
+import { parseMeasure } from './measures.js'
 
 function hasAllNumbers(values) {
   return values.every((v) => typeof v === 'number' && !Number.isNaN(v))
@@ -14,6 +15,45 @@ function hasAllNumbers(values) {
 function coerceNum(v) {
   const n = typeof v === 'string' ? Number(v) : v
   return typeof n === 'number' && !Number.isNaN(n) ? n : null
+}
+
+/**
+ * OFF's `serving_size` is free text like "30 g" or "2 Tbsp (30 g)" — extract
+ * the gram figure (parenthetical or bare, mirroring measures.js's
+ * servingGrams regexes locally rather than importing a private helper) and
+ * pair it with the text stripped of that parenthetical as the naturalUnits
+ * label, so e.g. "2 Tbsp (30 g)" -> {label:'2 Tbsp', gramsOrFraction:30}.
+ * Returns null when no gram figure is found or the stripped text doesn't
+ * parse as a measure (parseMeasure(...).qty == null) — e.g. bare "30 ml"
+ * correctly yields no grams and is skipped.
+ * @returns {{label: string, gramsOrFraction: number}|null}
+ */
+function offHouseholdNaturalUnit(servingSizeText) {
+  if (typeof servingSizeText !== 'string' || !servingSizeText.trim()) return null
+  const paren = servingSizeText.match(/\(([\d.]+)\s*g\)/i)
+  const bare = servingSizeText.match(/^([\d.]+)\s*g$/i)
+  const grams = paren ? parseFloat(paren[1]) : bare ? parseFloat(bare[1]) : null
+  if (grams == null) return null
+  const stripped = servingSizeText.replace(/\([^)]*\)/g, '').trim()
+  if (parseMeasure(stripped).qty == null) return null
+  return { label: stripped, gramsOrFraction: grams }
+}
+
+/**
+ * FDC search/branded household serving, as a naturalUnits entry — only when
+ * `servingSize` is a positive number expressed in grams (servingSizeUnit
+ * 'g'/'GRM', case-insensitive; ml and anything else is skipped, since
+ * gramsOrFraction here is always grams) AND `householdServingFullText` is a
+ * non-empty string that parses as a measure ("1 tsp", "2 Tbsp (30 g)").
+ * @returns {{label: string, gramsOrFraction: number}|null}
+ */
+function fdcHouseholdNaturalUnit(servingSize, servingSizeUnit, householdServingFullText) {
+  if (typeof servingSize !== 'number' || !(servingSize > 0)) return null
+  const unit = typeof servingSizeUnit === 'string' ? servingSizeUnit.trim().toLowerCase() : ''
+  if (unit !== 'g' && unit !== 'grm') return null
+  if (typeof householdServingFullText !== 'string' || !householdServingFullText.trim()) return null
+  if (parseMeasure(householdServingFullText).qty == null) return null
+  return { label: householdServingFullText.trim(), gramsOrFraction: servingSize }
 }
 
 /** @param {object} json Open Food Facts /api/v2/product/{code}.json body (or a search-hit wrapped as {product}) @returns {NutritionInfo|null} */
@@ -41,11 +81,13 @@ export function mapOffProduct(json) {
     const [kcal, protein_g, carbs_g, fat_g] = per100gValues
     const perServing = { kcal, protein_g, carbs_g, fat_g }
     if (typeof n.fiber_100g === 'number') perServing.fiber_g = n.fiber_100g
+    const household = offHouseholdNaturalUnit(product.serving_size)
     return createNutritionInfo({
       source: 'barcode',
       servingDesc: '100 g',
       perServing,
       barcode,
+      ...(household ? { naturalUnits: [household] } : {}),
     })
   }
 
@@ -76,12 +118,14 @@ export function mapFdcFood(food) {
   if (typeof ln.fiber?.value === 'number') perServing.fiber_g = ln.fiber.value
 
   const servingDesc = food.servingSize != null && food.servingSizeUnit ? `${food.servingSize} ${food.servingSizeUnit}` : ''
+  const household = fdcHouseholdNaturalUnit(food.servingSize, food.servingSizeUnit, food.householdServingFullText)
 
   return createNutritionInfo({
     source: 'barcode',
     servingDesc,
     perServing,
     barcode: food.gtinUpc || null,
+    ...(household ? { naturalUnits: [household] } : {}),
   })
 }
 
@@ -108,11 +152,17 @@ export function mapFdcSearchFood(food) {
   const perServing = { kcal, protein_g, carbs_g, fat_g }
   if (typeof byId[FDC_NUTRIENT_IDS.fiber_g] === 'number') perServing.fiber_g = byId[FDC_NUTRIENT_IDS.fiber_g]
 
+  // '100 g' stays first — macros above are per 100 g, and callers (e.g.
+  // defaultMeasureFor) take naturalUnits[0]/scalar[0] as "the" serving.
+  const naturalUnits = [{ label: '100 g', gramsOrFraction: 100 }]
+  const household = fdcHouseholdNaturalUnit(food.servingSize, food.servingSizeUnit, food.householdServingFullText)
+  if (household) naturalUnits.push(household)
+
   return createNutritionInfo({
     source: 'online_search',
     servingDesc: '100 g',
     perServing,
-    naturalUnits: [{ label: '100 g', gramsOrFraction: 100 }],
+    naturalUnits,
   })
 }
 

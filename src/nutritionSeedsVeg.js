@@ -209,6 +209,7 @@ const UNBLOCKER_SEEDS = [
   seed('salt', [], '1 tsp (6 g)', [0, 0, 0, 0], [{ label: '1 tsp', gramsOrFraction: 6 }]),
   seed('soy sauce', [], '1 tbsp (16 g)', [8, 1.3, 0.8, 0], [{ label: '1 tbsp', gramsOrFraction: 16 }]),
   seed('sugar', [], '1 tsp (4 g)', [16, 0, 4, 0], [{ label: '1 tsp', gramsOrFraction: 4 }]),
+  seed('brown sugar', [], '1 tsp (4.6 g)', [17, 0, 4.5, 0], [{ label: '1 tsp', gramsOrFraction: 4.6 }]),
 ]
 
 export const VEG_SEEDS = [

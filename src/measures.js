@@ -288,12 +288,18 @@ const SCALAR_UNIT_CANDIDATES = ['cup', 'tbsp', 'tsp', 'g', 'ml', 'piece']
  * @returns {{scalar: string[], phrases: string[]}} `scalar` units are freely
  * re-scalable by quantity (g, cup, serving, ...); `phrases` are whole
  * naturalUnits labels (e.g. "half block") that already encode their own
- * fixed quantity and are offered as-is, not scaled. Round 3.5: a phrase
- * whose embedded unit is a volume word already covered by an offered scalar
- * unit ("1/2 cup dry" vs. "cup", "1 cup chopped" vs. "cup") is dropped —
+ * fixed quantity and are offered as-is, not scaled. General rule (Round 3.5,
+ * generalized to fix the "100 g" phrase-chip bug): a phrase that's just
+ * "<qty> <unit>" for a unit an offered scalar already covers is dropped —
  * the scalar covers it with the same honest math, and showing both is
- * confusing clutter ("serving, g, kg, 1/2 cup dry" was the reported bug).
- * Non-volume phrases with no scalar equivalent ("half block") still show.
+ * confusing clutter ("serving, g, kg, 1/2 cup dry" was the original reported
+ * bug; "100 g" showing up as its own phrase alongside scalar "g" was the
+ * same bug in a different shape). Two ways a phrase's tail can be "covered":
+ * its embedded unit is a volume word covered by an offered scalar ("1/2 cup
+ * dry" vs. "cup", "1 cup chopped" vs. "cup"), or the WHOLE tail is exactly
+ * one token that is itself an offered scalar unit word ("100 g" vs. "g",
+ * "250 ml" vs. "ml", "2 piece" vs. "piece"). Non-covered phrases ("half
+ * block") still show.
  */
 export function resolvableUnitsFor(nutrition) {
   if (!nutrition) return { scalar: [], phrases: [] }
@@ -303,8 +309,11 @@ export function resolvableUnitsFor(nutrition) {
     .map((nu) => nu.label)
     .filter((label) => {
       if (!label || measureToServings(label, nutrition) == null) return false
-      const volUnit = canonicalVolumeUnit(parseMeasure(label).unitTokens)
-      return !(volUnit && scalarSet.has(volUnit))
+      const { unitTokens } = parseMeasure(label)
+      const volUnit = canonicalVolumeUnit(unitTokens)
+      if (volUnit && scalarSet.has(volUnit)) return false
+      if (unitTokens.length === 1 && scalarSet.has(unitTokens[0])) return false
+      return true
     })
   // Last resort only: an item whose nutrition can't resolve ANY real unit
   // (no grams info, no naturalUnits) must stay loggable somehow.
@@ -313,18 +322,42 @@ export function resolvableUnitsFor(nutrition) {
 }
 
 /**
+ * The unit `nutrition.servingDesc` is itself expressed in, IF that unit is
+ * one of the offered scalars — an exact tail match ("100 g" -> "g", "1 tsp"
+ * -> "tsp") or, for a volume tail with trailing descriptor words, its
+ * canonical scalar equivalent ("1/2 cup dry" -> "cup", same coverage check
+ * resolvableUnitsFor itself uses). Returns null when servingDesc doesn't
+ * parse or its unit isn't actually offered, so callers fall back cleanly.
+ * @returns {string|null}
+ */
+function servingDescUnit(nutrition, scalar) {
+  const { unitTokens } = parseMeasure(stripParenthetical(nutrition.servingDesc))
+  if (unitTokens.length === 0) return null
+  const tail = unitTokens.join(' ')
+  if (scalar.includes(tail)) return tail
+  const volUnit = canonicalVolumeUnit(unitTokens)
+  return volUnit && scalar.includes(volUnit) ? volUnit : null
+}
+
+/**
  * The measure to prefill a fresh log of this item with: one serving,
- * expressed in the first offered real unit ("1/3 cup", "100 g") now that
- * 'serving' itself is no longer offered (Round 4.5). Doubles as the answer
- * to "what IS a serving of this?". Falls back to '1 serving' when nothing
- * else resolves (matching resolvableUnitsFor's last-resort picker), and to
- * '' when there's no nutrition at all (measure is pure free text there).
+ * expressed in whichever offered unit servingDesc itself uses when that's
+ * available ("1 tsp (4.6 g)" -> "1 tsp", "100 g" -> "100 g", "1/2 cup dry
+ * (40 g)" -> "1/2 cup"), else the first offered real unit in
+ * SCALAR_UNIT_CANDIDATES order ("1/3 cup", "100 g") now that 'serving'
+ * itself is no longer offered (Round 4.5). The servingDesc preference fixes
+ * a mis-scaling bug: without it, a small teaspoon-sized serving like brown
+ * sugar defaulted to "cup" (SCALAR_UNIT_CANDIDATES' fixed order puts cup
+ * first) and rendered as an unreadable "0.02 cup". Doubles as the answer to
+ * "what IS a serving of this?". Falls back to '1 serving' when nothing else
+ * resolves (matching resolvableUnitsFor's last-resort picker), and to '' when
+ * there's no nutrition at all (measure is pure free text there).
  * @returns {string}
  */
 export function defaultMeasureFor(nutrition) {
   if (!nutrition) return ''
   const { scalar, phrases } = resolvableUnitsFor(nutrition)
-  const unit = scalar[0] || phrases[0]
+  const unit = servingDescUnit(nutrition, scalar) || scalar[0] || phrases[0]
   if (!unit || unit === 'serving') return '1 serving'
   if (isPhraseLabel(unit, nutrition)) return unit
   const qty = qtyForUnit(1, unit, nutrition)
