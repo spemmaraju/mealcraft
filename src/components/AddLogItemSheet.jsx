@@ -203,8 +203,10 @@ export default function AddLogItemSheet({
             nutrition={null}
             fdcKey={fdcKey}
             byok={null}
-            onSave={(nutrition) => {
-              if (nutrition) handleOnlineAdhocStage({ name: query.trim() || 'New food', nutrition })
+            askName
+            initialName={query.trim()}
+            onSave={(nutrition, name) => {
+              if (nutrition) handleOnlineAdhocStage({ name: (name || '').trim() || 'New food', nutrition })
               setManualEntry(false)
             }}
             onCancel={() => setManualEntry(false)}
@@ -280,10 +282,6 @@ export default function AddLogItemSheet({
             </label>
 
             <div className="actiongrid">
-              <button type="button" className="actionbtn" onClick={() => setShowOnline(true)}>
-                <SearchIcon size={20} />
-                <span className="actionbtn__label">Search online</span>
-              </button>
               <button
                 type="button"
                 className="actionbtn"
@@ -295,13 +293,9 @@ export default function AddLogItemSheet({
                 <BarcodeIcon size={20} />
                 <span className="actionbtn__label">Scan barcode</span>
               </button>
-              <button type="button" className="actionbtn" onClick={() => setManualEntry(true)}>
-                <ManualIcon size={20} />
-                <span className="actionbtn__label">Enter manually</span>
-              </button>
-              <button type="button" className="actionbtn" onClick={handleFromPlan}>
-                <PlanIcon size={20} />
-                <span className="actionbtn__label">From plan</span>
+              <button type="button" className="actionbtn" onClick={() => setShowOnline(true)}>
+                <SearchIcon size={20} />
+                <span className="actionbtn__label">Search online</span>
               </button>
               <button
                 type="button"
@@ -317,6 +311,14 @@ export default function AddLogItemSheet({
               >
                 <CameraIcon size={20} />
                 <span className="actionbtn__label">Take photo</span>
+              </button>
+              <button type="button" className="actionbtn" onClick={handleFromPlan}>
+                <PlanIcon size={20} />
+                <span className="actionbtn__label">From plan</span>
+              </button>
+              <button type="button" className="actionbtn" onClick={() => setManualEntry(true)}>
+                <ManualIcon size={20} />
+                <span className="actionbtn__label">Enter manually</span>
               </button>
             </div>
 

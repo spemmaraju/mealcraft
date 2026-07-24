@@ -14,8 +14,18 @@ function toNumOrZero(text) {
 // Second-layer sheet over PantryItemEditor. Scan/seed results prefill the
 // form for confirmation — nothing is saved until the user taps Save (this is
 // the seam Phase 6's label-photo capture will plug into).
-export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok, onSave, onCancel }) {
+export default function NutritionInfoEditor({
+  itemName,
+  nutrition,
+  fdcKey,
+  byok,
+  onSave,
+  onCancel,
+  askName = false,
+  initialName = '',
+}) {
   const base = nutrition ?? createNutritionInfo()
+  const [name, setName] = useState(initialName)
   const [source, setSource] = useState(base.source)
   const [servingDesc, setServingDesc] = useState(base.servingDesc)
   const [servingsPerContainer, setServingsPerContainer] = useState(
@@ -57,9 +67,10 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok,
   }
 
   function handleFillFromSeed() {
-    const seeded = findSeedForName(itemName)
+    const lookupName = askName ? name : itemName
+    const seeded = findSeedForName(lookupName)
     if (!seeded) {
-      setLookupMsg({ type: 'error', text: `No seed table entry matches "${itemName}".` })
+      setLookupMsg({ type: 'error', text: `No seed table entry matches "${lookupName}".` })
       return
     }
     applyPrefill(seeded)
@@ -89,26 +100,43 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok,
   }
 
   function handleSave() {
-    onSave({
-      source,
-      servingDesc,
-      servingsPerContainer: servingsPerContainer.trim() ? toNumOrZero(servingsPerContainer) : null,
-      perServing: {
-        kcal: toNumOrZero(kcal),
-        protein_g: toNumOrZero(protein),
-        carbs_g: toNumOrZero(carbs),
-        fat_g: toNumOrZero(fat),
-        ...(hasFiber ? { fiber_g: toNumOrZero(fiber) } : {}),
+    onSave(
+      {
+        source,
+        servingDesc,
+        servingsPerContainer: servingsPerContainer.trim() ? toNumOrZero(servingsPerContainer) : null,
+        perServing: {
+          kcal: toNumOrZero(kcal),
+          protein_g: toNumOrZero(protein),
+          carbs_g: toNumOrZero(carbs),
+          fat_g: toNumOrZero(fat),
+          ...(hasFiber ? { fiber_g: toNumOrZero(fiber) } : {}),
+        },
+        naturalUnits,
+        barcode,
       },
-      naturalUnits,
-      barcode,
-    })
+      name.trim(),
+    )
   }
 
   return (
     <div className="sheet-backdrop sheet-backdrop--stacked" onClick={onCancel}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <h2>Nutrition — {itemName}</h2>
+        <h2>{askName ? 'Enter manually' : `Nutrition — ${itemName}`}</h2>
+
+        {askName && (
+          <div className="field">
+            <label htmlFor="nutrition-name">Name</label>
+            <input
+              id="nutrition-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Trader Joe's Rolled Oats"
+              autoFocus
+            />
+          </div>
+        )}
 
         <div className="button-row">
           <button type="button" className="btn" onClick={() => setScanning(true)}>
@@ -182,7 +210,12 @@ export default function NutritionInfoEditor({ itemName, nutrition, fdcKey, byok,
         <NaturalUnitsEditor units={naturalUnits} onChange={setNaturalUnits} />
 
         <div className="button-row">
-          <button type="button" className="btn btn--primary" onClick={handleSave}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={handleSave}
+            disabled={askName && !name.trim()}
+          >
             Save
           </button>
           <button type="button" className="btn" onClick={onCancel}>
