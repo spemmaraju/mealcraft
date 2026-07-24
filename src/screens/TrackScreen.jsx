@@ -132,6 +132,10 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
 
   if (!settings) return null
 
+  // Same derivation as PantryScreen: only pass a usable key down, never the
+  // raw settings object, and only when BYOK mode is actually configured.
+  const byok = settings.apiMode === 'byok' && settings.apiKey ? { provider: settings.provider, apiKey: settings.apiKey } : null
+
   const today = trackOps.todayISO()
   const week = trackOps.currentWeek(weeks, today)
   const weekOf = week ? week.weekOf : trackOps.currentWeekSundayISO(today)
@@ -174,6 +178,7 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
         pantry={pantry}
         categories={categories}
         fdcKey={settings.fdcKey}
+        byok={byok}
         today={today}
         fabSignal={fabSignal}
         onLogFromPlan={handleLogFromPlan}

@@ -2204,6 +2204,52 @@ select {
   line-height: 1.2;
 }
 
+/* ---- Photo-capture sheet (PhotoCaptureSheet.jsx) ---- */
+
+.photo-capture-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.photo-capture-row__thumb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-row);
+  background: var(--surface-3);
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.photo-capture-row__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-capture-row__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.photo-capture-row__title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.photo-capture-row__caption {
+  font-size: var(--fs-sub);
+  color: var(--text-tertiary);
+}
+
 /* Search field with a leading icon (add-sheet, pantry, library). */
 .searchfield {
   display: flex;

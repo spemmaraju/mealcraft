@@ -24,6 +24,7 @@ export default function DayLog({
   pantry,
   categories,
   fdcKey,
+  byok,
   today,
   fabSignal,
   onLogFromPlan,
@@ -125,6 +126,7 @@ export default function DayLog({
           pantry={pantry}
           categories={categories}
           fdcKey={fdcKey}
+          byok={byok}
           logs={logs}
           today={today}
           existingComponentIds={existingComponentIds}

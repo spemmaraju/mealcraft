@@ -6,9 +6,18 @@
 // NutritionInfoEditor.jsx) keep working unchanged.
 
 import { chat } from './aiClient.js'
-import { mapOffProduct, mapOffSearchProduct, mapFdcFood, mapFdcSearchFood, mapLabelReply, LABEL_PROMPT } from './nutritionMappers.js'
+import {
+  mapOffProduct,
+  mapOffSearchProduct,
+  mapFdcFood,
+  mapFdcSearchFood,
+  mapLabelReply,
+  LABEL_PROMPT,
+  mapPhotoFoodReply,
+  PHOTO_FOOD_PROMPT,
+} from './nutritionMappers.js'
 
-export { mapOffProduct, mapOffSearchProduct, mapFdcFood, mapFdcSearchFood, mapLabelReply, LABEL_PROMPT }
+export { mapOffProduct, mapOffSearchProduct, mapFdcFood, mapFdcSearchFood, mapLabelReply, LABEL_PROMPT, mapPhotoFoodReply, PHOTO_FOOD_PROMPT }
 
 /**
  * OFF -> FDC (if fdcKey given) -> {ok:false}. Each step try/caught so
@@ -127,6 +136,30 @@ export async function lookupLabelPhoto({ provider, apiKey, mediaType, data }) {
   if (!result.ok) return { ok: false }
   const nutrition = mapLabelReply(result.text)
   return nutrition ? { ok: true, nutrition } : { ok: false }
+}
+
+/**
+ * BYOK combined front-of-package + nutrition-label lookup — ONE chat() call
+ * carrying 1-2 image blocks (caller orders `images`, label first). Same
+ * never-throws {ok, ...} contract as lookupLabelPhoto.
+ * @param {{provider, apiKey, images: {mediaType: string, data: string}[]}} args
+ * @returns {Promise<{ok:true, name: string|null, nutrition: NutritionInfo} | {ok:false}>}
+ */
+export async function lookupFoodPhotos({ provider, apiKey, images }) {
+  const result = await chat({
+    provider,
+    apiKey,
+    messages: [
+      {
+        role: 'user',
+        content: [{ type: 'text', text: PHOTO_FOOD_PROMPT }, ...images.map((img) => ({ type: 'image', ...img }))],
+      },
+    ],
+    maxTokens: 500,
+  })
+  if (!result.ok) return { ok: false }
+  const mapped = mapPhotoFoodReply(result.text)
+  return mapped ? { ok: true, name: mapped.name, nutrition: mapped.nutrition } : { ok: false }
 }
 
 /**

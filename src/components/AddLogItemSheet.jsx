@@ -5,12 +5,13 @@ import * as logSearchOps from '../logSearchOps.js'
 import { buildAddSheetData, initialMeasureForPlan } from '../addSheetOps.js'
 import { defaultMeasureFor } from '../measures.js'
 import { lookupBarcode } from '../nutritionLookup.js'
-import { CloseIcon, SearchIcon, BarcodeIcon, ManualIcon, PlanIcon } from './Icons.jsx'
+import { CloseIcon, SearchIcon, BarcodeIcon, ManualIcon, PlanIcon, CameraIcon } from './Icons.jsx'
 import AddSheetResults from './AddSheetResults.jsx'
 import AddItemAmountStep from './AddItemAmountStep.jsx'
 import FoodSearchSheet from './FoodSearchSheet.jsx'
 import BarcodeScanner from './BarcodeScanner.jsx'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
+import PhotoCaptureSheet from './PhotoCaptureSheet.jsx'
 
 // Round 2: one always-focused search box across TODAY'S PLAN, RECENT,
 // PANTRY, COMMON FOODS (seed table), and MY DISHES, replacing the old
@@ -24,6 +25,7 @@ export default function AddLogItemSheet({
   pantry,
   categories,
   fdcKey,
+  byok,
   logs,
   today,
   meal,
@@ -42,6 +44,10 @@ export default function AddLogItemSheet({
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState(null)
   const [manualEntry, setManualEntry] = useState(false)
+  const [photoOpen, setPhotoOpen] = useState(false)
+  // Set only when "Take photo" is tapped without a BYOK key configured —
+  // rendered exactly like scanError, with a link into Settings alongside it.
+  const [photoKeyWarning, setPhotoKeyWarning] = useState(false)
   // Round 2.7 bugfix: the header's "Add to {Meal} ▾" caret used to be
   // decorative — this is the real dropdown it opens. Switching meal only
   // changes `meal`/`label`/`existingComponentIds` props on this SAME mounted
@@ -148,6 +154,15 @@ export default function AddLogItemSheet({
     const name = result.name || 'Scanned item'
     const plan = pantryOps.planPantrySave(pantry, categories, name, result.nutrition, code)
     setPending({ type: 'pantry', name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan })
+  }
+
+  // Mirrors handleScanned: PhotoCaptureSheet already extracted+confirmed the
+  // name/nutrition, so this just resolves the same duplicate-guard plan and
+  // stages the amount step — no pantry write happens here (hot-fix #1).
+  function handlePhotoUse({ name, nutrition }) {
+    const plan = pantryOps.planPantrySave(pantry, categories, name, nutrition)
+    setPending({ type: 'pantry', name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan })
+    setPhotoOpen(false)
   }
 
   // The only place any of this round's pantry writes actually happen —
@@ -288,6 +303,21 @@ export default function AddLogItemSheet({
                 <PlanIcon size={20} />
                 <span className="actionbtn__label">From plan</span>
               </button>
+              <button
+                type="button"
+                className="actionbtn"
+                onClick={() => {
+                  if (!byok) {
+                    setPhotoKeyWarning(true)
+                    return
+                  }
+                  setPhotoKeyWarning(false)
+                  setPhotoOpen(true)
+                }}
+              >
+                <CameraIcon size={20} />
+                <span className="actionbtn__label">Take photo</span>
+              </button>
             </div>
 
             <AddSheetResults
@@ -299,6 +329,21 @@ export default function AddLogItemSheet({
               planCta={planCta}
             />
             {scanError && <p className="inline-warning">{scanError}</p>}
+            {photoKeyWarning && (
+              <p className="inline-warning">
+                Add a Claude or Gemini API key in Settings to read photos.{' '}
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => {
+                    onGoToSettings()
+                    onClose()
+                  }}
+                >
+                  Open Settings
+                </button>
+              </p>
+            )}
           </>
         ) : (
           <FoodSearchSheet
@@ -312,6 +357,8 @@ export default function AddLogItemSheet({
         )}
 
         {scanning && <BarcodeScanner onCode={handleScanned} onCancel={() => setScanning(false)} />}
+
+        {photoOpen && <PhotoCaptureSheet byok={byok} onUse={handlePhotoUse} onCancel={() => setPhotoOpen(false)} />}
 
         {pending && (
           <AddItemAmountStep

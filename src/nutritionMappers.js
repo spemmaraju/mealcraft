@@ -166,14 +166,13 @@ export function mapFdcSearchFood(food) {
   })
 }
 
-/** Maps a BYOK label-photo reply (fenced or prose JSON) to NutritionInfo, or null if unusable. */
-export function mapLabelReply(text) {
-  let parsed
-  try {
-    parsed = JSON.parse(extractJson(text))
-  } catch {
-    return null
-  }
+/**
+ * Shared perServing/servingDesc/servingsPerContainer parsing for both
+ * label-photo mappers below — `parsed` is already-JSON-parsed model output.
+ * Returns null when the required macro fields aren't all numeric.
+ * @returns {{servingDesc: string, servingsPerContainer: number|null, perServing: object}|null}
+ */
+function parseServingFields(parsed) {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
 
   const ps = parsed.perServing
@@ -188,15 +187,54 @@ export function mapLabelReply(text) {
   const fiber_g = coerceNum(ps.fiber_g)
   if (fiber_g !== null) perServing.fiber_g = fiber_g
 
-  return createNutritionInfo({
-    source: 'label_photo',
+  return {
     servingDesc: typeof parsed.servingDesc === 'string' ? parsed.servingDesc : '',
     servingsPerContainer: coerceNum(parsed.servingsPerContainer),
     perServing,
-  })
+  }
+}
+
+/** Maps a BYOK label-photo reply (fenced or prose JSON) to NutritionInfo, or null if unusable. */
+export function mapLabelReply(text) {
+  let parsed
+  try {
+    parsed = JSON.parse(extractJson(text))
+  } catch {
+    return null
+  }
+  const fields = parseServingFields(parsed)
+  if (!fields) return null
+  return createNutritionInfo({ source: 'label_photo', ...fields })
 }
 
 export const LABEL_PROMPT =
   'This photo shows a nutrition facts label. Output ONLY one JSON object — no prose, no markdown code fences: ' +
   '{"servingDesc": string, "servingsPerContainer": number|null, "perServing": {"kcal": number, "protein_g": number, ' +
   '"carbs_g": number, "fat_g": number, "fiber_g"?: number}}.'
+
+/**
+ * Maps a BYOK front+label combined-photo reply to a name + NutritionInfo, or
+ * null if the macro fields are unusable (name is optional — a missing/
+ * unreadable front photo still yields nutrition with name: null).
+ * @returns {{name: string|null, nutrition: NutritionInfo}|null}
+ */
+export function mapPhotoFoodReply(text) {
+  let parsed
+  try {
+    parsed = JSON.parse(extractJson(text))
+  } catch {
+    return null
+  }
+  const fields = parseServingFields(parsed)
+  if (!fields) return null
+  const name = typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : null
+  return { name, nutrition: createNutritionInfo({ source: 'label_photo', ...fields }) }
+}
+
+export const PHOTO_FOOD_PROMPT =
+  'These photos show a packaged food: the nutrition facts label, and optionally the front of the package. ' +
+  'Output ONLY one JSON object — no prose, no markdown code fences: ' +
+  '{"name": string|null, "servingDesc": string, "servingsPerContainer": number|null, "perServing": {"kcal": number, ' +
+  '"protein_g": number, "carbs_g": number, "fat_g": number, "fiber_g"?: number}}. ' +
+  '"name" is a concise product name (brand + product, e.g. "Trader Joe\'s Rolled Oats") read from the front-of-package ' +
+  "photo if one was provided and the name is visible; null otherwise."

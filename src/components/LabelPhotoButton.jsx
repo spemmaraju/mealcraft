@@ -1,28 +1,6 @@
 import { useRef, useState } from 'react'
 import { lookupLabelPhoto } from '../nutritionLookup.js'
-
-const MAX_DIM = 1024
-
-function downscaleToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const url = URL.createObjectURL(file)
-    img.onload = () => {
-      const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.round(img.width * scale)
-      canvas.height = Math.round(img.height * scale)
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-      URL.revokeObjectURL(url)
-      resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1])
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('Could not read the photo.'))
-    }
-    img.src = url
-  })
-}
+import { downscaleToBase64 } from '../imageCapture.js'
 
 // Behind a styled button so we control layout — the native file input is
 // hidden and triggered via ref. `byok` is { provider, apiKey }.
