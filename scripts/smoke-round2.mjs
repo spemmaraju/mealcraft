@@ -181,25 +181,25 @@ try {
     }
   })
 
-  await check('searchFoods: a TypeError (the real shape a browser fetch throws when offline) is reason:"offline"', async () => {
+  await check('searchFoods: a TypeError (the shape a browser fetch throws for CORS/dropped-connection/etc) is reason:"unreachable", NOT "offline" — Node has no navigator.onLine=false signal here, so this is honestly "reached nothing" rather than blaming the user\'s connection (Round 4.5)', async () => {
     const originalFetch = globalThis.fetch
     globalThis.fetch = async () => {
       throw new TypeError('Failed to fetch')
     }
     try {
       const result = await searchFoods('paneer')
-      assert.deepEqual(result, { ok: false, reason: 'offline' })
+      assert.deepEqual(result, { ok: false, reason: 'unreachable' })
     } finally {
       globalThis.fetch = originalFetch
     }
   })
 
-  await check('searchFoods: a 400 with no upstream/offline signal still degrades to the safe generic "offline" message', async () => {
+  await check('searchFoods: a 400 with no upstream/offline signal still degrades to the safe generic "unreachable" message (Round 4.5 — was "offline")', async () => {
     const originalFetch = globalThis.fetch
     globalThis.fetch = async () => ({ ok: false, status: 400 })
     try {
       const result = await searchFoods('paneer')
-      assert.deepEqual(result, { ok: false, reason: 'offline' })
+      assert.deepEqual(result, { ok: false, reason: 'unreachable' })
     } finally {
       globalThis.fetch = originalFetch
     }

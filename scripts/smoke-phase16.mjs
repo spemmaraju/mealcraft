@@ -1,7 +1,8 @@
 // Zero-dependency Node smoke test for Phase 16 (online food search). No
 // network — mapFdcSearchFood/OFF-hit mapping are tested with inline
-// fixtures, and searchFoods' offline degrade is tested by shimming global
-// fetch to throw. Run with:
+// fixtures, and searchFoods' unreachable degrade is tested by shimming
+// global fetch to throw (Node has no navigator.onLine=false signal, so
+// this lands on reason:"unreachable", not "offline" — Round 4.5). Run with:
 //   node scripts/smoke-phase16.mjs
 
 import assert from 'node:assert/strict'
@@ -78,16 +79,20 @@ try {
     assert.equal(nutrition.perServing.kcal, 265)
   })
 
-  // ==== searchFoods: offline degrade, no network in this test ====
+  // ==== searchFoods: unreachable degrade, no network in this test ====
+  // Node has no navigator.onLine=false signal, so a fetch throwing here is
+  // honestly "reached nothing" (reason:"unreachable"), not "offline" — a
+  // real navigator.onLine=false is the only thing that earns "offline"
+  // (Round 4.5 honest-error-state fix).
 
-  await check('searchFoods: both endpoints failing (offline) returns {ok:false, reason:"offline"}, no throw (Round 2 honest error states)', async () => {
+  await check('searchFoods: both endpoints failing (unreachable) returns {ok:false, reason:"unreachable"}, no throw (Round 2 honest error states, Round 4.5 reason rename)', async () => {
     const originalFetch = globalThis.fetch
     globalThis.fetch = async () => {
-      throw new Error('simulated offline')
+      throw new Error('simulated network failure')
     }
     try {
       const result = await searchFoods('paneer', { fdcKey: 'fake-key' })
-      assert.deepEqual(result, { ok: false, reason: 'offline' })
+      assert.deepEqual(result, { ok: false, reason: 'unreachable' })
     } finally {
       globalThis.fetch = originalFetch
     }
@@ -99,11 +104,11 @@ try {
     globalThis.fetch = async (url) => {
       fetchCount++
       assert.ok(url.includes('openfoodfacts.org'), 'the only fetch attempted must be OFF, not FDC')
-      throw new Error('simulated offline')
+      throw new Error('simulated network failure')
     }
     try {
       const result = await searchFoods('paneer')
-      assert.deepEqual(result, { ok: false, reason: 'offline' })
+      assert.deepEqual(result, { ok: false, reason: 'unreachable' })
       assert.equal(fetchCount, 1, 'exactly one fetch attempt: OFF only')
     } finally {
       globalThis.fetch = originalFetch

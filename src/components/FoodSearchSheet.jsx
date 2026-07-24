@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { searchFoods } from '../nutritionLookup.js'
 import { splitMatch } from '../textMatch.js'
 import { SearchIcon } from './Icons.jsx'
@@ -7,6 +7,7 @@ import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 const ERROR_TEXT = {
   offline: "You're offline — add from pantry or enter manually.",
   upstream: 'Food database is busy — tap to retry.',
+  unreachable: "Couldn't reach the food databases — a busy server or a network filter can cause this. Retry usually works.",
   empty: 'No matches — try fewer words or enter manually.',
 }
 
@@ -24,20 +25,39 @@ const ERROR_TEXT = {
 // searchFoods (FDC above OFF when a key is set); this component just
 // reports the source mix ("12 results · USDA + Open Food Facts") and, when
 // no key is set, nudges toward Settings — never logging the query or key.
+//
+// Round 4.7: the query the user already typed into AddLogItemSheet's search
+// box arrives as `initialQuery` and fires automatically on mount — no more
+// double-tapping "Search". The box and Search button below are now purely
+// for editing that query and re-searching (fixing a typo, trying fewer
+// words after an 'empty' result, retrying after 'upstream'/'unreachable').
 export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, onAdhocStage, onGoToSettings, onBack }) {
   const [query, setQuery] = useState(initialQuery || '')
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState(null)
   const [error, setError] = useState(null)
   const [manualEntry, setManualEntry] = useState(false)
+  // Stale-response guard: each handleSearch call claims the next sequence
+  // number before awaiting; only the invocation still holding the current
+  // number gets to write its result. Without this, firing a search while
+  // one is already in flight (auto-search racing a fast manual Retry, or
+  // two taps) lets a slow/rate-limited response land after a faster later
+  // one and clobber its results/error.
+  const seqRef = useRef(0)
+  // One-shot mount guard for the auto-search effect below — React.StrictMode
+  // (main.jsx) double-invokes effects in dev, and firing the query twice at
+  // Open Food Facts is both wasteful and asking for the rate limit.
+  const autoSearchedRef = useRef(false)
 
-  async function handleSearch() {
-    const q = query.trim()
+  async function handleSearch(q = query) {
+    q = q.trim()
     if (!q) return
+    const seq = ++seqRef.current
     setSearching(true)
     setError(null)
     setResults(null)
     const result = await searchFoods(q, { fdcKey })
+    if (seq !== seqRef.current) return // superseded by a newer search — drop this response
     setSearching(false)
     if (result.ok) {
       setResults(result.results)
@@ -46,6 +66,16 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
       setError(result.reason || 'offline')
     }
   }
+
+  // Fires the search once on arrival, using whatever the user already
+  // typed before tapping "Search online" — matches MeasureInput.jsx's
+  // mount-only focus effect (Round 2 hot-fix #2) in shape.
+  useEffect(() => {
+    if (autoSearchedRef.current) return
+    autoSearchedRef.current = true
+    if (initialQuery && initialQuery.trim()) handleSearch(initialQuery)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (manualEntry) {
     return (
@@ -77,7 +107,7 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
             autoFocus
           />
         </label>
-        <button type="button" className="btn btn--primary" onClick={handleSearch} disabled={!query.trim() || searching}>
+        <button type="button" className="btn btn--primary" onClick={() => handleSearch()} disabled={!query.trim() || searching}>
           {searching ? 'Searching…' : 'Search'}
         </button>
       </div>
@@ -95,8 +125,8 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
         <>
           <p className="placeholder">{ERROR_TEXT[error] || ERROR_TEXT.offline}</p>
           <div className="button-row">
-            {error === 'upstream' && (
-              <button type="button" className="btn" onClick={handleSearch}>
+            {(error === 'upstream' || error === 'unreachable') && (
+              <button type="button" className="btn" onClick={() => handleSearch()}>
                 Retry
               </button>
             )}

@@ -50,10 +50,20 @@ export async function lookupBarcode(code, { fdcKey } = {}) {
   return { ok: false }
 }
 
-/** True when `err` looks like a real network failure (offline/DNS/CORS — the shape a browser `fetch` throws), or the browser has told us we're offline outright. Distinguishes "can't reach the internet" from "reached it, got an error" for the honest error states below. */
-function isOfflineError(err) {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true
-  return err instanceof TypeError
+/**
+ * Classifies a caught fetch failure. 'offline' ONLY when the browser itself
+ * says so (navigator.onLine === false) — that's the one honest "you're
+ * offline" case. A fetch-shaped TypeError (CORS block, content blocker,
+ * dropped connection, DNS) while the browser reports online is
+ * 'unreachable', not offline: the user IS online, the endpoint just didn't
+ * answer. Anything that isn't fetch-shaped (e.g. a JSON parse error) gets no
+ * classification at all — it's not a connectivity signal either way.
+ * @returns {'offline' | 'unreachable' | null}
+ */
+function classifyFetchError(err) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'offline'
+  if (err instanceof TypeError) return 'unreachable'
+  return null
 }
 
 // ---- Round 2.5 §6: search ranking + dedupe (pure, exported for smoke tests) --
@@ -128,10 +138,13 @@ export async function lookupLabelPhoto({ provider, apiKey, mediaType, data }) {
  * Round 2 honest error states: a genuine "0 matches" (an endpoint
  * responded, just found nothing) is `{ok:true, results:[]}`, NOT the same
  * shape as a failure — the caller (FoodSearchSheet) needs to tell "no
- * matches, try fewer words" apart from "you're offline" and "the food
- * database is busy, retry". When every attempted endpoint fails, `reason`
- * is 'upstream' if any of them came back with a 5xx/429, else 'offline'
- * (covers real network failures and the offline flag).
+ * matches, try fewer words" apart from "you're offline", "the food database
+ * is busy, retry", and — Round 4.7 — "reached nothing, but you ARE online,
+ * retry". When every attempted endpoint fails, `reason` prefers 'offline'
+ * if any endpoint failure was genuine-offline (navigator.onLine === false);
+ * else 'upstream' if any came back with a 5xx/429; else 'unreachable' (a
+ * fetch-shaped failure — CORS, a content blocker, a dropped connection —
+ * while the browser reports online, or no signal at all).
  *
  * Round 2.5 §6 ranking: when an FDC key is present, USDA (generally the
  * more reliable, less duplicate-riddled source for branded US products —
@@ -142,7 +155,7 @@ export async function lookupLabelPhoto({ provider, apiKey, mediaType, data }) {
  * keeping whichever occurrence ranked first. Barcode lookups
  * (lookupBarcode) are unaffected — that stays OFF-first, unranked (a
  * barcode has exactly one right answer, not a ranked list).
- * @returns {Promise<{ok: true, results: {name: string, brand: string|null, source: 'off'|'fdc', nutrition: NutritionInfo}[]} | {ok: false, reason: 'offline'|'upstream'}>}
+ * @returns {Promise<{ok: true, results: {name: string, brand: string|null, source: 'off'|'fdc', nutrition: NutritionInfo}[]} | {ok: false, reason: 'offline'|'upstream'|'unreachable'}>}
  */
 export async function searchFoods(query, { fdcKey } = {}) {
   const offResults = []
@@ -165,7 +178,7 @@ export async function searchFoods(query, { fdcKey } = {}) {
       sawUpstreamError = true
     }
   } catch (err) {
-    if (isOfflineError(err)) sawOfflineError = true
+    if (classifyFetchError(err) === 'offline') sawOfflineError = true
   }
 
   if (fdcKey) {
@@ -183,7 +196,7 @@ export async function searchFoods(query, { fdcKey } = {}) {
         sawUpstreamError = true
       }
     } catch (err) {
-      if (isOfflineError(err)) sawOfflineError = true
+      if (classifyFetchError(err) === 'offline') sawOfflineError = true
     }
   }
 
@@ -193,10 +206,12 @@ export async function searchFoods(query, { fdcKey } = {}) {
   const results = dedupeSearchResults(ordered)
 
   if (results.length > 0 || sawSuccess) return { ok: true, results }
-  // Prefer 'upstream' only when we're confident it's not simply offline —
-  // a busy-server message is misleading if the real problem is no
-  // connection at all. Anything else caught (neither flagged) still
-  // defaults to the safe generic offline-style advice.
-  if (sawUpstreamError && !sawOfflineError) return { ok: false, reason: 'upstream' }
-  return { ok: false, reason: 'offline' }
+  // Precedence: genuine-offline beats everything (the browser told us
+  // outright); otherwise a busy/rate-limited upstream beats a plain
+  // "couldn't reach it" so the message points at the real cause. Anything
+  // left over — a fetch-shaped failure while online, or no signal at all —
+  // is 'unreachable', not a false "you're offline".
+  if (sawOfflineError) return { ok: false, reason: 'offline' }
+  if (sawUpstreamError) return { ok: false, reason: 'upstream' }
+  return { ok: false, reason: 'unreachable' }
 }
