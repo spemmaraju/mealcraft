@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import ProvenanceTag from './ProvenanceTag.jsx'
+import { TrashIcon } from './Icons.jsx'
 
 // Round 3.5 design sync: sub-line is "{roughQty or 'on hand'} · {ROLE}" —
 // the "on hand" fallback only fills in when the item actually IS on hand
@@ -9,7 +11,13 @@ function pantrySubline(item) {
   return item.onHand ? 'on hand' : null
 }
 
-export default function PantryItemRow({ item, onToggleOnHand, onOpenEditor }) {
+// Per-row delete affordance (users weren't finding the editor's buried
+// Delete): a small trash icon button right of the on-hand toggle that swaps
+// into the app's usual two-step danger confirm ("Delete?"/"Keep" — same
+// language as AssemblyCards' "Remove?"/"Keep" and PantryItemEditor's
+// "Really delete?"/"Keep it") before actually calling onDelete.
+export default function PantryItemRow({ item, onToggleOnHand, onOpenEditor, onDelete }) {
+  const [confirming, setConfirming] = useState(false)
   const subline = pantrySubline(item)
   return (
     <div className="pantry-row">
@@ -28,13 +36,34 @@ export default function PantryItemRow({ item, onToggleOnHand, onOpenEditor }) {
           )}
         </span>
       </button>
-      <button
-        type="button"
-        className={`pantry-row__onhand${item.onHand ? ' pantry-row__onhand--active' : ''}`}
-        onClick={() => onToggleOnHand(item.id, !item.onHand)}
-        aria-pressed={item.onHand}
-        aria-label={item.onHand ? `${item.name} on hand, tap to mark out` : `${item.name} out, tap to mark on hand`}
-      />
+      {confirming ? (
+        <span className="pantry-row__delete-confirm">
+          <button type="button" className="btn btn--danger" onClick={() => onDelete(item.id)}>
+            Delete?
+          </button>
+          <button type="button" className="btn" onClick={() => setConfirming(false)}>
+            Keep
+          </button>
+        </span>
+      ) : (
+        <>
+          <button
+            type="button"
+            className={`pantry-row__onhand${item.onHand ? ' pantry-row__onhand--active' : ''}`}
+            onClick={() => onToggleOnHand(item.id, !item.onHand)}
+            aria-pressed={item.onHand}
+            aria-label={item.onHand ? `${item.name} on hand, tap to mark out` : `${item.name} out, tap to mark on hand`}
+          />
+          <button
+            type="button"
+            className="pantry-row__delete"
+            onClick={() => setConfirming(true)}
+            aria-label={`Delete ${item.name}`}
+          >
+            <TrashIcon size={18} />
+          </button>
+        </>
+      )}
     </div>
   )
 }

@@ -175,7 +175,13 @@ export default function PantryScreen() {
         </h2>
         {open &&
           items.map((item) => (
-            <PantryItemRow key={item.id} item={item} onToggleOnHand={handleToggleOnHand} onOpenEditor={setEditingItemId} />
+            <PantryItemRow
+              key={item.id}
+              item={item}
+              onToggleOnHand={handleToggleOnHand}
+              onOpenEditor={setEditingItemId}
+              onDelete={handleDeleteItem}
+            />
           ))}
         {open && (addingIn === category ? (
           <input

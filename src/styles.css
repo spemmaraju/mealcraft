@@ -586,6 +586,34 @@ textarea, input[type="text"], input[type="password"], input[type="file"] {
   background: #fff;
 }
 
+.pantry-row__delete {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.pantry-row__delete:active {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.pantry-row__delete-confirm {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .pantry-row__body {
   flex: 1;
   display: flex;
@@ -1927,9 +1955,19 @@ select {
   padding: 9px 0;
 }
 
+/* itemrow__main is a <button> (tap target for the macro-breakdown toggle)
+   masquerading as the plain name/kcal column it always was — reset the
+   button chrome so it keeps reading as inert text until tapped. */
 .itemrow__main {
   flex: 1;
   min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .itemrow__name {
@@ -2002,6 +2040,40 @@ select {
   font-size: var(--fs-sub);
   color: var(--amber);
   margin: 2px 0 0;
+}
+
+/* Expanded per-item macro mix (ItemMacroPanel) — same three donut colors as
+   TrackHero, scaled down to a thin stacked bar + a compact 3-column
+   readout. */
+.item-macro-panel {
+  padding: 2px 0 10px;
+}
+
+.item-macro-panel__empty {
+  font-size: var(--fs-sub);
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+.item-macro-panel__bar {
+  display: flex;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-3);
+  margin-bottom: 8px;
+}
+
+.item-macro-panel__seg {
+  height: 100%;
+}
+
+.item-macro-panel__cols {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 .measure-input__custom-wrap {

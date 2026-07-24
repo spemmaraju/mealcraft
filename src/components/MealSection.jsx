@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as trackOps from '../trackOps.js'
 import { measureToServings, parseMeasure, formatQty } from '../measures.js'
 import { MEAL_ICONS } from './Icons.jsx'
 import ProvenanceTag from './ProvenanceTag.jsx'
 import MeasureInput from './MeasureInput.jsx'
+import ItemMacroPanel from './ItemMacroPanel.jsx'
 
 function itemLabel(item, components, pantry) {
   if (item.kind === 'component') return components.find((c) => c.id === item.componentId)?.name || item.componentId
@@ -91,6 +92,14 @@ export default function MealSection({
   onOpenSaveDish,
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
+  // Which logged item's macro breakdown is expanded, one at a time. Reset on
+  // meal/date change so a stale index can't point at a different day's item
+  // list — it's allowed to reset more eagerly than that too (kept simple).
+  const [expandedIndex, setExpandedIndex] = useState(null)
+
+  useEffect(() => {
+    setExpandedIndex(null)
+  }, [log?.date, log?.meal])
 
   const showLogFromPlan = meal === 'lunch' && card && !log
   const hasItems = log && log.items.length > 0
@@ -144,45 +153,54 @@ export default function MealSection({
             const itemMacro = trackOps.itemMacros(item, components, pantry)
             const provenanceSource = itemProvenanceSource(item, components, pantry)
             const warning = itemMeasureWarning(item, pantry)
+            const isExpanded = expandedIndex === index
             return (
-              <div key={index} className="itemrow">
-                <div className="itemrow__main">
-                  <div className="itemrow__name">
-                    {itemLabel(item, components, pantry)}
-                    {provenanceSource && <ProvenanceTag source={provenanceSource} tiny />}
-                  </div>
-                  <div className="itemrow__sub">
-                    {itemMacro ? Math.round(itemMacro.kcal) : '—'} kcal · {itemDescriptor(item)}
-                  </div>
-                  {warning && <p className="inline-warning">{warning}</p>}
-                </div>
-                <div className="itemrow__controls">
-                  {item.kind === 'component' ? (
-                    <div className="stepper">
-                      <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count - 0.5)}>
-                        −
-                      </button>
-                      <span className="stepper__value">{formatQty(item.count)}</span>
-                      <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count + 0.5)}>
-                        +
-                      </button>
-                    </div>
-                  ) : (
-                    <MeasureInput
-                      value={item.measure}
-                      onChange={(measure) => onSetItemMeasure(index, measure)}
-                      nutrition={itemNutrition(item, pantry)}
-                    />
-                  )}
+              <div key={index} className="itemrow-wrap">
+                <div className="itemrow">
                   <button
                     type="button"
-                    className="itemrow__remove"
-                    onClick={() => onRemoveItem(index)}
-                    aria-label={`Remove ${itemLabel(item, components, pantry)}`}
+                    className="itemrow__main"
+                    onClick={() => setExpandedIndex(isExpanded ? null : index)}
+                    aria-expanded={isExpanded}
                   >
-                    ✕
+                    <div className="itemrow__name">
+                      {itemLabel(item, components, pantry)}
+                      {provenanceSource && <ProvenanceTag source={provenanceSource} tiny />}
+                    </div>
+                    <div className="itemrow__sub">
+                      {itemMacro ? Math.round(itemMacro.kcal) : '—'} kcal · {itemDescriptor(item)}
+                    </div>
+                    {warning && <p className="inline-warning">{warning}</p>}
                   </button>
+                  <div className="itemrow__controls">
+                    {item.kind === 'component' ? (
+                      <div className="stepper">
+                        <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count - 0.5)}>
+                          −
+                        </button>
+                        <span className="stepper__value">{formatQty(item.count)}</span>
+                        <button type="button" className="stepper__btn" onClick={() => onSetItemCount(index, item.count + 0.5)}>
+                          +
+                        </button>
+                      </div>
+                    ) : (
+                      <MeasureInput
+                        value={item.measure}
+                        onChange={(measure) => onSetItemMeasure(index, measure)}
+                        nutrition={itemNutrition(item, pantry)}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="itemrow__remove"
+                      onClick={() => onRemoveItem(index)}
+                      aria-label={`Remove ${itemLabel(item, components, pantry)}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
+                {isExpanded && <ItemMacroPanel itemMacro={itemMacro} />}
               </div>
             )
           })}

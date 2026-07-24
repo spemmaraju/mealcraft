@@ -114,6 +114,14 @@ export function SearchIcon(props) {
   )
 }
 
+export function TrashIcon(props) {
+  return (
+    <Svg strokeWidth={2} {...props}>
+      <path d="M5 7h14M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-8 0l1 13a2 2 0 002 2h4a2 2 0 002-2l1-13M10 11v6M14 11v6" />
+    </Svg>
+  )
+}
+
 export function BarcodeIcon(props) {
   return (
     <Svg strokeWidth={2} {...props}>
