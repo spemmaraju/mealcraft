@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import * as trackOps from '../trackOps.js'
 import { measureToServings, parseMeasure } from '../measures.js'
 import { MEAL_ICONS } from './Icons.jsx'
 import ProvenanceTag from './ProvenanceTag.jsx'
 import MeasureInput from './MeasureInput.jsx'
-import AddLogItemSheet from './AddLogItemSheet.jsx'
 
 function itemLabel(item, components, pantry) {
   if (item.kind === 'component') return components.find((c) => c.id === item.componentId)?.name || item.componentId
@@ -47,50 +46,34 @@ function itemMeasureWarning(item, pantry) {
 // One meal card (components/cards.html / screens/track.html): icon + name +
 // kcal header, divider, item rows (component -> ±0.5 stepper; pantry/adhoc
 // -> MeasureInput), remove-item/remove-log, and the "Log"/"+ Add more" pill
-// into AddLogItemSheet. Lunch keeps the existing one-tap "Log lunch from
-// plan" flow when an assembly card exists and nothing's logged yet for the
-// day. `fabSignal` ({meal, nonce}) auto-opens this card's sheet when the FAB
-// (App.jsx) targets this exact meal.
+// which requests the (single, DayLog-owned) add sheet via onOpenAdd. Lunch
+// keeps the existing one-tap "Log lunch from plan" flow when an assembly
+// card exists and nothing's logged yet for the day.
+//
+// Round 2.7: the add sheet itself moved up to DayLog so its header can
+// retarget which meal a commit lands in (bugfix: the FAB used to lock the
+// user into whatever meal it guessed) — this component no longer renders
+// AddLogItemSheet or reacts to fabSignal directly.
 export default function MealSection({
   meal,
   label,
   log,
-  logs,
-  today,
   components,
   pantry,
-  categories,
-  fdcKey,
   card,
-  fabSignal,
   onLogFromPlan,
-  onAddItems,
   onSetItemCount,
   onSetItemMeasure,
   onRemoveItem,
   onRemoveLog,
-  onSaveToPantry,
-  onAttachNutrition,
-  onGoToSettings,
+  onOpenAdd,
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
-  const [adding, setAdding] = useState(false)
-
-  useEffect(() => {
-    if (fabSignal && fabSignal.meal === meal) setAdding(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fabSignal?.nonce])
 
   const showLogFromPlan = meal === 'lunch' && card && !log
   const hasItems = log && log.items.length > 0
   const macros = hasItems ? trackOps.logMacros(log, components, pantry) : null
-  const existingComponentIds = log ? log.items.filter((i) => i.kind === 'component').map((i) => i.componentId) : []
   const Icon = MEAL_ICONS[meal]
-
-  function handlePick(items) {
-    onAddItems(items)
-    setAdding(false)
-  }
 
   return (
     <div className="meal-section">
@@ -195,28 +178,9 @@ export default function MealSection({
       )}
 
       {!showLogFromPlan && (
-        <button type="button" className="pill-quiet" onClick={() => setAdding(true)}>
+        <button type="button" className="pill-quiet" onClick={onOpenAdd}>
           {hasItems ? '+ Add more' : 'Log'}
         </button>
-      )}
-
-      {adding && (
-        <AddLogItemSheet
-          card={card}
-          components={components}
-          pantry={pantry}
-          categories={categories}
-          fdcKey={fdcKey}
-          logs={logs}
-          today={today}
-          label={label}
-          existingComponentIds={existingComponentIds}
-          onPick={handlePick}
-          onSaveToPantry={onSaveToPantry}
-          onAttachNutrition={onAttachNutrition}
-          onGoToSettings={onGoToSettings}
-          onClose={() => setAdding(false)}
-        />
       )}
     </div>
   )

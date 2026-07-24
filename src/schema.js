@@ -56,6 +56,9 @@ export const RATINGS = ['repeat', 'fine', 'never']
 // ComponentEditor's origin select, which Phase 9 removes entirely.
 export const ORIGINS = ['ai', 'manual', 'adapted']
 export const MEALS = ['breakfast', 'lunch', 'dinner', 'snack']
+// Display labels for MEALS — shared by DayLog (meal-card titles) and
+// AddLogItemSheet (the "Add to {Meal} ▾" picker), Round 2.7.
+export const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' }
 export const LOG_ITEM_KINDS = ['component', 'pantry', 'adhoc']
 export const API_MODES = ['paste', 'byok']
 export const PROVIDERS = ['anthropic', 'google']

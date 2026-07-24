@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { MEALS, MEAL_LABELS } from '../schema.js'
 import * as pantryOps from '../pantryOps.js'
 import * as logSearchOps from '../logSearchOps.js'
 import { buildAddSheetData, initialMeasureForPlan } from '../addSheetOps.js'
@@ -24,9 +25,11 @@ export default function AddLogItemSheet({
   fdcKey,
   logs,
   today,
+  meal,
   label,
   existingComponentIds,
   onPick,
+  onMealChange,
   onSaveToPantry,
   onAttachNutrition,
   onGoToSettings,
@@ -37,6 +40,12 @@ export default function AddLogItemSheet({
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState(null)
   const [manualEntry, setManualEntry] = useState(false)
+  // Round 2.7 bugfix: the header's "Add to {Meal} ▾" caret used to be
+  // decorative — this is the real dropdown it opens. Switching meal only
+  // changes `meal`/`label`/`existingComponentIds` props on this SAME mounted
+  // instance (DayLog keeps one sheet alive across a meal switch), so query/
+  // showOnline/pending below survive untouched.
+  const [pickerOpen, setPickerOpen] = useState(false)
   // "From plan" (action grid) scrolls to the TODAY'S PLAN group rather than
   // filtering to it — AddSheetResults registers each group's DOM node here
   // via onGroupRef so this sheet doesn't need to own the group rendering.
@@ -196,7 +205,42 @@ export default function AddLogItemSheet({
           <button type="button" className="sheet-head__close" onClick={onClose} aria-label="Close">
             <CloseIcon size={16} />
           </button>
-          <span className="sheet-head__title">Add to {label || 'log'} ▾</span>
+          <div className="sheet-head__mealpicker">
+            <button
+              type="button"
+              className="sheet-head__title sheet-head__title--picker"
+              onClick={() => setPickerOpen((v) => !v)}
+              aria-haspopup="listbox"
+              aria-expanded={pickerOpen}
+            >
+              Add to {label || 'log'} <span className="sheet-head__caret" aria-hidden="true">▾</span>
+            </button>
+            {pickerOpen && (
+              <>
+                {/* Covers just the sheet (its ancestor stops backdrop clicks) so
+                    tapping anywhere else closes the picker without also firing
+                    whatever's underneath. */}
+                <div className="sheet-head__mealscrim" onClick={() => setPickerOpen(false)} />
+                <div className="sheet-head__mealmenu" role="listbox" aria-label="Choose meal">
+                  {MEALS.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      role="option"
+                      aria-selected={m === meal}
+                      className={`sheet-head__mealoption${m === meal ? ' sheet-head__mealoption--active' : ''}`}
+                      onClick={() => {
+                        onMealChange(m)
+                        setPickerOpen(false)
+                      }}
+                    >
+                      {MEAL_LABELS[m]}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {!showOnline ? (

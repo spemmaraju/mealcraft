@@ -1,14 +1,20 @@
-import { MEALS } from '../schema.js'
+import { useEffect, useState } from 'react'
+import { MEALS, MEAL_LABELS } from '../schema.js'
 import * as trackOps from '../trackOps.js'
 import MealSection from './MealSection.jsx'
-
-const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' }
+import AddLogItemSheet from './AddLogItemSheet.jsx'
 
 // Round 2.6: the day-strip moved into TrackHero (it's part of the hero card
 // per screens/track.html) — DayLog just renders one MealSection per MEALS
 // entry for whichever date TrackScreen currently has selected.
-// `fabSignal` ({meal, nonce}) comes from the FAB (App.jsx) by way of
-// TrackScreen; each MealSection watches for its own meal to auto-open.
+//
+// Round 2.7 bugfix: the add sheet is now a SINGLE instance owned here
+// (rather than one-per-MealSection) so its "Add to {Meal} ▾" header can be a
+// real picker that retargets which meal a commit lands in — previously each
+// MealSection instantiated its own sheet, so the FAB's fabSignal locked the
+// user into whichever meal it guessed (trackOps.mealForTime()) with no way
+// to change it. MealSection now just calls onOpenAdd(meal) to request the
+// sheet; `fabSignal` ({meal, nonce}) still auto-opens it, exactly as before.
 export default function DayLog({
   week,
   selectedDate,
@@ -30,6 +36,20 @@ export default function DayLog({
   onGoToSettings,
 }) {
   const card = week ? trackOps.assemblyCardForDate(week, selectedDate) : null
+  // null | { meal }. `meal` is retargetable via the sheet's own header picker
+  // without closing/reopening the sheet, so query/pending-amount-step state
+  // inside AddLogItemSheet survives a meal switch untouched.
+  const [addSheet, setAddSheet] = useState(null)
+
+  useEffect(() => {
+    if (fabSignal) setAddSheet({ meal: fabSignal.meal })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fabSignal?.nonce])
+
+  const activeEntry = addSheet ? trackOps.logFor(logs, selectedDate, addSheet.meal) : null
+  const existingComponentIds = activeEntry
+    ? activeEntry.log.items.filter((i) => i.kind === 'component').map((i) => i.componentId)
+    : []
 
   return (
     <div className="day-log">
@@ -41,26 +61,42 @@ export default function DayLog({
             meal={meal}
             label={MEAL_LABELS[meal]}
             log={entry ? entry.log : null}
-            logs={logs}
-            today={today}
             components={components}
             pantry={pantry}
-            categories={categories}
-            fdcKey={fdcKey}
             card={card}
-            fabSignal={fabSignal}
             onLogFromPlan={() => onLogFromPlan(selectedDate)}
-            onAddItems={(items) => onAddItems(selectedDate, meal, items)}
             onSetItemCount={(index, count) => onSetItemCount(selectedDate, meal, index, count)}
             onSetItemMeasure={(index, measure) => onSetItemMeasure(selectedDate, meal, index, measure)}
             onRemoveItem={(index) => onRemoveItem(selectedDate, meal, index)}
             onRemoveLog={() => onRemoveLog(selectedDate, meal)}
-            onSaveToPantry={onSaveToPantry}
-            onAttachNutrition={onAttachNutrition}
-            onGoToSettings={onGoToSettings}
+            onOpenAdd={() => setAddSheet({ meal })}
           />
         )
       })}
+
+      {addSheet && (
+        <AddLogItemSheet
+          meal={addSheet.meal}
+          label={MEAL_LABELS[addSheet.meal]}
+          card={card}
+          components={components}
+          pantry={pantry}
+          categories={categories}
+          fdcKey={fdcKey}
+          logs={logs}
+          today={today}
+          existingComponentIds={existingComponentIds}
+          onMealChange={(meal) => setAddSheet({ meal })}
+          onPick={(items) => {
+            onAddItems(selectedDate, addSheet.meal, items)
+            setAddSheet(null)
+          }}
+          onSaveToPantry={onSaveToPantry}
+          onAttachNutrition={onAttachNutrition}
+          onGoToSettings={onGoToSettings}
+          onClose={() => setAddSheet(null)}
+        />
+      )}
     </div>
   )
 }
