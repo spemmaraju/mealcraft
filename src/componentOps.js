@@ -1,6 +1,9 @@
 // Pure functions over plain component/pantry state. No DOM, no storage
 // imports — callers (UI or smoke script) own persistence. Mirrors pantryOps.js.
 
+import { createComponent } from './schema.js'
+import { logMacros } from './trackOps.js'
+
 export function upsertComponent(components, component) {
   const idx = components.findIndex((c) => c.id === component.id)
   if (idx === -1) return [...components, component]
@@ -73,6 +76,66 @@ export function allCuisineTags(components) {
     }
   }
   return [...seen.values()].sort((a, b) => a.localeCompare(b))
+}
+
+// ---- "Save as dish" (Round 3) ---------------------------------------------
+
+/**
+ * The ingredient lines a logged meal would contribute to a new dish
+ * Component: components contribute their name + "N serving(s)"; pantry
+ * items their name + the measure that was actually logged; adhoc items
+ * their name + measure verbatim. An item whose component/pantry reference
+ * no longer resolves is silently dropped from the list (its absence already
+ * shows up via logMacros' `missing` count, which dishFromMeal below uses to
+ * decide whether macros can be trusted).
+ */
+export function ingredientsFromMeal(log, components, pantry) {
+  const compById = Object.fromEntries((components || []).map((c) => [c.id, c]))
+  const pantryById = Object.fromEntries((pantry || []).map((p) => [p.id, p]))
+  const ingredients = []
+  for (const item of log.items) {
+    if (item.kind === 'component') {
+      const c = compById[item.componentId]
+      if (!c) continue
+      ingredients.push({ name: c.name, measure: `${item.count} serving${item.count === 1 ? '' : 's'}` })
+    } else if (item.kind === 'pantry') {
+      const p = pantryById[item.pantryId]
+      if (!p) continue
+      ingredients.push({ name: p.name, measure: item.measure })
+    } else if (item.kind === 'adhoc') {
+      ingredients.push({ name: item.name, measure: item.measure })
+    }
+  }
+  return ingredients
+}
+
+/**
+ * Builds a type:'dish' Component from a logged meal ("Save as dish", Round
+ * 3) — the user's core repeat-shortcut: a multi-item meal they cook often
+ * becomes a one-tap MY DISHES entry next time. macrosPerServing is the
+ * meal's own summed itemMacros (macroSource 'derived') only when every item
+ * resolved; otherwise null, never a faked number (CLAUDE.md §1). Sensible
+ * defaults for the fields a quick save can't infer: 3-day shelf life, fridge
+ * storage, no station, no steps — all editable afterward like any component.
+ */
+export function dishFromMeal(name, log, components, pantry) {
+  const ingredients = ingredientsFromMeal(log, components, pantry)
+  const totals = logMacros(log, components, pantry || [])
+  const macrosPerServing =
+    totals.missing > 0
+      ? null
+      : { kcal: totals.kcal, protein_g: totals.protein_g, carbs_g: totals.carbs_g, fat_g: totals.fat_g }
+  return createComponent({
+    name: (name || '').trim(),
+    type: 'dish',
+    ingredients,
+    steps: [],
+    shelfLifeDays: 3,
+    storage: 'fridge',
+    station: 'none',
+    macrosPerServing,
+    macroSource: 'derived',
+  })
 }
 
 /** filters = { search, type, rating, makeableOnly, includeArchived } */

@@ -3,7 +3,7 @@
 // build/upsert/remove, and gauge math. No DOM, no storage imports — callers
 // (UI or smoke script) own persistence. Mirrors weekOps.js.
 
-import { createLogEntry } from './schema.js'
+import { createLogEntry, DAYS, DAY_NAMES } from './schema.js'
 import { measureToServings } from './measures.js'
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -35,6 +35,18 @@ function dayOfWeekISO(dateISO) {
 function isWeekdayISO(dateISO) {
   const dow = dayOfWeekISO(dateISO)
   return dow >= 1 && dow <= 5
+}
+
+/** Whole-day difference `laterISO - earlierISO` (positive when later comes after earlier). */
+function daysBetweenISO(earlierISO, laterISO) {
+  const [ey, em, ed] = earlierISO.split('-').map(Number)
+  const [ly, lm, ld] = laterISO.split('-').map(Number)
+  return Math.round((Date.UTC(ly, lm - 1, ld) - Date.UTC(ey, em - 1, ed)) / 86400000)
+}
+
+/** Full weekday name ("Tuesday") for any calendar date — powers the "Log it again" hint's day reference. */
+export function weekdayName(dateISO) {
+  return DAY_NAMES[DAYS[dayOfWeekISO(dateISO)]]
 }
 
 /** @param {string} weekOf Sunday ISO date @returns {{day:string, date:string}[]} Mon..Fri */
@@ -109,6 +121,56 @@ export function removeLogAt(logs, index) {
 export function logFor(logs, dateISO, meal) {
   const index = logs.findIndex((l) => l.date === dateISO && l.meal === meal)
   return index === -1 ? null : { log: logs[index], index }
+}
+
+/**
+ * Round 3 "Log it again": the most recent non-empty log for `meal` strictly
+ * within the 7 days before `dateISO` (today itself and anything older than a
+ * week don't count — a week-old repeat is a coincidence, not a habit).
+ * @returns {{log: object, daysAgo: number}|null}
+ */
+export function lastSameMeal(logs, dateISO, meal) {
+  const candidates = logs
+    .filter((l) => l.meal === meal && l.items.length > 0)
+    .map((l) => ({ log: l, daysAgo: daysBetweenISO(l.date, dateISO) }))
+    .filter((c) => c.daysAgo > 0 && c.daysAgo <= 7)
+    .sort((a, b) => a.daysAgo - b.daysAgo)
+  return candidates.length > 0 ? candidates[0] : null
+}
+
+/**
+ * Round 3 "Log it again": copies a source log's items for re-logging onto
+ * another day. Adhoc items are deep-copied (including their nutrition
+ * snapshot) so editing the copy's measure/nutrition later never mutates the
+ * original day's entry. Component/pantry items are kept as id references —
+ * dropped if that id no longer resolves (the component or pantry item was
+ * deleted since), counted in `skipped` so the caller can say so.
+ * @returns {{items: object[], skipped: number}}
+ */
+export function copyItemsForRelog(log, components, pantry) {
+  const componentIds = new Set((components || []).map((c) => c.id))
+  const pantryIds = new Set((pantry || []).map((p) => p.id))
+  let skipped = 0
+  const items = []
+  for (const item of log.items) {
+    if (item.kind === 'component') {
+      if (componentIds.has(item.componentId)) items.push({ ...item })
+      else skipped += 1
+    } else if (item.kind === 'pantry') {
+      if (pantryIds.has(item.pantryId)) items.push({ ...item })
+      else skipped += 1
+    } else {
+      items.push({
+        ...item,
+        nutrition: {
+          ...item.nutrition,
+          perServing: { ...item.nutrition.perServing },
+          naturalUnits: (item.nutrition.naturalUnits || []).map((u) => ({ ...u })),
+        },
+      })
+    }
+  }
+  return { items, skipped }
 }
 
 /** Logs whose date falls on the Mon-Fri of `weekOf`. */

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import * as storage from '../storage.js'
 import * as trackOps from '../trackOps.js'
 import * as pantryOps from '../pantryOps.js'
+import * as componentOps from '../componentOps.js'
 import { createLogEntry } from '../schema.js'
 import DayLog from '../components/DayLog.jsx'
 import TrackHero from '../components/TrackHero.jsx'
@@ -86,6 +87,28 @@ export default function TrackScreen({ onGoToSettings, fabSignal }) {
     await storage.set('logs', trackOps.removeLogAt(logs, entry.index))
   }
 
+  // Round 3 "Log it again" / its undo: a generic (date, meal) -> LogEntry|null
+  // setter. `log: null` removes whatever entry is there (the undo path when
+  // nothing existed before the copy); otherwise upserts it whole, so the
+  // undo's captured `priorLog` snapshot restores exactly what was there.
+  async function handleSetLog(dateISO, meal, log) {
+    if (log === null) {
+      const entry = trackOps.logFor(logs, dateISO, meal)
+      if (!entry) return
+      await storage.set('logs', trackOps.removeLogAt(logs, entry.index))
+    } else {
+      await storage.set('logs', trackOps.upsertLog(logs, log))
+    }
+  }
+
+  // Round 3 "Save as dish": builds a type:'dish' Component from a logged
+  // meal and adds it to the library — it shows up under MY DISHES next time
+  // the add sheet is opened (already wired via componentOps/filterComponents).
+  async function handleSaveDish(name, log) {
+    const dish = componentOps.dishFromMeal(name, log, components, pantry)
+    await storage.set('components', componentOps.upsertComponent(components, dish))
+  }
+
   async function handleRemoveAt(index) {
     await storage.set('logs', trackOps.removeLogAt(logs, index))
     setConfirmingRemove(null)
@@ -155,12 +178,14 @@ export default function TrackScreen({ onGoToSettings, fabSignal }) {
         fabSignal={fabSignal}
         onLogFromPlan={handleLogFromPlan}
         onAddItems={handleAddItems}
+        onSetLog={handleSetLog}
         onSetItemCount={handleSetItemCount}
         onSetItemMeasure={handleSetItemMeasure}
         onRemoveItem={handleRemoveItem}
         onRemoveLog={handleRemoveLog}
         onSaveToPantry={handleSaveToPantry}
         onAttachNutrition={handleAttachNutrition}
+        onSaveDish={handleSaveDish}
         onGoToSettings={onGoToSettings}
       />
 

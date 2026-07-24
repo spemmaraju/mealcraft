@@ -1815,6 +1815,41 @@ select {
   padding: 10px 0 4px;
 }
 
+/* Round 3 "Log it again" — quiet single-line hint under an empty meal card
+   (styled after MFP's "Swipe right to log Tuesday's meal again"): muted
+   description text, accent arrow as the only "this is tappable" signal. */
+.meal-section__hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 2px;
+  padding: 6px 0 2px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.meal-section__hint-arrow {
+  flex: none;
+  color: var(--brand);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Round 3: houses the "+ Add more"/"Log" pill alongside the quiet
+   "Save as dish" text action, without disturbing .button-row's other uses. */
+.meal-section__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* Item row: name+badge on line 1, editable measure/stepper control on line
    2, kcal as its own right-aligned column spanning the row (itemkcal). */
 .itemrow {

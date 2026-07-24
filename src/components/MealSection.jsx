@@ -11,6 +11,14 @@ function itemLabel(item, components, pantry) {
   return item.name
 }
 
+// "Log it again" hint copy (Round 3): "{first item name}" alone, or
+// "{first item name} and N more" once there's more than one.
+function hintSummary(hintLog, components, pantry) {
+  const names = hintLog.items.map((item) => itemLabel(item, components, pantry))
+  if (names.length <= 1) return names[0] || ''
+  return `${names[0]} and ${names.length - 1} more`
+}
+
 function itemNutrition(item, pantry) {
   if (item.kind === 'pantry') return pantry.find((p) => p.id === item.pantryId)?.nutrition || null
   if (item.kind === 'adhoc') return item.nutrition
@@ -61,12 +69,17 @@ export default function MealSection({
   components,
   pantry,
   card,
+  sameMealHint,
+  undo,
   onLogFromPlan,
+  onLogAgain,
+  onUndo,
   onSetItemCount,
   onSetItemMeasure,
   onRemoveItem,
   onRemoveLog,
   onOpenAdd,
+  onOpenSaveDish,
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
 
@@ -99,7 +112,17 @@ export default function MealSection({
           </button>
         </>
       ) : !hasItems ? (
-        <p className="meal-section__empty-line">Nothing yet</p>
+        <>
+          <p className="meal-section__empty-line">Nothing yet</p>
+          {sameMealHint && (
+            <button type="button" className="meal-section__hint" onClick={onLogAgain}>
+              <span>
+                Log {trackOps.weekdayName(sameMealHint.log.date)}'s {label.toLowerCase()} again — {hintSummary(sameMealHint.log, components, pantry)}
+              </span>
+              <span className="meal-section__hint-arrow" aria-hidden="true">›</span>
+            </button>
+          )}
+        </>
       ) : (
         <>
           {macros && macros.missing > 0 && (
@@ -153,6 +176,17 @@ export default function MealSection({
             )
           })}
 
+          {undo && (
+            <p className="meal-section__subtotal">
+              Logged {undo.count} item{undo.count === 1 ? '' : 's'}
+              {undo.skipped > 0 ? ` (${undo.skipped} skipped — no longer available)` : ''}
+              {' · '}
+              <button type="button" className="link-btn" onClick={onUndo}>
+                Undo
+              </button>
+            </p>
+          )}
+
           {confirmingRemove ? (
             <div className="button-row">
               <button
@@ -178,9 +212,16 @@ export default function MealSection({
       )}
 
       {!showLogFromPlan && (
-        <button type="button" className="pill-quiet" onClick={onOpenAdd}>
-          {hasItems ? '+ Add more' : 'Log'}
-        </button>
+        <div className="meal-section__actions">
+          <button type="button" className="pill-quiet" onClick={onOpenAdd}>
+            {hasItems ? '+ Add more' : 'Log'}
+          </button>
+          {hasItems && log.items.length >= 2 && (
+            <button type="button" className="link-btn" onClick={onOpenSaveDish}>
+              Save as dish
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
