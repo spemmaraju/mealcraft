@@ -6,6 +6,7 @@
 import * as logSearchOps from './logSearchOps.js'
 import * as trackOps from './trackOps.js'
 import { filterComponents } from './componentOps.js'
+import { defaultMeasureFor } from './measures.js'
 
 function recentDisplay(item, byId, pantryById) {
   if (item.kind === 'component') return { label: byId[item.componentId]?.name || item.componentId, sublabel: `${item.count} serving${item.count === 1 ? '' : 's'}` }
@@ -114,11 +115,13 @@ export function buildAddSheetData({ card, components, pantry, logs, today, query
 
 /**
  * The measure/count to prefill the amount step with: the item's last-used
- * one if it appears in recents, else '1 serving'. A brand-new pantry item
- * (plan.planKind === 'create') can never appear in recents yet (it doesn't
- * have an id), so it always starts at '1 serving'.
+ * one if it appears in recents, else one serving expressed in a real unit
+ * (measures.js defaultMeasureFor — Round 4.5, 'serving' is no longer an
+ * offered unit). A brand-new pantry item (plan.planKind === 'create') can
+ * never appear in recents yet (it doesn't have an id), so it always starts
+ * at the default.
  */
 export function initialMeasureForPlan(plan, recents) {
-  if (plan.planKind === 'create') return '1 serving'
-  return logSearchOps.lastUsedFor(recents, 'pantry', plan.pantryId) ?? '1 serving'
+  if (plan.planKind === 'create') return defaultMeasureFor(plan.nutrition)
+  return logSearchOps.lastUsedFor(recents, 'pantry', plan.pantryId) ?? defaultMeasureFor(plan.nutrition)
 }

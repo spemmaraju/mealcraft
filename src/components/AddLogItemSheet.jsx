@@ -3,6 +3,7 @@ import { MEALS, MEAL_LABELS } from '../schema.js'
 import * as pantryOps from '../pantryOps.js'
 import * as logSearchOps from '../logSearchOps.js'
 import { buildAddSheetData, initialMeasureForPlan } from '../addSheetOps.js'
+import { defaultMeasureFor } from '../measures.js'
 import { lookupBarcode } from '../nutritionLookup.js'
 import { CloseIcon, SearchIcon, BarcodeIcon, ManualIcon, PlanIcon } from './Icons.jsx'
 import AddSheetResults from './AddSheetResults.jsx'
@@ -115,7 +116,7 @@ export default function AddLogItemSheet({
     const nutrition = entry.build()
     const category = pantryOps.guessCategory(entry.name, categories) || categories[0] || ''
     const plan = { planKind: 'create', name: entry.name, category, nutrition }
-    setPending({ type: 'pantry', name: entry.name, nutrition, initialMeasure: '1 serving', plan })
+    setPending({ type: 'pantry', name: entry.name, nutrition, initialMeasure: defaultMeasureFor(nutrition), plan })
   }
 
   // Hot-fix #1: planPantrySave is a pure decision (no write) — the
@@ -132,7 +133,7 @@ export default function AddLogItemSheet({
       type: 'adhoc',
       name: food.name,
       nutrition: food.nutrition,
-      initialMeasure: logSearchOps.lastUsedFor(recents, 'adhoc', food.name) ?? '1 serving',
+      initialMeasure: logSearchOps.lastUsedFor(recents, 'adhoc', food.name) ?? defaultMeasureFor(food.nutrition),
     })
   }
 

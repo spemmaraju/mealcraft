@@ -275,10 +275,13 @@ export function measureToServings(measure, nutrition) {
  * Fixed units worth testing for resolvability against a given nutrition.
  * Round 3.5: dropped kg/fl oz from this picker list (parsing still accepts
  * them as free text via gramsFromMeasure/mlFromMeasure — this list only
- * controls what the dropdown OFFERS) and reordered to the kitchen-natural
- * "serving, cup, tbsp, tsp, g, ml, piece" the user actually reaches for.
+ * controls what the dropdown OFFERS). Round 4.5: dropped 'serving' too —
+ * "1 serving" is meaningless at the shelf without knowing the serving size,
+ * so the picker only offers real units. Parsing/conversion of stored
+ * "N serving" measures is untouched (measureToServings path 0, qtyForUnit),
+ * and resolvableUnitsFor still falls back to it when NOTHING else resolves.
  */
-const SCALAR_UNIT_CANDIDATES = ['serving', 'cup', 'tbsp', 'tsp', 'g', 'ml', 'piece']
+const SCALAR_UNIT_CANDIDATES = ['cup', 'tbsp', 'tsp', 'g', 'ml', 'piece']
 
 /**
  * @param {object} nutrition
@@ -294,7 +297,7 @@ const SCALAR_UNIT_CANDIDATES = ['serving', 'cup', 'tbsp', 'tsp', 'g', 'ml', 'pie
  */
 export function resolvableUnitsFor(nutrition) {
   if (!nutrition) return { scalar: [], phrases: [] }
-  const scalar = SCALAR_UNIT_CANDIDATES.filter((u) => u === 'serving' || measureToServings(`1 ${u}`, nutrition) != null)
+  const scalar = SCALAR_UNIT_CANDIDATES.filter((u) => measureToServings(`1 ${u}`, nutrition) != null)
   const scalarSet = new Set(scalar)
   const phrases = (nutrition.naturalUnits || [])
     .map((nu) => nu.label)
@@ -303,7 +306,30 @@ export function resolvableUnitsFor(nutrition) {
       const volUnit = canonicalVolumeUnit(parseMeasure(label).unitTokens)
       return !(volUnit && scalarSet.has(volUnit))
     })
+  // Last resort only: an item whose nutrition can't resolve ANY real unit
+  // (no grams info, no naturalUnits) must stay loggable somehow.
+  if (scalar.length === 0 && phrases.length === 0) scalar.push('serving')
   return { scalar, phrases }
+}
+
+/**
+ * The measure to prefill a fresh log of this item with: one serving,
+ * expressed in the first offered real unit ("1/3 cup", "100 g") now that
+ * 'serving' itself is no longer offered (Round 4.5). Doubles as the answer
+ * to "what IS a serving of this?". Falls back to '1 serving' when nothing
+ * else resolves (matching resolvableUnitsFor's last-resort picker), and to
+ * '' when there's no nutrition at all (measure is pure free text there).
+ * @returns {string}
+ */
+export function defaultMeasureFor(nutrition) {
+  if (!nutrition) return ''
+  const { scalar, phrases } = resolvableUnitsFor(nutrition)
+  const unit = scalar[0] || phrases[0]
+  if (!unit || unit === 'serving') return '1 serving'
+  if (isPhraseLabel(unit, nutrition)) return unit
+  const qty = qtyForUnit(1, unit, nutrition)
+  if (qty == null) return '1 serving'
+  return `${formatQty(qty)} ${unit}`
 }
 
 /**

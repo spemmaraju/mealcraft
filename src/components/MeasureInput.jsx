@@ -29,7 +29,23 @@ import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripL
 // (measures.js matchScalarUnit) is only used on the nutrition-aware path
 // below, where the descriptor really is safe to drop (the scalar unit
 // already covers the same honest math — see resolvableUnitsFor).
-const UNIT_OPTIONS = ['g', 'kg', 'ml', 'tsp', 'tbsp', 'cup', 'fl oz', 'piece', 'serving']
+// Round 4.5: 'serving' removed from both pickers — meaningless without
+// knowing the serving size. Stored "N serving" measures still parse
+// (measures.js keeps the conversion path) and are re-expressed as the first
+// real unit on load (deriveInitial below).
+const UNIT_OPTIONS = ['g', 'kg', 'ml', 'tsp', 'tbsp', 'cup', 'fl oz', 'piece']
+
+// Quick-fraction chips shown above the qty box while it's focused: the iOS
+// decimal keypad has no "/" key, so fractions were untypable there. Tapping
+// a chip replaces the qty (or appends to a plain whole number: "1" + ½ ->
+// "1 1/2"); parseQty already understands the emitted ascii form.
+const FRACTION_CHIPS = [
+  ['¼', '1/4'],
+  ['⅓', '1/3'],
+  ['½', '1/2'],
+  ['⅔', '2/3'],
+  ['¾', '3/4'],
+]
 
 function unitFromTokens(tokens, allowed) {
   const joined = tokens.join(' ')
@@ -41,10 +57,10 @@ function unitTextFor(state) {
   return state.isPhraseUnit ? stripLeadingQty(state.unit) : state.unit
 }
 
-function deriveInitial(value, allowedUnits) {
+function deriveInitial(value, allowedUnits, nutrition) {
   const raw = typeof value === 'string' ? value : ''
   const optionPool = allowedUnits ? allowedUnits.scalar : UNIT_OPTIONS
-  const defaultUnit = optionPool[0] || 'serving'
+  const defaultUnit = optionPool[0] || 'g'
 
   if (!raw.trim()) return { mode: 'structured', qtyText: '', unit: defaultUnit, custom: '', isPhraseUnit: false }
 
@@ -58,6 +74,17 @@ function deriveInitial(value, allowedUnits) {
     // instead of falling through to an unnecessary custom/warning state.
     const scalarHit = matchScalarUnit(raw, allowedUnits.scalar)
     if (scalarHit) return { mode: 'structured', qtyText: formatQty(scalarHit.qty), unit: scalarHit.unit, custom: raw, isPhraseUnit: false }
+    // Round 4.5: legacy/stored "N serving(s)" with 'serving' no longer
+    // offered — re-express as the equivalent amount of the first offered
+    // unit ("1 serving" -> "1/3 cup") instead of dropping to raw-text mode.
+    const parsed = parseMeasure(raw)
+    if (parsed.qty != null && /^servings?$/.test(parsed.unitTokens.join(' '))) {
+      const unit = allowedUnits.scalar[0] || allowedUnits.phrases[0]
+      const rescaled = unit ? qtyForUnit(parsed.qty, unit, nutrition) : null
+      if (rescaled != null) {
+        return { mode: 'structured', qtyText: formatQty(rescaled), unit, custom: raw, isPhraseUnit: allowedUnits.phrases.includes(unit) }
+      }
+    }
     return { mode: 'custom', qtyText: '', unit: defaultUnit, custom: raw, isPhraseUnit: false }
   }
 
@@ -75,7 +102,8 @@ function composedValue(state) {
 /** @param {{value: string, onChange: (v: string) => void, placeholder?: string, nutrition?: object|null, autoFocus?: boolean}} props */
 export default function MeasureInput({ value, onChange, placeholder, nutrition, autoFocus = false }) {
   const allowedUnits = nutrition ? resolvableUnitsFor(nutrition) : null
-  const [state, setState] = useState(() => deriveInitial(value, allowedUnits))
+  const [state, setState] = useState(() => deriveInitial(value, allowedUnits, nutrition))
+  const [qtyFocused, setQtyFocused] = useState(false)
   const qtyRef = useRef(null)
 
   // Round 2 hot-fix #2: focus+select together, in the same effect, rather
@@ -96,6 +124,20 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
     const qtyText = e.target.value
     setState((s) => ({ ...s, qtyText }))
     onChange(`${qtyText} ${unitTextFor(state)}`.trim())
+  }
+
+  function applyFraction(frac) {
+    const el = qtyRef.current
+    const v = state.qtyText
+    // Mirror typing semantics: if the whole value is selected (the
+    // focus/select() behavior above), the chip replaces it; a plain whole
+    // number gets the fraction appended ("1" + ½ -> "1 1/2"); anything else
+    // (an existing fraction/decimal) is replaced.
+    const allSelected = el != null && v.length > 0 && el.selectionStart === 0 && el.selectionEnd === v.length
+    const trimmed = v.trim()
+    const next = !trimmed || allSelected ? frac : /^\d+$/.test(trimmed) ? `${trimmed} ${frac}` : frac
+    setState((s) => ({ ...s, qtyText: next }))
+    onChange(`${next} ${unitTextFor(state)}`.trim())
   }
 
   function handleUnitChange(e) {
@@ -180,7 +222,7 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
             placeholder={placeholder || 'Measure (e.g. 1/3 cup)'}
           />
           {nutrition && failedUnit && trulyUnresolvable && (
-            <p className="inline-warning">couldn't convert "{failedUnit}" — pick g or serving</p>
+            <p className="inline-warning">couldn't convert "{failedUnit}" — try g</p>
           )}
         </div>
         {unitSelect}
@@ -197,7 +239,11 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
         className="measure-input__qty"
         value={state.qtyText}
         onChange={handleQtyChange}
-        onFocus={(e) => e.target.select()}
+        onFocus={(e) => {
+          setQtyFocused(true)
+          e.target.select()
+        }}
+        onBlur={() => setQtyFocused(false)}
         onMouseUp={(e) => {
           // Round 2 hot-fix #2 (part 2): clicking into a field that's
           // ALREADY focused (e.g. the user tapped it again after switching
@@ -213,6 +259,17 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
         }}
         placeholder="qty"
       />
+      {qtyFocused && (
+        // preventDefault on pointerdown keeps the qty input focused (no blur,
+        // keyboard stays up, selection intact) so onClick still fires after.
+        <div className="measure-input__fracbar" onPointerDown={(e) => e.preventDefault()}>
+          {FRACTION_CHIPS.map(([glyph, ascii]) => (
+            <button key={ascii} type="button" onClick={() => applyFraction(ascii)}>
+              {glyph}
+            </button>
+          ))}
+        </div>
+      )}
       {unitSelect}
     </div>
   )

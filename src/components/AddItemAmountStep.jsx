@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import MeasureInput from './MeasureInput.jsx'
+import { defaultMeasureFor } from '../measures.js'
 
 // Shared "how much" step for every AddLogItemSheet pick except the two
 // one-tap fast paths (today's plan, recent re-add) — CLAUDE.md Round 2 spec
@@ -12,11 +13,11 @@ import MeasureInput from './MeasureInput.jsx'
 // as its own stacked sheet, same convention as BarcodeScanner/
 // NutritionInfoEditor layering over an already-open sheet.
 export default function AddItemAmountStep({ name, kind, nutrition, initialMeasure, initialCount, onConfirm, onCancel }) {
-  const [measure, setMeasure] = useState(initialMeasure ?? '1 serving')
+  const [measure, setMeasure] = useState(initialMeasure ?? defaultMeasureFor(nutrition))
   const [count, setCount] = useState(initialCount ?? 1)
 
   function handleAdd() {
-    onConfirm(kind === 'component' ? { count } : { measure: measure.trim() || '1 serving' })
+    onConfirm(kind === 'component' ? { count } : { measure: measure.trim() || defaultMeasureFor(nutrition) || '1 serving' })
   }
 
   return (
