@@ -1,47 +1,74 @@
-/* Warm Kitchen palette: terracotta (--brand) for actions/navigation,
-   green (--accent) reserved for food status — on hand, success, repeat. */
+/* Round 2.6 retheme: tokens lifted verbatim from the approved design bundle
+   (foundations/tokens.html, foundations/type.html) — dark-only, MyFitnessPal-
+   reference palette. Every existing component class keeps its name; only the
+   token values (and a handful of layout rules called out in the bundle)
+   change, so this single block re-themes the whole app without touching
+   most JSX. */
 :root {
-  color-scheme: light;
-  --bg: #faf8f5;
-  --surface: #ffffff;
-  --text: #1f2320;
-  --text-muted: #6b6f6c;
-  --brand: #b04a2b;
-  --brand-soft: #f6e7df;
-  --accent: #2f6b4f;
-  --accent-soft: #e9f3ee;
-  --accent-border: #c9e2d5;
+  color-scheme: dark;
+  --bg: #0b0e13;
+  --bg-grad-top: #1b2436;
+  --surface: #1b1f29;
+  --surface-2: #20242f;
+  --surface-3: #262b38;
+  --border: #2a2f3b;
+  --text: #f5f6f8;
+  --text-muted: #98a0ac;
+  --text-tertiary: #6b7280;
+
+  /* accent-blue is the app's one interactive color (was terracotta --brand);
+     --accent stays the "on hand / success / repeat" green, now aligned with
+     the design bundle's verified-green token. */
+  --brand: #4c8dff;
+  --brand-soft: #22314f;
+  --fab-blue: #6fa8ff;
+  --accent: #34c471;
+  --accent-soft: #12351f;
+  --accent-border: #1f4a30;
   --accent-contrast: #ffffff;
-  --border: #e2ded6;
-  --danger: #b3423a;
-  --danger-soft: #fbeae8;
-  --danger-border: #f0c6c2;
-  --gold: #b08a2e;
-  --amber: #c98a2b;
-  --teal: #3f8f8a;
-  --shadow-sm: 0 1px 2px rgba(31, 35, 32, 0.06);
-  --shadow-md: 0 4px 14px rgba(31, 35, 32, 0.1);
 
-  /* Round 2.5 type scale (CLAUDE.md §5 legibility + MyFitnessPal reference
-     density): five roles cover every text size in the app. --fs-num is the
-     one deliberately bold, slightly-larger role for kcal numerals — MFP's
-     "big bold number, tiny quiet label" pattern. Base 17px (mobile-primary
-     per CLAUDE.md §1) so every rem below is relative to that, not the
-     browser's 16px default. */
-  --fs-title: 1.6rem;
-  --fs-section: 1.2rem;
-  --fs-body: 1.05rem;
-  --fs-sub: 0.85rem;
-  --fs-micro: 0.7rem;
-  --fs-num: 1.2rem;
+  --danger: #ff6b6b;
+  --danger-soft: #3a1f20;
+  --danger-border: #5c2f30;
+  --gold: #ffb74d;
+  --amber: #ffb74d;
+  --teal: #2fd9c4;
 
-  /* One card radius for every bordered section/sheet/card container
-     (Round 2.5 §7) — distinct from the smaller control radius buttons and
-     inputs use inline (8-10px), which is a separate, intentionally smaller
-     scale. */
-  --radius-card: 16px;
+  /* Provenance badge colors (components/rows.html) — 4 fixed sources. */
+  --green-seed: #34c471;
+  --green-seed-soft: #12351f;
+  --blue-online: #4c8dff;
+  --blue-online-soft: #132038;
+  --gray-manual: #98a0ac;
+  --gray-manual-soft: #22262f;
+  --purple-barcode: #a78bfa;
+  --purple-barcode-soft: #241d3a;
 
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Macro donut segments (foundations/tokens.html). */
+  --donut-carbs: #2fd9c4;
+  --donut-fat: #b18aff;
+  --donut-protein: #ffb74d;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.4);
+
+  /* Type scale (foundations/type.html) — flat px so it's independent of the
+     root font-size below (which only matters for legacy rem-based rules
+     elsewhere in this file, e.g. cooking-mode step text). */
+  --fs-title: 32px;
+  --fs-section: 20px;
+  --fs-body: 17px;
+  --fs-sub: 14px;
+  --fs-micro: 12px;
+  --fs-num: 16px; /* row-level kcal numerals (rows.html kcalnum) */
+  --fs-bignum: 34px; /* hero donut center numeral only */
+
+  /* Radii (foundations/tokens.html): card 20 / row 16 / button 14 / pill 999. */
+  --radius-card: 20px;
+  --radius-row: 16px;
+  --radius-btn: 14px;
+
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
   font-size: 17px;
 }
 
@@ -65,7 +92,7 @@ body {
   height: 100dvh;
   max-width: 480px;
   margin: 0 auto;
-  background: var(--bg);
+  background: linear-gradient(180deg, var(--bg-grad-top), var(--bg) 260px);
 }
 
 .app-content {
@@ -81,21 +108,21 @@ body {
   justify-content: space-between;
   flex: none;
   padding: calc(10px + env(safe-area-inset-top, 0)) 16px 10px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: transparent;
 }
 
 .app-header__title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--fs-section);
+  color: var(--text);
 }
 
 .app-header__help {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--brand);
-  background: var(--surface);
+  border: 1px solid var(--border);
+  background: var(--surface-3);
   color: var(--brand);
   font-weight: 600;
   line-height: 1;
@@ -105,11 +132,13 @@ body {
 .screen h1 {
   font-size: var(--fs-title);
   font-weight: 700;
-  margin: 4px 0 12px;
+  letter-spacing: -0.3px;
+  margin: 4px 2px 18px;
+  color: var(--text);
 }
 
 .placeholder {
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
 .field-caption {
@@ -129,22 +158,45 @@ details.field[open] summary {
   margin-bottom: 12px;
 }
 
+/* ---- Bottom nav (pill) + FAB (components/nav.html) ---- */
+
 .tab-bar {
+  flex: none;
+  position: relative;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0));
+  min-height: 76px;
+}
+
+.tab-bar__inner {
+  position: relative;
+  height: 60px;
+}
+
+.tab-bar__nav {
+  position: absolute;
+  left: 0;
+  right: 74px;
+  bottom: 0;
+  height: 60px;
+  background: rgba(32, 36, 47, 0.92);
+  backdrop-filter: blur(10px);
+  border-radius: 999px;
+  border: 1px solid var(--border);
   display: flex;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  align-items: center;
+  justify-content: space-around;
 }
 
 .tab-bar__item {
-  flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-height: 56px;
-  padding: 6px 4px;
+  gap: 3px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
   border: none;
   background: none;
   color: var(--text-muted);
@@ -159,12 +211,43 @@ details.field[open] summary {
 
 .tab-bar__item--active {
   color: var(--brand);
+}
+
+.tab-bar__label {
+  font-size: 11px;
   font-weight: 600;
 }
 
-.tab-bar__icon {
-  font-size: 1.25rem;
-  line-height: 1;
+.tab-bar__badge {
+  position: absolute;
+  top: 2px;
+  right: calc(50% - 14px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  border: 1.5px solid var(--surface-2);
+}
+
+.tab-bar__fab {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  background: var(--fab-blue);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(111, 168, 255, 0.35);
+  cursor: pointer;
+}
+
+.tab-bar__fab:active {
+  transform: scale(0.95);
 }
 
 button {
@@ -174,11 +257,12 @@ button {
 .btn {
   min-height: 44px;
   padding: 10px 16px;
-  border-radius: 10px;
+  border-radius: var(--radius-btn);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-3);
   color: var(--text);
-  font-size: var(--fs-body);
+  font-size: var(--fs-sub);
+  font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
@@ -204,12 +288,41 @@ button {
 .btn--danger {
   background: var(--danger);
   border-color: var(--danger);
-  color: var(--accent-contrast);
+  color: #2a0d0d;
 }
 
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Pills (components/actions.html) — used for meal-card "Log"/"+ Add more"
+   and the amount-step/lunch-from-plan primary actions. */
+.pill-primary {
+  min-height: 50px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  padding: 0 20px;
+  cursor: pointer;
+}
+
+.pill-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: none;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .field {
@@ -219,13 +332,13 @@ button {
   margin-bottom: 16px;
 }
 
-textarea, input[type="text"] {
+textarea, input[type="text"], input[type="password"], input[type="file"] {
   font-family: inherit;
-  font-size: var(--fs-body);
+  font-size: var(--fs-sub);
   padding: 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-3);
   color: var(--text);
 }
 
@@ -242,6 +355,7 @@ textarea, input[type="text"] {
   font-size: var(--fs-section);
   font-weight: 700;
   margin: 0 0 12px;
+  color: var(--text);
 }
 
 .settings-advanced {
@@ -254,6 +368,7 @@ textarea, input[type="text"] {
   font-size: var(--fs-section);
   padding: 12px 4px;
   list-style: revert;
+  color: var(--text);
 }
 
 .settings-advanced[open] > summary {
@@ -267,7 +382,7 @@ textarea, input[type="text"] {
 }
 
 .message {
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   padding: 10px 12px;
   font-size: var(--fs-sub);
   margin-top: 10px;
@@ -288,14 +403,14 @@ textarea, input[type="text"] {
 .diff-summary {
   font-size: var(--fs-sub);
   color: var(--text);
-  background: var(--bg);
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   padding: 10px 12px;
   margin: 10px 0;
 }
 
-/* ---- Pantry ---- */
+/* ---- Pantry (screens/pantry.html) ---- */
 
 .pantry-filters {
   display: flex;
@@ -305,7 +420,9 @@ textarea, input[type="text"] {
 }
 
 .pantry-filters__search {
-  min-height: 44px;
+  min-height: 48px;
+  border-radius: 999px;
+  padding-left: 18px;
 }
 
 .pantry-filters__chips {
@@ -332,9 +449,9 @@ textarea, input[type="text"] {
 
 .pantry-quick-add__category {
   min-height: 44px;
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-3);
   color: var(--text);
   padding: 8px;
 }
@@ -344,8 +461,8 @@ textarea, input[type="text"] {
   padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  background: var(--surface-3);
+  color: var(--text-muted);
   font-size: var(--fs-sub);
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
@@ -386,22 +503,23 @@ textarea, input[type="text"] {
 }
 
 .pantry-section__name {
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  font-size: var(--fs-micro);
 }
 
 .pantry-section__count {
   margin-left: auto;
   font-size: var(--fs-micro);
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   text-transform: none;
 }
 
 .pantry-section__chevron {
   flex: none;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   font-size: 0.9rem;
   transition: transform 0.15s ease;
 }
@@ -415,25 +533,48 @@ textarea, input[type="text"] {
   align-items: center;
   gap: 10px;
   border-bottom: 1px solid var(--border);
-  padding: 4px 0;
+  padding: 10px 2px;
 }
 
+.pantry-row:last-child {
+  border-bottom: none;
+}
+
+/* Toggle switch (screens/pantry.html) — the on-hand control used to be a
+   checkbox-shaped button; it's now the same iOS-style pill switch the
+   design bundle uses everywhere on/off state is shown. */
 .pantry-row__onhand {
   flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--accent);
-  font-size: 1.2rem;
+  width: 46px;
+  height: 28px;
+  min-height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: var(--surface-3);
+  position: relative;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.pantry-row__onhand::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg);
+  transition: left 0.15s ease, background-color 0.15s ease;
 }
 
 .pantry-row__onhand--active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--green-seed);
+}
+
+.pantry-row__onhand--active::after {
+  left: 21px;
+  background: #fff;
 }
 
 .pantry-row__body {
@@ -454,7 +595,7 @@ textarea, input[type="text"] {
   font-size: var(--fs-micro);
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--bg);
+  background: var(--surface-3);
   border: 1px solid var(--border);
   color: var(--text-muted);
 }
@@ -464,14 +605,23 @@ textarea, input[type="text"] {
   border-color: var(--accent);
 }
 
+.pantry-row__roletag {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .pantry-fast-add__btn {
   min-height: 44px;
   width: 100%;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
+  border: none;
+  border-radius: var(--radius-btn);
   background: none;
   color: var(--text-muted);
-  font-size: var(--fs-body);
+  font-size: var(--fs-sub);
+  font-weight: 600;
   cursor: pointer;
   margin-top: 6px;
 }
@@ -481,20 +631,20 @@ textarea, input[type="text"] {
   width: 100%;
   margin-top: 6px;
   font-family: inherit;
-  font-size: var(--fs-body);
+  font-size: var(--fs-sub);
   padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--brand);
-  background: var(--surface);
+  border-radius: var(--radius-btn);
+  border: 1.5px solid var(--brand);
+  background: var(--surface-3);
   color: var(--text);
 }
 
-/* ---- Bottom-sheet editors ---- */
+/* ---- Bottom-sheet editors (components/sheet.html) ---- */
 
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(3, 4, 6, 0.55);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -502,25 +652,73 @@ textarea, input[type="text"] {
 }
 
 .sheet {
+  position: relative;
   width: 100%;
   max-width: 480px;
   max-height: 88vh;
   overflow-y: auto;
-  background: var(--surface);
-  border-radius: 16px 16px 0 0;
-  padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0));
-  box-shadow: var(--shadow-md);
+  background: var(--bg);
+  border-radius: 24px 24px 0 0;
+  padding: 28px 20px calc(20px + env(safe-area-inset-bottom, 0));
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Drag-handle grabber — every sheet gets it for free, matching the bundle's
+   bottom-sheet component without touching each consumer's markup. */
+.sheet::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: #333a47;
 }
 
 .sheet h2 {
   margin: 0 0 16px;
   font-size: var(--fs-section);
   font-weight: 700;
+  color: var(--text);
 }
 
 .sheet__danger-row {
   margin-top: 8px;
   align-items: center;
+}
+
+/* "Add to {Meal} ▾" header (screens/add-sheet.html): close-circle left,
+   centered accent-blue title. */
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 44px;
+  margin-bottom: 14px;
+}
+
+.sheet-head__close {
+  position: absolute;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-3);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sheet-head__title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--brand);
 }
 
 .help-sheet .help-section {
@@ -530,12 +728,13 @@ textarea, input[type="text"] {
 .help-sheet .help-section h3 {
   margin: 0 0 6px;
   font-size: var(--fs-body);
+  color: var(--text);
 }
 
 .help-sheet .help-section p,
 .help-sheet .help-section li {
   font-size: var(--fs-sub);
-  color: var(--text);
+  color: var(--text-muted);
 }
 
 .help-sheet .help-section ol,
@@ -554,6 +753,7 @@ textarea, input[type="text"] {
   align-items: center;
   gap: 8px;
   min-height: 44px;
+  color: var(--text);
 }
 
 .checkbox-field input {
@@ -564,11 +764,11 @@ textarea, input[type="text"] {
 select {
   min-height: 44px;
   font-family: inherit;
-  font-size: var(--fs-body);
+  font-size: var(--fs-sub);
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-3);
   color: var(--text);
 }
 
@@ -596,6 +796,7 @@ select {
 .category-list__name {
   flex: 1;
   cursor: pointer;
+  color: var(--text);
 }
 
 .category-list__move {
@@ -614,7 +815,9 @@ select {
 }
 
 .library-filters__search {
-  min-height: 44px;
+  min-height: 48px;
+  border-radius: 999px;
+  padding-left: 18px;
 }
 
 .library-filters__chips {
@@ -630,7 +833,7 @@ select {
 }
 
 .library-empty {
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   padding: 24px 0;
   text-align: center;
 }
@@ -664,14 +867,14 @@ select {
 .component-row__name {
   flex: 1;
   font-size: var(--fs-body);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .component-row__badge {
   font-size: var(--fs-micro);
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--bg);
+  background: var(--surface-3);
   border: 1px solid var(--border);
   color: var(--text-muted);
 }
@@ -696,9 +899,9 @@ select {
 .rating-segment {
   flex: 1;
   min-height: 44px;
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-3);
   color: var(--text-muted);
   font-size: var(--fs-sub);
   cursor: pointer;
@@ -713,13 +916,13 @@ select {
 .rating-segment--active.rating-segment--fine {
   background: var(--gold);
   border-color: var(--gold);
-  color: var(--accent-contrast);
+  color: #2a1d00;
 }
 
 .rating-segment--active.rating-segment--never {
   background: var(--danger);
   border-color: var(--danger);
-  color: var(--accent-contrast);
+  color: #2a0d0d;
 }
 
 /* ---- Ingredient / step list editors ---- */
@@ -790,11 +993,12 @@ select {
 .list-add-btn {
   min-height: 44px;
   width: 100%;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  background: none;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: var(--surface-3);
   color: var(--text-muted);
   font-size: var(--fs-sub);
+  font-weight: 600;
   cursor: pointer;
   margin-top: 4px;
 }
@@ -831,6 +1035,7 @@ select {
 .component-detail__title {
   font-size: var(--fs-title);
   margin: 0 0 10px;
+  color: var(--text);
 }
 
 .component-detail__meta {
@@ -845,10 +1050,11 @@ select {
 }
 
 .component-detail__section h2 {
-  font-size: var(--fs-section);
-  color: var(--text-muted);
+  font-size: var(--fs-sub);
+  color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  font-weight: 700;
   margin: 0 0 8px;
 }
 
@@ -862,11 +1068,12 @@ select {
 
 /* Deliberately bigger than --fs-body: recipe steps are read stove-side,
    phone propped on the counter (CLAUDE.md §1 "kitchen-friendly") — an
-   intentional exception to the 5-role scale, not an oversight. */
+   intentional exception to the type scale, not an oversight. */
 .component-detail__steps {
   font-size: 1.25rem;
   line-height: 1.5;
   padding-left: 1.4em;
+  color: var(--text);
 }
 
 .component-detail__steps li {
@@ -878,6 +1085,7 @@ select {
   gap: 16px;
   flex-wrap: wrap;
   font-size: var(--fs-body);
+  color: var(--text);
 }
 
 .provenance-tag {
@@ -885,9 +1093,57 @@ select {
   font-size: var(--fs-micro);
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--bg);
+  background: var(--surface-3);
   border: 1px solid var(--border);
   color: var(--text-muted);
+}
+
+/* Non-4-color informational pill (e.g. "Open Food Facts" / "USDA FDC" source
+   tag) — distinct from the seed/online/manual/barcode .badge system. */
+.provenance-tag--tiny {
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+/* ---- Provenance badges (components/rows.html / components/actions.html) --
+   4 fixed colors: seed=green, online=blue, manual=gray, barcode=purple. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px 2px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.badge--tiny {
+  font-size: 10px;
+  padding: 1px 6px;
+  gap: 3px;
+}
+
+.badge--seed {
+  background: var(--green-seed-soft);
+  color: var(--green-seed);
+}
+
+.badge--online {
+  background: var(--blue-online-soft);
+  color: var(--blue-online);
+}
+
+.badge--manual {
+  background: var(--gray-manual-soft);
+  color: var(--gray-manual);
+}
+
+.badge--barcode {
+  background: var(--purple-barcode-soft);
+  color: var(--purple-barcode);
 }
 
 /* ---- Plan / Ideator ---- */
@@ -905,6 +1161,7 @@ select {
   font-size: var(--fs-section);
   font-weight: 700;
   margin: 0 0 12px;
+  color: var(--text);
 }
 
 .plan-generate-step {
@@ -917,6 +1174,7 @@ select {
   font-size: var(--fs-body);
   font-weight: 700;
   margin: 0 0 10px;
+  color: var(--text);
 }
 
 .segmented {
@@ -932,11 +1190,11 @@ select {
 }
 
 .stepper__btn {
-  min-height: 44px;
-  min-width: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  min-height: 36px;
+  min-width: 36px;
+  border-radius: 999px;
+  border: none;
+  background: var(--surface-3);
   color: var(--text);
   font-size: 1.1rem;
   cursor: pointer;
@@ -945,8 +1203,9 @@ select {
 .stepper__value {
   min-width: 2ch;
   text-align: center;
-  font-size: var(--fs-body);
+  font-size: var(--fs-sub);
   font-weight: 600;
+  color: var(--text);
 }
 
 .prompt-fallback {
@@ -959,7 +1218,7 @@ select {
 
 .conflict-row {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-btn);
   padding: 10px 12px;
   margin-bottom: 10px;
 }
@@ -979,7 +1238,7 @@ select {
 
 .week-summary__group h3 {
   font-size: var(--fs-sub);
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   margin: 0 0 6px;
@@ -1007,6 +1266,7 @@ select {
 .week-view__weekof {
   font-size: var(--fs-section);
   margin: 0;
+  color: var(--text);
 }
 
 .plan-empty-state ol {
@@ -1036,8 +1296,7 @@ select {
 .run-sheet__bar {
   height: 6px;
   border-radius: 999px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--surface-3);
   overflow: hidden;
   margin-bottom: 16px;
 }
@@ -1053,7 +1312,7 @@ select {
 
 .run-sheet__station {
   font-size: var(--fs-sub);
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   margin: 0 0 6px;
@@ -1079,9 +1338,9 @@ select {
   flex: none;
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: var(--radius-btn);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-3);
   color: var(--accent-contrast);
   font-size: 1.2rem;
   cursor: pointer;
@@ -1102,6 +1361,7 @@ select {
 .run-sheet__action {
   flex: 1;
   font-size: var(--fs-body);
+  color: var(--text);
 }
 
 .run-sheet__component {
@@ -1125,11 +1385,12 @@ select {
 }
 
 .assembly-card--swap-target {
-  border-style: dashed;
+  border-color: var(--brand);
+  background: var(--brand-soft);
 }
 
 .assembly-card--refresh {
-  background: var(--bg);
+  background: var(--surface-2);
 }
 
 .assembly-card__header {
@@ -1143,6 +1404,7 @@ select {
 .assembly-card__header h3 {
   font-size: var(--fs-body);
   margin: 0;
+  color: var(--text);
 }
 
 .assembly-card__swap-btn {
@@ -1201,6 +1463,7 @@ select {
 
 .assembly-card__empty {
   padding: 8px 0;
+  color: var(--text-tertiary);
 }
 
 .assembly-card__note {
@@ -1213,6 +1476,7 @@ select {
   font-size: var(--fs-sub);
   margin: 8px 0 0;
   padding-left: 1.2em;
+  color: var(--text);
 }
 
 /* ---- Component picker sheet ---- */
@@ -1221,41 +1485,61 @@ select {
   margin-bottom: 12px;
 }
 
-/* ---- Unified add-item search (Round 2) ---- */
+/* ---- Unified add-item search (Round 2 / retthemed Round 2.6) ---- */
 
 .add-sheet__group {
-  margin-bottom: 10px;
+  margin-bottom: 18px;
 }
 
 .add-sheet__group-title {
-  margin: 0 0 2px;
-  font-size: var(--fs-micro);
+  margin: 0 0 8px;
+  font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
-/* Round 2.5 §5: a proper 44px round tap target, MFP-style, instead of a
-   bare "+" glyph floating at whatever size the row's font-size implied. */
+.add-sheet__list,
+.picker-sheet__list {
+  max-height: none;
+}
+
+/* Rows inside the add sheet sit on a shared card surface (screens/add-
+   sheet.html .card), one level up from --bg the sheet itself sits on. */
+.add-sheet__group .add-sheet__row,
+.add-sheet__group .picker-sheet__row {
+  background: var(--surface);
+}
+
+.add-sheet__row:first-child,
+.picker-sheet__row:first-child {
+  border-radius: var(--radius-row) var(--radius-row) 0 0;
+}
+
+.add-sheet__row:last-child,
+.picker-sheet__row:last-child {
+  border-radius: 0 0 var(--radius-row) var(--radius-row);
+}
+
 .add-sheet__row-plus {
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--accent);
-  font-size: 1.2rem;
+  border: 1.5px solid var(--brand);
+  background: transparent;
+  color: var(--brand);
+  font-size: 20px;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.picker-sheet__list {
-  max-height: 45vh;
-  overflow-y: auto;
-  margin-bottom: 12px;
+.match-highlight {
+  font-weight: 700;
+  color: var(--text);
 }
 
 .picker-sheet__row {
@@ -1272,7 +1556,7 @@ select {
   color: var(--text);
   font-size: var(--fs-body);
   cursor: pointer;
-  padding: 4px 0;
+  padding: 10px 14px;
 }
 
 .picker-sheet__name {
@@ -1280,25 +1564,21 @@ select {
 }
 
 .picker-sheet__row--selected {
-  background: var(--surface-active, var(--surface));
+  background: var(--surface-2);
   color: var(--accent);
 }
 
-/* ---- Universal two-line row (Round 2.5 §2) ----
-   One shared pattern for every list row that shows an item + its macro:
-   logged meal items (MealSection), the add sheet's recents/grouped
-   results (AddSheetResults), pantry rows (PantryItemRow), and online
-   search results (FoodSearchSheet). Line 1: bold name (+ the row's own
-   right-aligned control, e.g. a stepper, or a bold kcal numeral). Line 2:
-   quiet gray measure/provenance, with any interactive control (stepper,
-   MeasureInput, "+" button) right-aligned. Kills the clipped/variable-
-   width look a from bespoke per-surface row markup. */
+/* ---- Universal two-line row ----
+   Shared pattern for list rows that show an item + its macro: pantry rows,
+   the add sheet's grouped results, and online search results. Line 1: name
+   (+ any inline badge). Line 2: quiet measure/provenance, with the row's own
+   control (stepper, MeasureInput, "+" button) right-aligned. */
 .row2 {
   display: flex;
   align-items: center;
   gap: 10px;
   min-height: 56px;
-  padding: 8px 4px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
   width: 100%;
   border-left: none;
@@ -1308,6 +1588,10 @@ select {
   text-align: left;
   color: var(--text);
   cursor: pointer;
+}
+
+.row2:last-child {
+  border-bottom: none;
 }
 
 .row2__main {
@@ -1328,18 +1612,21 @@ select {
 }
 
 .row2__name {
-  font-size: var(--fs-body);
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .row2__sub {
-  font-size: var(--fs-sub);
+  font-size: 13.5px;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1368,42 +1655,86 @@ select {
 
 .row2__num {
   font-size: var(--fs-num);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   white-space: nowrap;
 }
 
 .row2__submeta {
   font-size: var(--fs-micro);
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
-/* ---- Day log / meal sections (Phase 15) ---- */
+.track-section-head {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 22px 2px 12px;
+}
+
+/* ---- Day log / meal cards (components/cards.html, screens/track.html) --- */
 
 .meal-section {
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
-  margin-top: 10px;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: 16px 16px 14px;
+  margin-top: 14px;
 }
 
 .meal-section__header {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 6px;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.meal-section__icon {
+  flex: none;
+  color: var(--brand);
+  width: 22px;
+  height: 22px;
 }
 
 .meal-section__title {
+  flex: 1;
   margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.meal-section__kcal {
+  font-size: var(--fs-num);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.meal-section__kcal span {
+  font-weight: 400;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  margin-left: 3px;
+}
+
+.meal-section__kcal--empty {
+  color: var(--text-tertiary);
+}
+
+.meal-section__divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0 2px;
 }
 
 .meal-section__preview {
   color: var(--text-muted);
+  margin: 8px 0;
 }
 
 .meal-section__summary {
   margin-bottom: 8px;
+  color: var(--text);
 }
 
 .meal-section__subtotal {
@@ -1411,27 +1742,49 @@ select {
   font-size: var(--fs-sub);
 }
 
-.meal-section__item-row2 {
-  align-items: stretch;
-  flex-direction: column;
-  cursor: default;
+.meal-section__empty-line {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  padding: 10px 0 4px;
 }
 
-.meal-section__item-row2 .row2__line1 {
-  align-items: baseline;
+/* Item row: name+badge on line 1, editable measure/stepper control on line
+   2, kcal as its own right-aligned column spanning the row (itemkcal). */
+.itemrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
 }
 
-/* Logged-item rows carry an editable control (stepper/MeasureInput) on
-   line 2 instead of a static sub-label — too wide to share the line with
-   anything else at mobile widths, so it just gets the full line,
-   right-aligned. The provenance tag moves up to line 1 instead (see
-   MealSection.jsx). */
-.meal-section__item-row2 .row2__line2 {
-  justify-content: flex-end;
+.itemrow__main {
+  flex: 1;
+  min-width: 0;
 }
 
-.row2__tag {
+.itemrow__name {
+  font-size: 15.5px;
+  color: var(--text);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.itemrow__sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.itemrow__kcal {
   flex: none;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .inline-warning {
@@ -1463,9 +1816,9 @@ select {
   flex: none;
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: var(--radius-btn);
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-3);
   color: var(--accent-contrast);
   font-size: 1.2rem;
   cursor: pointer;
@@ -1479,17 +1832,16 @@ select {
 .grocery-row__label {
   flex: 1;
   font-size: var(--fs-body);
+  color: var(--text);
 }
 
 .grocery-row__label--dismissed {
   text-decoration: line-through;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
 /* ---- Nutrition capture (Phase 4.5) ---- */
 
-/* Second-layer sheets (nutrition editor over item editor, scanner over
-   nutrition editor) stack above the first sheet-backdrop's z-index: 10. */
 .sheet-backdrop--stacked {
   z-index: 20;
 }
@@ -1500,247 +1852,274 @@ select {
   gap: 8px;
   font-size: var(--fs-sub);
   margin: 6px 0;
-}
-
-/* Intentionally smaller than --fs-micro: an inline tag riding alongside
-   body text (e.g. next to a pantry row name), not a standalone label. */
-.provenance-tag--tiny {
-  font-size: 0.62rem;
-  padding: 1px 6px;
+  color: var(--text);
 }
 
 .barcode-scanner__video {
   width: 100%;
   max-height: 50vh;
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   background: #000;
   object-fit: cover;
 }
 
-/* ---- Track / Logging (Phase 5) ---- */
+/* ---- Add-sheet action grid (components/actions.html) ---- */
 
-.day-strip {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.day-strip__day {
-  flex: 1;
-  min-height: 44px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-size: var(--fs-sub);
-  cursor: pointer;
-}
-
-.day-strip__day--selected {
-  border-color: var(--brand);
-  border-width: 2px;
-}
-
-.day-strip__day--logged {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.log-meal-card__preview {
-  color: var(--text-muted);
-  margin: 8px 0;
-}
-
-.log-meal-card__summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.actiongrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
-  margin: 8px 0;
+  margin-bottom: 20px;
 }
 
-.log-meal-card__summary-text {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  color: var(--text);
-}
-
-.log-meal-card__log-btn {
-  width: 100%;
-}
-
-.log-meal-card__portion {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 44px;
-  border-bottom: 1px solid var(--border);
-}
-
-.log-meal-card__other {
-  margin-top: 12px;
-}
-
-.log-meal-card__other-list {
-  margin-bottom: 12px;
-}
-
-.log-meal-card__other-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  border-bottom: 1px solid var(--border);
-  font-size: var(--fs-body);
-}
-
-.gauges-panel {
-  position: relative;
-}
-
-.gauges-panel__today {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.gauges-panel__today-label {
-  font-size: var(--fs-sub);
-  color: var(--text-muted);
-}
-
-.protein-chart {
-  position: relative;
-  height: 140px;
-  margin: 12px 0;
-}
-
-.protein-chart__band {
-  position: absolute;
-  left: 0;
-  right: 0;
-  background: rgba(47, 107, 79, 0.16);
-  border-radius: 4px;
-}
-
-.protein-chart__bars {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  height: 100%;
-  gap: 6px;
-}
-
-.protein-chart__bar-col {
-  flex: 1;
+.actionbtn {
+  background: var(--surface-3);
+  border: none;
+  border-radius: var(--radius-row);
+  height: 72px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  height: 100%;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  cursor: pointer;
+  color: var(--brand);
 }
 
-.protein-chart__bar {
-  width: 60%;
-  min-height: 10px;
-  border-radius: 4px 4px 0 0;
-  background: var(--text-muted);
-  opacity: 0.6;
+.actionbtn svg {
+  color: var(--brand);
 }
 
-.protein-chart__bar--in-band {
-  background: var(--accent);
-  opacity: 0.85;
+.actionbtn__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--brand);
+  text-align: center;
+  line-height: 1.2;
 }
 
-/* Partial data (some logged components have unknown macros) reads as
-   hatched, never as a solid bar implying a precise (possibly near-zero)
-   total we don't actually know. */
-.protein-chart__bar--partial {
-  background-image: repeating-linear-gradient(
-    45deg,
-    currentColor,
-    currentColor 3px,
-    transparent 3px,
-    transparent 6px
-  );
-  background-color: transparent;
-  color: var(--text-muted);
-  opacity: 0.9;
-  border: 1px solid var(--text-muted);
-}
-
-.protein-chart__bar--partial.protein-chart__bar--in-band {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.protein-chart__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--border);
-  margin-bottom: 4px;
-}
-
-.protein-chart__day-label {
-  font-size: var(--fs-micro);
-  color: var(--text-muted);
-  margin-top: 4px;
-}
-
-.plate-mix__legend {
+/* Search field with a leading icon (add-sheet, pantry, library). */
+.searchfield {
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: var(--fs-micro);
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  padding: 0 16px;
+  margin-bottom: 16px;
   color: var(--text-muted);
-  margin-bottom: 8px;
 }
 
-.plate-mix__legend-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-right: 4px;
-}
-
-.plate-mix__legend-dot--protein, .plate-mix__segment--protein {
-  background: var(--accent);
-}
-
-.plate-mix__legend-dot--carbs, .plate-mix__segment--carbs {
-  background: var(--amber);
-}
-
-.plate-mix__legend-dot--veg, .plate-mix__segment--veg {
-  background: var(--teal);
-}
-
-.plate-mix__legend-dot--other, .plate-mix__segment--other {
-  background: var(--border);
-}
-
-.plate-mix__bar {
-  display: flex;
-  height: 16px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--bg);
-  margin-bottom: 8px;
-}
-
-.gauges-panel__streak, .gauges-panel__money {
-  font-size: var(--fs-sub);
-  margin: 8px 0;
+.searchfield:focus-within {
+  border: 1.5px solid var(--brand);
+  box-shadow: 0 0 0 4px rgba(76, 141, 255, 0.18);
   color: var(--text);
 }
+
+.searchfield svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.searchfield:focus-within svg {
+  color: var(--brand);
+}
+
+.searchfield input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.searchfield input:focus {
+  outline: none;
+}
+
+/* ---- Track hero (screens/track.html, components/cards.html) ---- */
+
+.track-hero {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+.track-hero__daystrip {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.track-hero__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 32px;
+}
+
+.track-hero__daylabel {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.track-hero__circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #3a4150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3a4150;
+}
+
+.track-hero__circle--selected {
+  background: #fff;
+  border-color: #fff;
+  color: var(--bg);
+}
+
+.track-hero__circle--today {
+  border-style: dashed;
+  border-color: var(--brand);
+}
+
+.track-hero__herotop {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.track-hero__donut {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+}
+
+.track-hero__macros {
+  flex: 1;
+  display: flex;
+  justify-content: space-around;
+}
+
+.track-hero__macro {
+  text-align: center;
+}
+
+.track-hero__macro-pct {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.track-hero__macro-g {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.track-hero__macro-lbl {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 1px;
+}
+
+.track-hero__estimate-hint {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  margin: -8px 0 14px;
+}
+
+.track-hero__bandwrap {
+  margin-bottom: 16px;
+}
+
+.track-hero__bandhead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.track-hero__bandhead b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.track-hero__bandtrack {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+
+.track-hero__bandzone {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  border-radius: 999px;
+  background: rgba(76, 141, 255, 0.16);
+  border: 1px solid rgba(76, 141, 255, 0.4);
+}
+
+.track-hero__bandfill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 999px;
+  background: var(--brand);
+}
+
+.track-hero__bandmarker {
+  position: absolute;
+  top: -4px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--brand);
+}
+
+.track-hero__bandcaption {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  margin-top: 10px;
+}
+
+.track-hero__footerline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.track-hero__footerline svg {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+/* ---- Recent logs (kept from GaugesPanel, retooled tokens) ---- */
 
 .recent-log-row {
   display: flex;
@@ -1759,11 +2138,12 @@ select {
 
 .recent-log-row__date {
   font-size: var(--fs-sub);
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
 .recent-log-row__components {
   font-size: var(--fs-body);
+  color: var(--text);
 }
 
 .recent-log-row__confirm {
@@ -1772,21 +2152,21 @@ select {
   flex: none;
 }
 
-/* Phase 6 */
+/* ---- Install hint / backup card ---- */
 
 .banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: var(--surface);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
-  padding: 6px 12px;
-  font-size: var(--fs-micro);
-  line-height: 1.2;
+  padding: 8px 16px;
+  font-size: 13px;
+  line-height: 1.3;
   color: var(--text);
-  min-height: 32px;
-  max-height: 40px;
+  min-height: 36px;
+  max-height: 48px;
   overflow: hidden;
 }
 
@@ -1805,18 +2185,38 @@ select {
 }
 
 .banner__actions .btn {
-  padding: 4px 8px;
+  padding: 4px 10px;
   font-size: var(--fs-micro);
+  min-height: 32px;
 }
 
 .banner__dismiss {
-  color: var(--text-muted);
+  color: var(--text-tertiary);
+}
+
+.backup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.backup-card--overdue {
+  border-color: var(--amber);
+}
+
+.backup-card h2 {
+  font-size: var(--fs-section);
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text);
 }
 
 .micro-action-preview {
-  background: var(--bg);
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   padding: 12px;
   margin: 10px 0;
 }
@@ -1824,6 +2224,7 @@ select {
 .micro-action-preview h3 {
   margin: 0 0 8px;
   font-size: var(--fs-section);
+  color: var(--text);
 }
 
 .micro-action-preview p {
@@ -1832,7 +2233,7 @@ select {
   margin: 6px 0 0;
 }
 
-/* ---- Online food search (Phase 16 / Round 2.5 §6) ---- */
+/* ---- Online food search (Phase 16 / Round 2.5 §6 / retooled 2.6) ---- */
 
 .food-search__count {
   font-size: var(--fs-sub);
@@ -1848,28 +2249,4 @@ select {
 .food-search__actions {
   width: 100%;
   margin-top: 6px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --bg: #16181a;
-    --surface: #1e2124;
-    --text: #edeceA;
-    --text-muted: #9a9d9b;
-    --border: #33373a;
-    --brand: #c25f3c;
-    --brand-soft: #3a2a21;
-    --accent: #4f9673;
-    --accent-soft: #22322a;
-    --accent-border: #35503f;
-    --danger: #d06258;
-    --danger-soft: #3a2422;
-    --danger-border: #5c332f;
-    --gold: #cfa54a;
-    --amber: #d9a04a;
-    --teal: #57aaa4;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
-    --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.55);
-  }
 }

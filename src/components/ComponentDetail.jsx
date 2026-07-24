@@ -1,12 +1,6 @@
+import ProvenanceTag from './ProvenanceTag.jsx'
+
 const STATION_LABELS = { stovetop: 'Stovetop', oven: 'Oven', instant_pot: 'Instant Pot', none: 'Other' }
-const MACRO_SOURCE_LABELS = {
-  barcode: 'Barcode',
-  label_photo: 'Label photo',
-  seed_table: 'Seed table',
-  ai_estimate: 'AI estimate',
-  manual: 'Manual',
-  derived: 'Derived',
-}
 
 export default function ComponentDetail({ component, byokActive, onBack, onEdit, onRegenerate }) {
   return (
@@ -68,8 +62,7 @@ export default function ComponentDetail({ component, byokActive, onBack, onEdit,
         {component.macrosPerServing && (
           <div className="component-detail__section">
             <h2>
-              Macros per serving{' '}
-              <span className="provenance-tag">{MACRO_SOURCE_LABELS[component.macroSource] ?? component.macroSource}</span>
+              Macros per serving <ProvenanceTag source={component.macroSource} tiny />
             </h2>
             <div className="component-detail__macros">
               <span>{component.macrosPerServing.kcal} kcal</span>

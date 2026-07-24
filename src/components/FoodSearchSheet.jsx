@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { searchFoods } from '../nutritionLookup.js'
+import { splitMatch } from '../textMatch.js'
+import { SearchIcon } from './Icons.jsx'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 
 const ERROR_TEXT = {
@@ -64,15 +66,17 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
   return (
     <div className="field">
       <div className="button-row">
-        <input
-          type="text"
-          className="library-filters__search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          placeholder="Search for a food"
-          autoFocus
-        />
+        <label className="searchfield" style={{ flex: 1 }}>
+          <SearchIcon size={18} />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="Search for a food"
+            autoFocus
+          />
+        </label>
         <button type="button" className="btn btn--primary" onClick={handleSearch} disabled={!query.trim() || searching}>
           {searching ? 'Searching…' : 'Search'}
         </button>
@@ -117,7 +121,17 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
             {results.map((food, i) => (
               <div key={i} className="row2 food-search__row">
                 <span className="row2__main">
-                  <span className="row2__name">{food.name}</span>
+                  <span className="row2__name">
+                    {splitMatch(food.name, query).map((seg, i) =>
+                      seg.match ? (
+                        <span key={i} className="match-highlight">
+                          {seg.text}
+                        </span>
+                      ) : (
+                        <span key={i}>{seg.text}</span>
+                      ),
+                    )}
+                  </span>
                   <span className="row2__sub">
                     {food.brand && <span>{food.brand} · </span>}
                     <span className="provenance-tag provenance-tag--tiny">{food.source === 'off' ? 'Open Food Facts' : 'USDA FDC'}</span>

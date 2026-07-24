@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import * as pantryOps from '../pantryOps.js'
 import * as logSearchOps from '../logSearchOps.js'
-import * as trackOps from '../trackOps.js'
-import { filterComponents } from '../componentOps.js'
+import { buildAddSheetData, initialMeasureForPlan } from '../addSheetOps.js'
 import { lookupBarcode } from '../nutritionLookup.js'
+import { CloseIcon, SearchIcon, BarcodeIcon, ManualIcon, PlanIcon } from './Icons.jsx'
 import AddSheetResults from './AddSheetResults.jsx'
 import AddItemAmountStep from './AddItemAmountStep.jsx'
 import FoodSearchSheet from './FoodSearchSheet.jsx'
 import BarcodeScanner from './BarcodeScanner.jsx'
+import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 
 // Round 2: one always-focused search box across TODAY'S PLAN, RECENT,
 // PANTRY, COMMON FOODS (seed table), and MY DISHES, replacing the old
@@ -35,6 +36,11 @@ export default function AddLogItemSheet({
   const [showOnline, setShowOnline] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState(null)
+  const [manualEntry, setManualEntry] = useState(false)
+  // "From plan" (action grid) scrolls to the TODAY'S PLAN group rather than
+  // filtering to it — AddSheetResults registers each group's DOM node here
+  // via onGroupRef so this sheet doesn't need to own the group rendering.
+  const groupRefs = useRef({})
   // Staged pick awaiting the shared amount step:
   //   { type: 'component', componentId, name, initialCount }
   //   { type: 'adhoc', name, nutrition, initialMeasure }
@@ -45,87 +51,15 @@ export default function AddLogItemSheet({
   // backing out of the amount step (Back/close) never touches storage.
   const [pending, setPending] = useState(null)
 
-  const byId = Object.fromEntries(components.map((c) => [c.id, c]))
-  const pantryById = Object.fromEntries(pantry.map((p) => [p.id, p]))
-  const excludedComponentIds = new Set(existingComponentIds || [])
-  const hasQuery = query.trim().length > 0
-  const { matchesQuery, rankByPrefix } = logSearchOps
-
-  // Recents whose referenced component/pantry item was since deleted are
-  // dropped rather than shown with a dangling name.
-  const recents = logSearchOps
-    .deriveRecents(logs, today)
-    .filter((r) => (r.item.kind === 'component' ? byId[r.item.componentId] : r.item.kind === 'pantry' ? pantryById[r.item.pantryId] : true))
-
-  function recentDisplay(item) {
-    if (item.kind === 'component') return { label: byId[item.componentId]?.name || item.componentId, sublabel: `${item.count} serving${item.count === 1 ? '' : 's'}` }
-    if (item.kind === 'pantry') return { label: pantryById[item.pantryId]?.name || item.pantryId, sublabel: item.measure }
-    return { label: item.name, sublabel: item.measure }
-  }
-
-  const planRows =
-    card && card.componentIds.length > 0
-      ? rankByPrefix(
-          card.componentIds.filter((id) => byId[id] && matchesQuery(byId[id].name, query)),
-          query,
-          (id) => byId[id]?.name || '',
-        ).map((id) => ({ id, label: byId[id]?.name || id }))
-      : []
-
-  // Round 2.5 §5: RECENT rows show last measure AND kcal (itemMacros
-  // already handles component/pantry/adhoc uniformly, including adhoc's
-  // snapshot nutrition) — null when unresolvable (deleted pantry item,
-  // unconvertible measure), same "don't fake it" rule as everywhere else.
-  const recentRows = rankByPrefix(
-    recents.filter((r) => matchesQuery(recentDisplay(r.item).label, query)),
+  const { groups, recents, byId, pantryById, seedCandidates, hasQuery } = buildAddSheetData({
+    card,
+    components,
+    pantry,
+    logs,
+    today,
     query,
-    (r) => recentDisplay(r.item).label,
-  ).map((r) => {
-    const macro = trackOps.itemMacros(r.item, components, pantry)
-    return { id: r.key, ...recentDisplay(r.item), kcal: macro ? macro.kcal : null }
+    existingComponentIds,
   })
-
-  const pantryRows = !hasQuery
-    ? []
-    : rankByPrefix(
-        pantry.filter((p) => p.nutrition && matchesQuery(p.name, query)),
-        query,
-        (p) => p.name,
-      ).map((p) => ({ id: p.id, label: p.name }))
-
-  const seedCandidates = logSearchOps.seedFoodCandidates(pantry)
-  const seedRows = !hasQuery
-    ? []
-    : rankByPrefix(
-        seedCandidates.filter((s) => matchesQuery(s.name, query) || s.aliases.some((a) => matchesQuery(a, query))),
-        query,
-        (s) => s.name,
-      ).map((s) => ({ id: s.name, label: s.name }))
-
-  const dishRows = !hasQuery
-    ? []
-    : rankByPrefix(
-        filterComponents(components, { search: query }).filter((c) => !excludedComponentIds.has(c.id)),
-        query,
-        (c) => c.name,
-      ).map((c) => ({ id: c.id, label: c.name }))
-
-  const groups = [
-    { key: 'plan', title: "TODAY'S PLAN", rows: planRows },
-    { key: 'recent', title: 'RECENT', rows: recentRows },
-    { key: 'pantry', title: 'PANTRY', rows: pantryRows },
-    { key: 'seed', title: 'COMMON FOODS', rows: seedRows },
-    { key: 'dish', title: 'MY DISHES', rows: dishRows },
-  ]
-
-  // The measure/count to prefill the amount step with: the item's
-  // last-used one if it appears in recents, else '1 serving'. A brand-new
-  // pantry item (plan.planKind === 'create') can never appear in recents
-  // yet (it doesn't have an id), so it always starts at '1 serving'.
-  function initialMeasureForPlan(plan) {
-    if (plan.planKind === 'create') return '1 serving'
-    return logSearchOps.lastUsedFor(recents, 'pantry', plan.pantryId) ?? '1 serving'
-  }
 
   function handleGroupPick(groupKey, id) {
     if (groupKey === 'plan') {
@@ -144,7 +78,7 @@ export default function AddLogItemSheet({
       // pre-filtered to p.nutrition) — no write is ever needed for this
       // pick, committed or not.
       const plan = { planKind: 'existing', pantryId: item.id, nutrition: item.nutrition }
-      setPending({ type: 'pantry', name: item.name, nutrition: item.nutrition, initialMeasure: initialMeasureForPlan(plan), plan })
+      setPending({ type: 'pantry', name: item.name, nutrition: item.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan })
       return
     }
     if (groupKey === 'seed') {
@@ -176,7 +110,7 @@ export default function AddLogItemSheet({
   // here, but nothing is persisted until Add is pressed.
   function handleOnlineSaveAndStage(food) {
     const plan = pantryOps.planPantrySave(pantry, categories, food.name, food.nutrition)
-    setPending({ type: 'pantry', name: food.name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan), plan })
+    setPending({ type: 'pantry', name: food.name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan })
   }
 
   function handleOnlineAdhocStage(food) {
@@ -198,7 +132,7 @@ export default function AddLogItemSheet({
     setScanError(null)
     const name = result.name || 'Scanned item'
     const plan = pantryOps.planPantrySave(pantry, categories, name, result.nutrition, code)
-    setPending({ type: 'pantry', name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan), plan })
+    setPending({ type: 'pantry', name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan })
   }
 
   // The only place any of this round's pantry writes actually happen —
@@ -226,43 +160,86 @@ export default function AddLogItemSheet({
     setPending(null)
   }
 
+  // Enter-manually reuses the existing manual-entry flow (NutritionInfoEditor)
+  // exactly as FoodSearchSheet's own fallback does — just reachable directly
+  // from the action grid instead of only after an online search comes up
+  // empty. A save stages the usual adhoc amount step; onCancel just closes it.
+  if (manualEntry) {
+    return (
+      <div className="sheet-backdrop sheet-backdrop--stacked" onClick={onClose}>
+        <div className="sheet" onClick={(e) => e.stopPropagation()}>
+          <NutritionInfoEditor
+            itemName={query.trim() || 'New food'}
+            nutrition={null}
+            fdcKey={fdcKey}
+            byok={null}
+            onSave={(nutrition) => {
+              if (nutrition) handleOnlineAdhocStage({ name: query.trim() || 'New food', nutrition })
+              setManualEntry(false)
+            }}
+            onCancel={() => setManualEntry(false)}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  function handleFromPlan() {
+    setQuery('')
+    groupRefs.current.plan?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="sheet-backdrop sheet-backdrop--stacked" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <h2>Add to {(label || 'log').toLowerCase()}</h2>
+        <div className="sheet-head">
+          <button type="button" className="sheet-head__close" onClick={onClose} aria-label="Close">
+            <CloseIcon size={16} />
+          </button>
+          <span className="sheet-head__title">Add to {label || 'log'} ▾</span>
+        </div>
 
         {!showOnline ? (
           <>
-            <input
-              type="text"
-              className="library-filters__search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search pantry, common foods, dishes…"
-              autoFocus
-            />
-            <AddSheetResults groups={groups} onPick={handleGroupPick} hasQuery={hasQuery} />
-            {scanError && <p className="inline-warning">{scanError}</p>}
-            <div className="button-row">
-              <button type="button" className="btn" onClick={() => setShowOnline(true)}>
-                🌐 Search online
+            <label className="searchfield">
+              <SearchIcon size={18} />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search pantry, common foods, dishes…"
+                autoFocus
+              />
+            </label>
+
+            <div className="actiongrid">
+              <button type="button" className="actionbtn" onClick={() => setShowOnline(true)}>
+                <SearchIcon size={20} />
+                <span className="actionbtn__label">Search online</span>
               </button>
               <button
                 type="button"
-                className="btn"
+                className="actionbtn"
                 onClick={() => {
                   setScanError(null)
                   setScanning(true)
                 }}
               >
-                📷 Scan barcode
+                <BarcodeIcon size={20} />
+                <span className="actionbtn__label">Scan barcode</span>
+              </button>
+              <button type="button" className="actionbtn" onClick={() => setManualEntry(true)}>
+                <ManualIcon size={20} />
+                <span className="actionbtn__label">Enter manually</span>
+              </button>
+              <button type="button" className="actionbtn" onClick={handleFromPlan}>
+                <PlanIcon size={20} />
+                <span className="actionbtn__label">From plan</span>
               </button>
             </div>
-            <div className="button-row">
-              <button type="button" className="btn" onClick={onClose}>
-                Cancel
-              </button>
-            </div>
+
+            <AddSheetResults groups={groups} query={query} onPick={handleGroupPick} hasQuery={hasQuery} onGroupRef={(key, el) => (groupRefs.current[key] = el)} />
+            {scanError && <p className="inline-warning">{scanError}</p>}
           </>
         ) : (
           <FoodSearchSheet

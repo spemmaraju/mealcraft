@@ -4,9 +4,9 @@ import * as trackOps from '../trackOps.js'
 import * as pantryOps from '../pantryOps.js'
 import { createLogEntry } from '../schema.js'
 import DayLog from '../components/DayLog.jsx'
-import GaugesPanel from '../components/GaugesPanel.jsx'
+import TrackHero from '../components/TrackHero.jsx'
 
-export default function TrackScreen({ onGoToSettings }) {
+export default function TrackScreen({ onGoToSettings, fabSignal }) {
   const [components, setComponents] = useState([])
   const [pantry, setPantry] = useState([])
   const [categories, setCategories] = useState([])
@@ -14,6 +14,7 @@ export default function TrackScreen({ onGoToSettings }) {
   const [logs, setLogs] = useState([])
   const [settings, setSettings] = useState(null)
   const [confirmingRemove, setConfirmingRemove] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(trackOps.todayISO())
 
   async function reload() {
     const [c, p, cat, w, l, s] = await Promise.all([
@@ -36,6 +37,12 @@ export default function TrackScreen({ onGoToSettings }) {
     reload()
     return storage.subscribe(reload)
   }, [])
+
+  // The FAB always targets "now" — jump back to today so the sheet it opens
+  // (via DayLog's fabSignal prop) lands on the meal the user actually meant.
+  useEffect(() => {
+    if (fabSignal) setSelectedDate(trackOps.todayISO())
+  }, [fabSignal])
 
   function logOrNew(dateISO, meal) {
     const entry = trackOps.logFor(logs, dateISO, meal)
@@ -104,6 +111,7 @@ export default function TrackScreen({ onGoToSettings }) {
 
   const today = trackOps.todayISO()
   const week = trackOps.currentWeek(weeks, today)
+  const weekOf = week ? week.weekOf : trackOps.currentWeekSundayISO(today)
   const compById = Object.fromEntries(components.map((c) => [c.id, c]))
   const pantryById = Object.fromEntries(pantry.map((p) => [p.id, p]))
   const recent = logs
@@ -122,14 +130,29 @@ export default function TrackScreen({ onGoToSettings }) {
     <div className="screen">
       <h1>Track</h1>
 
+      <TrackHero
+        logs={logs}
+        components={components}
+        pantry={pantry}
+        settings={settings}
+        today={today}
+        weekOf={weekOf}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
+
+      <h2 className="track-section-head">Meals</h2>
+
       <DayLog
         week={week}
+        selectedDate={selectedDate}
         logs={logs}
         components={components}
         pantry={pantry}
         categories={categories}
         fdcKey={settings.fdcKey}
         today={today}
+        fabSignal={fabSignal}
         onLogFromPlan={handleLogFromPlan}
         onAddItems={handleAddItems}
         onSetItemCount={handleSetItemCount}
@@ -140,8 +163,6 @@ export default function TrackScreen({ onGoToSettings }) {
         onAttachNutrition={handleAttachNutrition}
         onGoToSettings={onGoToSettings}
       />
-
-      <GaugesPanel logs={logs} components={components} pantry={pantry} week={week} settings={settings} today={today} />
 
       <div className="plan-section">
         <h2>Recent logs</h2>

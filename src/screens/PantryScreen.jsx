@@ -5,6 +5,7 @@ import * as nutritionOps from '../nutritionOps.js'
 import PantryItemRow from '../components/PantryItemRow.jsx'
 import PantryItemEditor from '../components/PantryItemEditor.jsx'
 import CategoryManager from '../components/CategoryManager.jsx'
+import { SearchIcon } from '../components/Icons.jsx'
 
 export default function PantryScreen() {
   const [pantry, setPantry] = useState([])
@@ -228,13 +229,15 @@ export default function PantryScreen() {
       )}
 
       <div className="pantry-filters">
-        <input
-          type="text"
-          className="pantry-filters__search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search pantry"
-        />
+        <label className="searchfield">
+          <SearchIcon size={18} />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search pantry"
+          />
+        </label>
         {quickAdding ? (
           <div className="pantry-quick-add">
             <input

@@ -37,6 +37,17 @@ export const NUTRITION_SOURCE_LABELS = {
   online_search: 'online',
   derived: 'derived',
 }
+
+// Round 2.6 retheme: the design bundle defines exactly 4 provenance colors
+// (seed=green, online=blue, manual=gray, barcode=purple) — everything that
+// isn't a seed/online/barcode source (manual, ai_estimate, label_photo,
+// derived) buckets into the neutral "manual" gray badge.
+export function provenanceClass(source) {
+  if (source === 'seed_table') return 'seed'
+  if (source === 'online_search') return 'online'
+  if (source === 'barcode') return 'barcode'
+  return 'manual'
+}
 export const COMPONENT_TYPES = ['base', 'protein', 'veg', 'sauce', 'finisher', 'dish']
 export const STATIONS = ['stovetop', 'oven', 'instant_pot', 'none']
 export const MACRO_SOURCES = [...NUTRITION_SOURCES, 'derived']

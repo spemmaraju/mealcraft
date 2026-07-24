@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import * as storage from '../storage.js'
 import { shouldNudgeBackup, daysSinceExport } from '../backupOps.js'
 
-// Dismiss is in-memory only — it reappears next launch, same as the app's
-// other non-destructive confirms are re-askable rather than permanently silenced.
-export default function BackupNudge({ onGoSettings }) {
+// Round 2.6 §5: no longer a dismissible top banner nagging every screen —
+// it's a quiet card at the bottom of Settings (App.jsx puts the "overdue"
+// signal on the Settings tab icon instead). `onExport` is SettingsScreen's
+// own download handler, so tapping the card's button does a real export
+// right there rather than a "go find the button above" redirect.
+export default function BackupNudge({ onExport }) {
   const [settings, setSettings] = useState(null)
   const [hasUserData, setHasUserData] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
 
   async function reload() {
     const [components, weeks, logs, s] = await Promise.all([
@@ -25,25 +27,22 @@ export default function BackupNudge({ onGoSettings }) {
     return storage.subscribe(reload)
   }, [])
 
-  if (!settings || dismissed) return null
+  if (!settings) return null
 
   const nowISO = new Date().toISOString()
-  if (!shouldNudgeBackup({ lastExportAt: settings.lastExportAt, hasUserData, nowISO })) return null
+  const overdue = shouldNudgeBackup({ lastExportAt: settings.lastExportAt, hasUserData, nowISO })
+  if (!overdue) return null
 
   const days = daysSinceExport({ lastExportAt: settings.lastExportAt, nowISO })
-  const text = days == null ? 'No backup yet' : `No backup in ${days} days`
+  const text = days == null ? "You haven't backed up yet." : `It's been ${days} days since your last backup.`
 
   return (
-    <div className="banner">
-      <span className="banner__text">{text} — your data lives only on this device.</span>
-      <div className="banner__actions">
-        <button type="button" className="btn" onClick={onGoSettings}>
-          Go to Settings
-        </button>
-        <button type="button" className="btn banner__dismiss" onClick={() => setDismissed(true)} aria-label="Dismiss">
-          ×
-        </button>
-      </div>
-    </div>
+    <section className="backup-card backup-card--overdue">
+      <h2>Backup</h2>
+      <p className="placeholder">{text} Your data lives only on this device — export is the only backup.</p>
+      <button type="button" className="btn btn--primary" onClick={onExport}>
+        Export now
+      </button>
+    </section>
   )
 }

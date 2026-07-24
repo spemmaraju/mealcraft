@@ -1,15 +1,28 @@
+import { splitMatch } from '../textMatch.js'
+
 // Grouped, ranked result list for AddLogItemSheet's unified search (Round 2
 // spec point 1) — purely presentational. AddLogItemSheet computes each
 // group's rows (already filtered/ranked/labeled) and owns what tapping a
 // row does: immediate log for TODAY'S PLAN/RECENT, staging the shared
 // amount step for PANTRY/COMMON FOODS/MY DISHES.
 //
-// Round 2.5 §2/§5: every row uses the shared two-line `.row2` pattern (bold
-// name / quiet sublabel) with a 44px round "+" target on the right. RECENT
-// rows additionally carry a `kcal` (computed by AddLogItemSheet via
-// trackOps.itemMacros) shown as a bold numeral just left of the "+" —
-// other groups don't have a chosen amount yet, so no kcal to show.
-export default function AddSheetResults({ groups, onPick, hasQuery }) {
+// Round 2.6: `query` bolds the matched substring in each row's name
+// (screens/add-sheet.html); `onGroupRef` lets the sheet's "From plan"
+// action-grid button scroll straight to the TODAY'S PLAN group without this
+// component needing to know anything about scrolling itself.
+function MatchedName({ text, query }) {
+  return splitMatch(text, query).map((seg, i) =>
+    seg.match ? (
+      <span key={i} className="match-highlight">
+        {seg.text}
+      </span>
+    ) : (
+      <span key={i}>{seg.text}</span>
+    ),
+  )
+}
+
+export default function AddSheetResults({ groups, query, onPick, hasQuery, onGroupRef }) {
   const visible = groups.filter((g) => g.rows.length > 0)
 
   if (visible.length === 0) {
@@ -26,12 +39,14 @@ export default function AddSheetResults({ groups, onPick, hasQuery }) {
   return (
     <div className="picker-sheet__list add-sheet__list">
       {visible.map((g) => (
-        <div key={g.key} className="add-sheet__group">
+        <div key={g.key} className="add-sheet__group" ref={onGroupRef ? (el) => onGroupRef(g.key, el) : undefined}>
           <h3 className="add-sheet__group-title">{g.title}</h3>
           {g.rows.map((row) => (
             <button key={row.id} type="button" className="row2 add-sheet__row" onClick={() => onPick(g.key, row.id)}>
               <span className="row2__main">
-                <span className="row2__name">{row.label}</span>
+                <span className="row2__name">
+                  <MatchedName text={row.label} query={query} />
+                </span>
                 {row.sublabel && <span className="row2__sub">{row.sublabel}</span>}
               </span>
               <span className="row2__side">

@@ -3,6 +3,7 @@ import * as storage from '../storage.js'
 import { DAYS, REFRESH_DAYS, DAY_NAMES } from '../schema.js'
 import ByokSettings from '../components/ByokSettings.jsx'
 import TrackingSettings from '../components/TrackingSettings.jsx'
+import BackupNudge from '../components/BackupNudge.jsx'
 
 function todayStamp() {
   return new Date().toISOString().slice(0, 10)
@@ -282,6 +283,8 @@ export default function SettingsScreen() {
           {fdcMsg && <div className={`message message--${fdcMsg.type}`}>{fdcMsg.text}</div>}
         </section>
       </details>
+
+      <BackupNudge onExport={handleExportDownload} />
     </div>
   )
 }

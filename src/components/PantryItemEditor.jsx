@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NUTRITION_SOURCE_LABELS } from '../schema.js'
+import ProvenanceTag from './ProvenanceTag.jsx'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 
 export default function PantryItemEditor({ item, categories, fdcKey, byok, onSave, onDelete, onSaveNutrition, onCancel }) {
@@ -70,7 +70,7 @@ export default function PantryItemEditor({ item, categories, fdcKey, byok, onSav
           <span>Nutrition</span>
           {item.nutrition ? (
             <div className="nutrition-summary">
-              <span className="provenance-tag">{NUTRITION_SOURCE_LABELS[item.nutrition.source] || item.nutrition.source}</span>
+              <ProvenanceTag source={item.nutrition.source} />
               <span>
                 {item.nutrition.perServing.kcal} kcal — {item.nutrition.servingDesc || 'per serving'}
               </span>

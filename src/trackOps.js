@@ -230,6 +230,36 @@ export function plateMix(logs, components, pantry) {
   }
 }
 
+/**
+ * Macro-calorie breakdown for the hero donut (Round 2.6): carbs/protein at
+ * 4 kcal/g, fat at 9 kcal/g, each expressed as a fraction of their own sum
+ * (not of `macros.kcal`, which can disagree slightly with 4/4/9 rounding).
+ * @returns {{carbsPct:number, fatPct:number, proteinPct:number, hasData:boolean}}
+ * hasData is false for a 0-macro day — callers render a muted empty ring.
+ */
+export function macroDonut(macros) {
+  const carbsKcal = Math.max(0, macros.carbs_g) * 4
+  const fatKcal = Math.max(0, macros.fat_g) * 9
+  const proteinKcal = Math.max(0, macros.protein_g) * 4
+  const total = carbsKcal + fatKcal + proteinKcal
+  if (total <= 0) return { carbsPct: 0, fatPct: 0, proteinPct: 0, hasData: false }
+  return {
+    carbsPct: carbsKcal / total,
+    fatPct: fatKcal / total,
+    proteinPct: proteinKcal / total,
+    hasData: true,
+  }
+}
+
+/** Time-appropriate meal for the FAB (Round 2.6 spec point 4): breakfast before 11, lunch 11-3, dinner 3-8, snack otherwise. */
+export function mealForTime(date = new Date()) {
+  const h = date.getHours()
+  if (h < 11) return 'breakfast'
+  if (h < 15) return 'lunch'
+  if (h < 20) return 'dinner'
+  return 'snack'
+}
+
 /** Consecutive logged weekdays walking back from today; weekends don't break it; an unlogged today doesn't either. Deliberately still lunch-only — measures the packed-lunch habit. */
 export function lunchStreak(logs, today) {
   const loggedDates = new Set(logs.filter((l) => l.meal === 'lunch').map((l) => l.date))
