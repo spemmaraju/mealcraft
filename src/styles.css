@@ -1317,19 +1317,6 @@ select {
   color: var(--text);
 }
 
-.plan-generate-step {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-  margin-top: 12px;
-}
-
-.plan-generate-step h3 {
-  font-size: var(--fs-body);
-  font-weight: 700;
-  margin: 0 0 10px;
-  color: var(--text);
-}
-
 .segmented {
   display: flex;
   gap: 8px;
@@ -1361,72 +1348,6 @@ select {
   color: var(--text);
 }
 
-.prompt-fallback {
-  width: 100%;
-  min-height: 160px;
-  margin-top: 10px;
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 0.8rem;
-}
-
-.conflict-row {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-btn);
-  padding: 10px 12px;
-  margin-bottom: 10px;
-}
-
-.conflict-row__names {
-  font-size: var(--fs-sub);
-  margin-bottom: 8px;
-}
-
-.conflict-row__existing {
-  color: var(--text-muted);
-}
-
-.week-summary__group {
-  margin-bottom: 16px;
-}
-
-.week-summary__group h3 {
-  font-size: var(--fs-sub);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  margin: 0 0 6px;
-}
-
-.week-summary__counts {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  font-size: var(--fs-sub);
-  color: var(--text-muted);
-  margin-bottom: 16px;
-}
-
-/* ---- Week view (Phase 4 planner) ---- */
-
-.week-view__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.week-view__weekof {
-  font-size: var(--fs-section);
-  margin: 0;
-  color: var(--text);
-}
-
-.plan-empty-state ol {
-  margin: 8px 0;
-  padding-left: 1.4em;
-}
-
 .link-btn {
   min-height: 44px;
   padding: 0 4px;
@@ -1438,165 +1359,10 @@ select {
   cursor: pointer;
 }
 
-/* ---- Run sheet ---- */
-
-.run-sheet__progress {
-  font-size: var(--fs-sub);
-  color: var(--text-muted);
-  margin-bottom: 6px;
-}
-
-.run-sheet__bar {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.run-sheet__bar-fill {
-  height: 100%;
-  background: var(--accent);
-}
-
-.run-sheet__group {
-  margin-bottom: 16px;
-}
-
-.run-sheet__station {
-  font-size: var(--fs-sub);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  margin: 0 0 6px;
-}
-
-.run-sheet__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid var(--border);
-  padding: 4px 0;
-}
-
-.run-sheet__row--done {
-  opacity: 0.6;
-}
-
-.run-sheet__row--done .run-sheet__action {
-  text-decoration: line-through;
-}
-
-.run-sheet__check {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-btn);
-  border: 1px solid var(--border);
-  background: var(--surface-3);
-  color: var(--accent-contrast);
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-
-.run-sheet__check--active {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.run-sheet__time {
-  flex: none;
-  font-size: var(--fs-sub);
-  color: var(--text-muted);
-  min-width: 3.5ch;
-}
-
-.run-sheet__action {
-  flex: 1;
-  font-size: var(--fs-body);
-  color: var(--text);
-}
-
-.run-sheet__component {
-  color: var(--text-muted);
-}
-
-/* ---- Assembly cards ---- */
-
-.assembly-card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  padding: 12px;
-  margin-bottom: 12px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-}
-
-.assembly-card--selected {
-  border-color: var(--brand);
-  border-width: 2px;
-}
-
-.assembly-card--swap-target {
-  border-color: var(--brand);
-  background: var(--brand-soft);
-}
-
-.assembly-card--refresh {
-  background: var(--surface-2);
-}
-
-.assembly-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.assembly-card__header h3 {
-  font-size: var(--fs-body);
-  margin: 0;
-  color: var(--text);
-}
-
-.assembly-card__swap-btn {
-  min-height: 44px;
-  padding: 6px 12px;
-  font-size: var(--fs-sub);
-}
-
-.assembly-card__row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  border-bottom: 1px solid var(--border);
-}
-
-.assembly-card__component {
-  flex: 1;
-  min-height: 44px;
-  border: none;
-  background: none;
-  text-align: left;
-  color: var(--text);
-  font-size: var(--fs-body);
-  cursor: pointer;
-  padding: 4px 0;
-}
-
-.assembly-card__component--static {
-  cursor: default;
-}
-
-.assembly-card__change-btn {
-  flex: none;
-  min-height: 44px;
-  padding: 4px 10px;
-  font-size: var(--fs-sub);
-}
-
+/* Shared by TrackScreen's recent-log-row and (Phase P1) GroceryCard's
+   dismiss button — a bare circular "×" tap target, kept under its old name
+   since both surviving consumers already used it before the run-sheet/
+   assembly-card views it was originally styled for were removed. */
 .assembly-card__x {
   flex: none;
   min-height: 44px;
@@ -1608,28 +1374,122 @@ select {
   cursor: pointer;
 }
 
-.assembly-card__remove-confirm {
-  display: flex;
-  gap: 6px;
-  align-items: center;
+/* ---- Plan slot cards (Phase P1 "Your next meals") ---- */
+
+.plan-slot-card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: 16px 16px 14px;
+  margin-top: 14px;
 }
 
-.assembly-card__empty {
+.plan-slot-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.plan-slot-card__header h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+}
+
+.plan-slot-card__kcal {
+  font-size: var(--fs-sub);
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ---- Slot picker (Phase P1: PrepSheet step 2 / AddDishToPlanSheet) ---- */
+
+.slot-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.slot-picker__chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border-radius: var(--radius-btn);
+}
+
+.slot-picker__has {
+  font-size: var(--fs-sub);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* ---- Prep a dish (Phase P1) ---- */
+
+.prep-ingredient-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
   padding: 8px 0;
+}
+
+.prep-ingredient-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prep-ingredient-row__name {
+  font-size: 15.5px;
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.prep-ingredient-row__kcal {
+  font-size: var(--fs-sub);
+  color: var(--text-muted);
+}
+
+.prep-ingredient-row__kcal--warn {
   color: var(--text-tertiary);
 }
 
-.assembly-card__note {
-  font-size: var(--fs-sub);
-  color: var(--text-muted);
-  margin: 8px 0;
+.prep-summary {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
 }
 
-.assembly-card__steps {
-  font-size: var(--fs-sub);
-  margin: 8px 0 0;
-  padding-left: 1.2em;
+.prep-summary__hero {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.prep-summary__kcal {
+  font-size: var(--fs-num);
+  font-weight: 700;
   color: var(--text);
+}
+
+.prep-summary__macros,
+.prep-summary__batch {
+  font-size: var(--fs-sub);
+  color: var(--text-muted);
+  margin: 4px 0 0;
 }
 
 /* ---- Component picker sheet ---- */
@@ -2103,32 +1963,15 @@ select {
   padding: 4px 0;
 }
 
-.grocery-row__check {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-btn);
-  border: 1px solid var(--border);
-  background: var(--surface-3);
-  color: var(--accent-contrast);
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-
-.grocery-row__check--active {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
 .grocery-row__label {
   flex: 1;
   font-size: var(--fs-body);
   color: var(--text);
 }
 
-.grocery-row__label--dismissed {
-  text-decoration: line-through;
-  color: var(--text-tertiary);
+.grocery-row__sub {
+  font-size: var(--fs-sub);
+  color: var(--text-muted);
 }
 
 /* ---- Nutrition capture (Phase 4.5) ---- */

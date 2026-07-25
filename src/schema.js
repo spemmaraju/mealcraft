@@ -8,7 +8,8 @@ export const SHAPE_NAMES = [
   'PantryItem',
   'NutritionInfo',
   'Component',
-  'WeekPlan',
+  'PlanSlot',
+  'GroceryItem',
   'LogEntry',
   'WeeklyFeedback',
   'Settings',
@@ -18,9 +19,10 @@ export const SHAPE_NAMES = [
 export const COLLECTION_SHAPES = {
   pantry: 'PantryItem',
   components: 'Component',
-  weeks: 'WeekPlan',
+  planSlots: 'PlanSlot',
   logs: 'LogEntry',
   feedback: 'WeeklyFeedback',
+  grocery: 'GroceryItem',
 }
 
 export const NUTRITION_SOURCES = ['barcode', 'label_photo', 'seed_table', 'ai_estimate', 'manual', 'online_search']
@@ -129,14 +131,22 @@ export function createComponent(overrides = {}) {
   }
 }
 
-export function createWeekPlan(overrides = {}) {
+// PlanSlot identity is (date, meal) — mirrors LogEntry.
+export function createPlanSlot(overrides = {}) {
   return {
-    weekOf: '',
-    componentIds: [],
-    runSheet: [],
-    assembly: [],
-    refresh: { day: 'Wed', steps: [], componentIds: [] },
-    grocerySuggestions: [],
+    date: '',
+    meal: 'lunch',
+    items: [],
+    ...overrides,
+  }
+}
+
+// Advisory grocery suggestion (Phase P1 prep flow); dismissing one means
+// removing its record, not flagging it — there's no `dismissed` flag.
+export function createGroceryItem(overrides = {}) {
+  return {
+    name: '',
+    forDish: '',
     ...overrides,
   }
 }
@@ -193,6 +203,16 @@ const nutritionInfoFields = {
   barcode: T.optional(T.str({ nullable: true })),
 }
 
+// Shared by LogEntry.items and PlanSlot.items — both are the exact same
+// discriminated union, so the spec lives in one place rather than drifting.
+const logItemsField = T.arrayOf(
+  T.discriminated('kind', {
+    component: { kind: T.enumOf(['component']), componentId: T.str(), count: T.num() },
+    pantry: { kind: T.enumOf(['pantry']), pantryId: T.str(), measure: T.str() },
+    adhoc: { kind: T.enumOf(['adhoc']), name: T.str(), measure: T.str(), nutrition: T.obj(nutritionInfoFields) },
+  }),
+)
+
 const SHAPES = {
   NutritionInfo: nutritionInfoFields,
   PantryItem: {
@@ -223,32 +243,19 @@ const SHAPES = {
     rating: T.enumOf(RATINGS, { nullable: true }),
     archived: T.bool(),
   },
-  WeekPlan: {
-    weekOf: T.str(),
-    componentIds: T.strArray(),
-    runSheet: T.arrayOf(
-      T.obj({
-        t: T.str(),
-        station: T.enumOf(STATIONS),
-        action: T.str(),
-        componentId: T.optional(T.str()),
-        done: T.bool(),
-      }),
-    ),
-    assembly: T.arrayOf(T.obj({ day: T.str(), componentIds: T.strArray(), note: T.str() })),
-    refresh: T.obj({ day: T.str(), steps: T.strArray(), componentIds: T.strArray() }),
-    grocerySuggestions: T.arrayOf(T.obj({ name: T.str(), qty: T.str(), dismissed: T.bool() })),
+  PlanSlot: {
+    date: T.str(),
+    meal: T.enumOf(MEALS),
+    items: logItemsField,
+  },
+  GroceryItem: {
+    name: T.str(),
+    forDish: T.str(),
   },
   LogEntry: {
     date: T.str(),
     meal: T.enumOf(MEALS),
-    items: T.arrayOf(
-      T.discriminated('kind', {
-        component: { kind: T.enumOf(['component']), componentId: T.str(), count: T.num() },
-        pantry: { kind: T.enumOf(['pantry']), pantryId: T.str(), measure: T.str() },
-        adhoc: { kind: T.enumOf(['adhoc']), name: T.str(), measure: T.str(), nutrition: T.obj(nutritionInfoFields) },
-      }),
-    ),
+    items: logItemsField,
     quickRating: T.enumOf(RATINGS, { nullable: true }),
   },
   WeeklyFeedback: {

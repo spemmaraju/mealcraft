@@ -14,7 +14,7 @@ function pantrySubline(item) {
 // Per-row delete affordance (users weren't finding the editor's buried
 // Delete): a small trash icon button right of the on-hand toggle that swaps
 // into the app's usual two-step danger confirm ("Delete?"/"Keep" — same
-// language as AssemblyCards' "Remove?"/"Keep" and PantryItemEditor's
+// language as MealSection's "Remove log"/"Keep" and PantryItemEditor's
 // "Really delete?"/"Keep it") before actually calling onDelete.
 export default function PantryItemRow({ item, onToggleOnHand, onOpenEditor, onDelete }) {
   const [confirming, setConfirming] = useState(false)

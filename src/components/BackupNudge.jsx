@@ -12,13 +12,13 @@ export default function BackupNudge({ onExport }) {
   const [hasUserData, setHasUserData] = useState(false)
 
   async function reload() {
-    const [components, weeks, logs, s] = await Promise.all([
+    const [components, planSlots, logs, s] = await Promise.all([
       storage.get('components'),
-      storage.get('weeks'),
+      storage.get('planSlots'),
       storage.get('logs'),
       storage.get('settings'),
     ])
-    setHasUserData(components.length > 0 || weeks.length > 0 || logs.length > 0)
+    setHasUserData(components.length > 0 || planSlots.length > 0 || logs.length > 0)
     setSettings(s)
   }
 

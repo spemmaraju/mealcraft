@@ -231,16 +231,24 @@ export default function AddLogItemSheet({
             <CloseIcon size={16} />
           </button>
           <div className="sheet-head__mealpicker">
-            <button
-              type="button"
-              className="sheet-head__title sheet-head__title--picker"
-              onClick={() => setPickerOpen((v) => !v)}
-              aria-haspopup="listbox"
-              aria-expanded={pickerOpen}
-            >
-              Add to {label || 'log'} <span className="sheet-head__caret" aria-hidden="true">▾</span>
-            </button>
-            {pickerOpen && (
+            {/* No onMealChange → the target meal is fixed by the caller (Plan's
+                per-slot "+ Add extra" — retargeting there could file items into
+                a breakfast/snack slot the Plan screen never displays), so the
+                header is a plain title instead of a picker. */}
+            {onMealChange ? (
+              <button
+                type="button"
+                className="sheet-head__title sheet-head__title--picker"
+                onClick={() => setPickerOpen((v) => !v)}
+                aria-haspopup="listbox"
+                aria-expanded={pickerOpen}
+              >
+                Add to {label || 'log'} <span className="sheet-head__caret" aria-hidden="true">▾</span>
+              </button>
+            ) : (
+              <span className="sheet-head__title">Add to {label || 'log'}</span>
+            )}
+            {onMealChange && pickerOpen && (
               <>
                 {/* Covers just the sheet (its ancestor stops backdrop clicks) so
                     tapping anywhere else closes the picker without also firing

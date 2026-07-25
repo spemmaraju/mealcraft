@@ -25,13 +25,6 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false)
   const [fabSignal, setFabSignal] = useState(null)
   const [backupOverdue, setBackupOverdue] = useState(false)
-  // Screens unmount on tab switch (SCREENS[activeTab] below), so any state
-  // that must survive navigation can't live inside the screen itself — this
-  // mirrors why fabSignal is passed down rather than kept in TrackScreen.
-  // A generated-but-not-yet-imported Plan week is exactly that case: without
-  // lifting it here, switching tabs mid-review silently discards the AI
-  // result. In-memory only — a full reload clearing it is fine.
-  const [planDraft, setPlanDraft] = useState({ showGenerate: false, generateResult: null })
   const Screen = SCREENS[activeTab]
 
   // Round 2.6 §5: BackupNudge no longer lives in the global top bar — it's
@@ -39,13 +32,13 @@ export default function App() {
   // signal (a dot on the Settings icon) that it's overdue.
   useEffect(() => {
     async function check() {
-      const [components, weeks, logs, settings] = await Promise.all([
+      const [components, planSlots, logs, settings] = await Promise.all([
         storage.get('components'),
-        storage.get('weeks'),
+        storage.get('planSlots'),
         storage.get('logs'),
         storage.get('settings'),
       ])
-      const hasUserData = components.length > 0 || weeks.length > 0 || logs.length > 0
+      const hasUserData = components.length > 0 || planSlots.length > 0 || logs.length > 0
       setBackupOverdue(shouldNudgeBackup({ lastExportAt: settings.lastExportAt, hasUserData, nowISO: new Date().toISOString() }))
     }
     check()
@@ -68,8 +61,6 @@ export default function App() {
           onGoToSettings={() => setActiveTab('settings')}
           onGoToPlan={() => setActiveTab('plan')}
           fabSignal={activeTab === 'track' ? fabSignal : null}
-          planDraft={planDraft}
-          onPlanDraftChange={setPlanDraft}
         />
       </main>
       <TabBar active={activeTab} onChange={setActiveTab} onFab={handleFab} backupOverdue={backupOverdue} />

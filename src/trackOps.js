@@ -1,7 +1,7 @@
 // Pure functions over logs[]/feedback[] (Phase 5 Tracker; reworked Phase 15
 // for multi-meal flexible logging): local-safe date helpers, log
 // build/upsert/remove, and gauge math. No DOM, no storage imports — callers
-// (UI or smoke script) own persistence. Mirrors weekOps.js.
+// (UI or smoke script) own persistence. Mirrors planOps.js.
 
 import { createLogEntry, DAYS, DAY_NAMES } from './schema.js'
 import { measureToServings } from './measures.js'
@@ -57,47 +57,21 @@ export function weekDates(weekOf) {
 
 /**
  * Round 3.5 design sync: the Track hero's day-strip is Sun-Sat (7 circles),
- * not the Mon-Fri work week `weekDates` returns for plan/run-sheet logic —
- * added as a separate function rather than changing weekDates itself so
- * every existing Mon-Fri caller (assemblyCardForDate, logsForWeek,
- * proteinByDay, WeekPlan/run-sheet UI) is untouched.
+ * not the Mon-Fri work week `weekDates` returns for gauge logic — added as a
+ * separate function rather than changing weekDates itself so every existing
+ * Mon-Fri caller (logsForWeek, proteinByDay) is untouched.
  * @param {string} weekOf Sunday ISO date @returns {{day:string, date:string}[]} Sun..Sat
  */
 export function weekDatesFull(weekOf) {
   return FULL_WEEK_LABELS.map((day, i) => ({ day, date: addDaysISO(weekOf, i) }))
 }
 
-/** Sunday on/before `dateISO` — the WeekPlan.weekOf the current calendar week would use. */
+/** Sunday on/before `dateISO` — the week the gauges (proteinByDay etc.) anchor to. */
 export function currentWeekSundayISO(dateISO) {
   return addDaysISO(dateISO, -dayOfWeekISO(dateISO))
 }
 
-/** Latest weekOf <= dateISO, else latest overall, else null. */
-export function currentWeek(weeks, dateISO) {
-  if (weeks.length === 0) return null
-  const eligible = weeks.filter((w) => w.weekOf <= dateISO)
-  const pool = eligible.length > 0 ? eligible : weeks
-  return [...pool].sort((a, b) => (a.weekOf < b.weekOf ? 1 : a.weekOf > b.weekOf ? -1 : 0))[0]
-}
-
-/** The assembly card whose day matches `dateISO` within `week`, or null. */
-export function assemblyCardForDate(week, dateISO) {
-  if (!week) return null
-  const match = weekDates(week.weekOf).find((d) => d.date === dateISO)
-  if (!match) return null
-  return week.assembly.find((a) => a.day === match.day) || null
-}
-
 // ---- Logging --------------------------------------------------------------
-
-/** Prefilled LogEntry from a `{componentIds}` card (or a real assembly card); items default count 1. */
-export function buildLogFromCard(card, dateISO, meal = 'lunch') {
-  return createLogEntry({
-    date: dateISO,
-    meal,
-    items: card.componentIds.map((componentId) => ({ kind: 'component', componentId, count: 1 })),
-  })
-}
 
 /** Identity is (date, meal) for every meal — replaces the matching entry, or appends. */
 export function upsertLog(logs, entry) {

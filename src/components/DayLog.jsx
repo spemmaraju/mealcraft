@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createLogEntry, MEALS, MEAL_LABELS } from '../schema.js'
 import * as trackOps from '../trackOps.js'
+import * as planOps from '../planOps.js'
 import MealSection from './MealSection.jsx'
 import AddLogItemSheet from './AddLogItemSheet.jsx'
 import SaveAsDishSheet from './SaveAsDishSheet.jsx'
@@ -16,8 +17,12 @@ import SaveAsDishSheet from './SaveAsDishSheet.jsx'
 // user into whichever meal it guessed (trackOps.mealForTime()) with no way
 // to change it. MealSection now just calls onOpenAdd(meal) to request the
 // sheet; `fabSignal` ({meal, nonce}) still auto-opens it, exactly as before.
+//
+// Phase P1: `week`/single assembly `card` are gone — `slots` is the whole
+// planSlots[] array, and each MealSection gets its OWN (date, meal) slot
+// (any meal can have a "Log from plan" affordance now, not just lunch).
 export default function DayLog({
-  week,
+  slots,
   selectedDate,
   logs,
   components,
@@ -40,7 +45,6 @@ export default function DayLog({
   onGoToSettings,
   onGoToPlan,
 }) {
-  const card = week ? trackOps.assemblyCardForDate(week, selectedDate) : null
   // null | { meal }. `meal` is retargetable via the sheet's own header picker
   // without closing/reopening the sheet, so query/pending-amount-step state
   // inside AddLogItemSheet survives a meal switch untouched.
@@ -85,6 +89,13 @@ export default function DayLog({
   const existingComponentIds = activeEntry
     ? activeEntry.log.items.filter((i) => i.kind === 'component').map((i) => i.componentId)
     : []
+  // AddLogItemSheet's TODAY'S PLAN group expects a {componentIds} card
+  // (addSheetOps.buildAddSheetData's contract, unchanged) — the active
+  // meal's slot component items stand in for the old single assembly card.
+  const activeSlot = addSheet ? planOps.slotFor(slots, selectedDate, addSheet.meal) : null
+  const sheetCard = activeSlot
+    ? { componentIds: activeSlot.items.filter((i) => i.kind === 'component').map((i) => i.componentId) }
+    : null
 
   return (
     <div className="day-log">
@@ -93,6 +104,7 @@ export default function DayLog({
         const hasItems = entry && entry.log.items.length > 0
         const sameMealHint = !hasItems ? trackOps.lastSameMeal(logs, selectedDate, meal) : null
         const mealUndo = undo && undo.date === selectedDate && undo.meal === meal ? undo : null
+        const slot = planOps.slotFor(slots, selectedDate, meal)
         return (
           <MealSection
             key={meal}
@@ -101,10 +113,10 @@ export default function DayLog({
             log={entry ? entry.log : null}
             components={components}
             pantry={pantry}
-            card={card}
+            slot={slot}
             sameMealHint={sameMealHint}
             undo={mealUndo}
-            onLogFromPlan={() => onLogFromPlan(selectedDate)}
+            onLogFromPlan={() => onLogFromPlan(selectedDate, meal)}
             onLogAgain={() => sameMealHint && handleLogAgain(meal, sameMealHint.log)}
             onUndo={handleUndo}
             onSetItemCount={(index, count) => onSetItemCount(selectedDate, meal, index, count)}
@@ -121,7 +133,7 @@ export default function DayLog({
         <AddLogItemSheet
           meal={addSheet.meal}
           label={MEAL_LABELS[addSheet.meal]}
-          card={card}
+          card={sheetCard}
           components={components}
           pantry={pantry}
           categories={categories}

@@ -64,9 +64,10 @@ function itemDescriptor(item) {
 // One meal card (components/cards.html / screens/track.html): icon + name +
 // kcal header, divider, item rows (component -> ±0.5 stepper; pantry/adhoc
 // -> MeasureInput), remove-item/remove-log, and the "Log"/"+ Add more" pill
-// which requests the (single, DayLog-owned) add sheet via onOpenAdd. Lunch
-// keeps the existing one-tap "Log lunch from plan" flow when an assembly
-// card exists and nothing's logged yet for the day.
+// which requests the (single, DayLog-owned) add sheet via onOpenAdd.
+//
+// Phase P1: "Log from plan" is no longer lunch-only/assembly-card-only — it
+// appears for ANY meal whose own PlanSlot has items and nothing's logged yet.
 //
 // Round 2.7: the add sheet itself moved up to DayLog so its header can
 // retarget which meal a commit lands in (bugfix: the FAB used to lock the
@@ -78,7 +79,7 @@ export default function MealSection({
   log,
   components,
   pantry,
-  card,
+  slot,
   sameMealHint,
   undo,
   onLogFromPlan,
@@ -101,8 +102,8 @@ export default function MealSection({
     setExpandedIndex(null)
   }, [log?.date, log?.meal])
 
-  const showLogFromPlan = meal === 'lunch' && card && !log
   const hasItems = log && log.items.length > 0
+  const showLogFromPlan = slot && slot.items.length > 0 && !hasItems
   const macros = hasItems ? trackOps.logMacros(log, components, pantry) : null
   const Icon = MEAL_ICONS[meal]
 
@@ -120,13 +121,9 @@ export default function MealSection({
 
       {showLogFromPlan ? (
         <>
-          <p className="meal-section__preview">
-            {card.componentIds.length > 0
-              ? card.componentIds.map((id) => components.find((c) => c.id === id)?.name || id).join(', ')
-              : 'No components yet.'}
-          </p>
+          <p className="meal-section__preview">{slot.items.map((item) => itemLabel(item, components, pantry)).join(', ')}</p>
           <button type="button" className="pill-primary" onClick={onLogFromPlan}>
-            Log lunch from plan
+            Log from plan
           </button>
         </>
       ) : !hasItems ? (

@@ -40,33 +40,24 @@ export default function HelpSheet({ onClose }) {
 
         <section className="help-section">
           <h3>📅 Plan</h3>
-          <p>There are two ways to generate a week:</p>
-          <ol>
-            <li>
-              <strong>Paste flow (no API key needed):</strong> copy the generated
-              prompt, paste it into Claude or Gemini's normal chat, then paste that
-              reply's JSON back into the import box.
-            </li>
-            <li>
-              <strong>One-tap generate:</strong> if you've set up your own API key
-              (BYOK) in Settings, MealCraft can call the AI directly.
-            </li>
-          </ol>
           <p>
-            Once you have a week, you'll see a <strong>run sheet</strong> with
-            checkable timed steps, daily <strong>assembly cards</strong>, and{' '}
-            <strong>grocery suggestions</strong> — those are advisory only, dismiss
-            anything you don't need. You can also regenerate or substitute a single
-            component without redoing the whole week.
+            Tap <strong>+ Prep a dish</strong> to build one from pantry ingredients:
+            pick what's going in, see live per-meal calories/macros as you set how
+            many meals the batch covers, then split it across your next few
+            lunches/dinners. <strong>+ Add saved dish</strong> does the same with
+            anything already in your Library. Any off-hand ingredient you used
+            lands in an advisory <strong>grocery ideas</strong> card — dismiss
+            anything you don't need. Each upcoming slot can be logged to Track with
+            one tap once it has something in it.
           </p>
         </section>
 
         <section className="help-section">
           <h3>📈 Track</h3>
           <p>
-            Log breakfast, lunch, dinner, and snacks separately — lunch keeps a
-            one-tap "log from plan" shortcut straight from the day's assembly card.
-            For anything else, tap <strong>+ Add</strong> and pick a source: today's
+            Log breakfast, lunch, dinner, and snacks separately — any meal with a
+            planned slot for that day keeps a one-tap "log from plan" shortcut. For
+            anything else, tap <strong>+ Add</strong> and pick a source: today's
             plan, your library, a pantry item (with an amount), or an online search.
             Search results can be logged as a one-off or saved to the pantry so the
             same food resolves offline next time. The small tag under each macro
@@ -86,8 +77,8 @@ export default function HelpSheet({ onClose }) {
             <strong>Export / Import</strong> is your backup and the only way to move
             data to another device — use it often. You can also add a free USDA
             FoodData Central key for nutrition lookups, and set up BYOK (your own
-            Anthropic or Google API key) to enable one-tap week generation and AI
-            micro-actions.
+            Anthropic or Google API key) to enable AI micro-actions — regenerate or
+            substitute a Library component, and photo-based nutrition capture.
           </p>
         </section>
 

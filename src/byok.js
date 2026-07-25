@@ -1,9 +1,10 @@
-// BYOK generate/regenerate loops (Phase 6). Pure — `chatFn` is injectable
+// BYOK regenerate loop (Phase 6; full-week generateWeekViaApi removed Phase
+// P1 with the AI week generator itself). Pure — `chatFn` is injectable
 // (defaults to aiClient.chat) so this is offline-testable with a stub.
-// Reuses the entire paste pipeline's validators; zero new validation logic.
+// Reuses aiReplyOps' single-component validator; zero new validation logic.
 
 import * as aiClient from './aiClient.js'
-import { validatePayload, validateComponentReply, buildFixRequest } from './weekImport.js'
+import { validateComponentReply, buildFixRequest } from './aiReplyOps.js'
 
 function userMessage(text) {
   return { role: 'user', content: [{ type: 'text', text }] }
@@ -31,13 +32,6 @@ async function chatWithOneRetry({ provider, apiKey, prompt, chatFn, onProgress, 
   const secondResult = validateFn(second.text)
   if (secondResult.ok) return { ok: true, result: secondResult, attempts: 2 }
   return { ok: false, errors: secondResult.errors, rawText: second.text, attempts: 2 }
-}
-
-/** @returns {Promise<{ok:true, payload, attempts} | {ok:false, errors, rawText?, attempts}>} */
-export async function generateWeekViaApi({ provider, apiKey, prompt, chatFn = aiClient.chat, onProgress }) {
-  const outcome = await chatWithOneRetry({ provider, apiKey, prompt, chatFn, onProgress, validateFn: validatePayload })
-  if (!outcome.ok) return outcome
-  return { ok: true, payload: outcome.result.payload, attempts: outcome.attempts }
 }
 
 /** @returns {Promise<{ok:true, component, attempts} | {ok:false, errors, rawText?, attempts}>} */

@@ -12,9 +12,10 @@ function todayStamp() {
 const SUMMARY_LABELS = {
   pantry: 'pantry items',
   components: 'components',
-  weeks: 'weeks',
+  planSlots: 'plan slots',
   logs: 'logs',
   feedback: 'feedback entries',
+  grocery: 'grocery ideas',
   categories: 'categories',
 }
 
@@ -209,10 +210,7 @@ export default function SettingsScreen() {
 
         <section className="settings-section">
           <h2>Week schedule</h2>
-          <p className="placeholder">
-            Which day you cook and when the midweek refresh happens. Applies to newly generated weeks — saved plans
-            keep their own days.
-          </p>
+          <p className="placeholder">Which day you cook and when the midweek refresh happens.</p>
 
           <div className="field">
             <label htmlFor="cook-day">Cook day</label>

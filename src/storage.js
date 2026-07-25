@@ -6,8 +6,8 @@ import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName } from './nutritionOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 9
-const COLLECTIONS = ['pantry', 'components', 'weeks', 'logs', 'feedback']
+const SCHEMA_VERSION = 10
+const COLLECTIONS = ['pantry', 'components', 'planSlots', 'logs', 'feedback', 'grocery']
 
 function describe(v) {
   if (v === undefined) return 'undefined'
@@ -42,11 +42,22 @@ function defaultState() {
     categories: [...DEFAULT_CATEGORIES],
     pantry: backfillPantryNutrition(seedPantryItems()),
     components: [],
-    weeks: [],
+    planSlots: [],
     logs: [],
     feedback: [],
+    grocery: [],
     settings: createSettings(),
   }
+}
+
+// v9 -> v10 migration helper: Sunday `weekOf` + a Mon..Fri assembly day ->
+// the calendar date it lands on. Self-contained (not imported from
+// trackOps.js) so migrate() never depends on anything that could someday
+// import storage.js back.
+function addDaysISO(dateISO, days) {
+  const [y, m, d] = dateISO.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d + days))
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`
 }
 
 // v1 -> v2: adds `categories`, derived from the defaults plus any custom
@@ -67,7 +78,7 @@ function defaultState() {
 // items (dals, vegetables, etc.) without the user re-adding them. Does NOT
 // insert new starter pantry items into existing installs. Mutates and
 // returns `state`; chains v1 through v7.
-function migrate(state) {
+export function migrate(state) {
   if (state.schemaVersion === 1) {
     const pantryItems = Array.isArray(state.pantry) ? state.pantry : []
     const extras = []
@@ -152,6 +163,41 @@ function migrate(state) {
   if (state.schemaVersion === 8) {
     state.schemaVersion = 9
   }
+  // v9 -> v10: Phase P1 replaces the AI full-week generator (WeekPlan: run
+  // sheet, assembly cards, week import) with slot-based planning (PlanSlot,
+  // identity (date, meal), mirroring LogEntry) plus a standalone advisory
+  // `grocery` collection (GroceryItem) — WeekPlan.grocerySuggestions'
+  // dismiss-in-place model is gone; a dismissed grocery idea is just
+  // deleted. Every old week's Mon..Fri assembly card with >= 1 component
+  // becomes a lunch PlanSlot dated off that week's Sunday `weekOf`; a card
+  // with no components contributes nothing. Two cards resolving to the same
+  // (date, meal) — can't happen from one week's own Mon-Fri days, but can
+  // across two differently-anchored weeks in old data — merge by appending
+  // items and deduping componentIds rather than one clobbering the other.
+  if (state.schemaVersion === 9) {
+    const dayOffset = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5 }
+    const slotByKey = new Map()
+    for (const week of Array.isArray(state.weeks) ? state.weeks : []) {
+      for (const card of Array.isArray(week.assembly) ? week.assembly : []) {
+        const componentIds = Array.isArray(card.componentIds) ? card.componentIds : []
+        const offset = dayOffset[card.day]
+        if (componentIds.length === 0 || offset == null) continue
+        const date = addDaysISO(week.weekOf, offset)
+        const key = `${date}|lunch`
+        const slot = slotByKey.get(key) || { date, meal: 'lunch', items: [], seenIds: new Set() }
+        for (const componentId of componentIds) {
+          if (slot.seenIds.has(componentId)) continue
+          slot.seenIds.add(componentId)
+          slot.items.push({ kind: 'component', componentId, count: 1 })
+        }
+        slotByKey.set(key, slot)
+      }
+    }
+    state.planSlots = [...slotByKey.values()].map(({ date, meal, items }) => ({ date, meal, items }))
+    state.grocery = []
+    delete state.weeks
+    state.schemaVersion = 10
+  }
   return state
 }
 
@@ -194,7 +240,7 @@ export function subscribe(listener) {
   return () => listeners.delete(listener)
 }
 
-/** @param {string} collection one of pantry|components|weeks|logs|feedback|settings */
+/** @param {string} collection one of pantry|components|planSlots|logs|feedback|grocery|settings */
 export async function get(collection) {
   return readRaw()[collection]
 }

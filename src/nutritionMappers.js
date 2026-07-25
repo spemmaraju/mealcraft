@@ -5,7 +5,7 @@
 // and scripts/smoke-phase16.mjs.
 
 import { createNutritionInfo } from './schema.js'
-import { extractJson } from './weekImport.js'
+import { extractJson } from './aiReplyOps.js'
 import { parseMeasure } from './measures.js'
 
 function hasAllNumbers(values) {

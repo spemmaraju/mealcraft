@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as storage from '../storage.js'
 import * as trackOps from '../trackOps.js'
+import * as planOps from '../planOps.js'
 import * as pantryOps from '../pantryOps.js'
 import * as componentOps from '../componentOps.js'
 import { createLogEntry } from '../schema.js'
@@ -11,25 +12,25 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
   const [components, setComponents] = useState([])
   const [pantry, setPantry] = useState([])
   const [categories, setCategories] = useState([])
-  const [weeks, setWeeks] = useState([])
+  const [planSlots, setPlanSlots] = useState([])
   const [logs, setLogs] = useState([])
   const [settings, setSettings] = useState(null)
   const [confirmingRemove, setConfirmingRemove] = useState(null)
   const [selectedDate, setSelectedDate] = useState(trackOps.todayISO())
 
   async function reload() {
-    const [c, p, cat, w, l, s] = await Promise.all([
+    const [c, p, cat, ps, l, s] = await Promise.all([
       storage.get('components'),
       storage.get('pantry'),
       storage.get('categories'),
-      storage.get('weeks'),
+      storage.get('planSlots'),
       storage.get('logs'),
       storage.get('settings'),
     ])
     setComponents(c)
     setPantry(p)
     setCategories(cat)
-    setWeeks(w)
+    setPlanSlots(ps)
     setLogs(l)
     setSettings(s)
   }
@@ -50,11 +51,17 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
     return entry ? entry.log : null
   }
 
-  async function handleLogFromPlan(dateISO) {
-    const week = trackOps.currentWeek(weeks, dateISO)
-    const card = trackOps.assemblyCardForDate(week, dateISO)
-    if (!card) return
-    await storage.set('logs', trackOps.upsertLog(logs, trackOps.buildLogFromCard(card, dateISO, 'lunch')))
+  // "Log from plan" now works for any meal whose slot has items (previously
+  // lunch-only, sourced from the week's single assembly card) — same
+  // merge-or-create rule handleAddItems uses.
+  async function handleLogFromPlan(dateISO, meal) {
+    const slot = planOps.slotFor(planSlots, dateISO, meal)
+    if (!slot) return
+    const { items } = trackOps.copyItemsForRelog(slot, components, pantry)
+    if (items.length === 0) return
+    const existing = logOrNew(dateISO, meal)
+    const log = existing ? trackOps.mergeItems(existing, items) : createLogEntry({ date: dateISO, meal, items })
+    await storage.set('logs', trackOps.upsertLog(logs, log))
   }
 
   async function handleAddItems(dateISO, meal, items) {
@@ -137,8 +144,7 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
   const byok = settings.apiMode === 'byok' && settings.apiKey ? { provider: settings.provider, apiKey: settings.apiKey } : null
 
   const today = trackOps.todayISO()
-  const week = trackOps.currentWeek(weeks, today)
-  const weekOf = week ? week.weekOf : trackOps.currentWeekSundayISO(today)
+  const weekOf = trackOps.currentWeekSundayISO(today)
   const compById = Object.fromEntries(components.map((c) => [c.id, c]))
   const pantryById = Object.fromEntries(pantry.map((p) => [p.id, p]))
   const recent = logs
@@ -171,7 +177,7 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
       <h2 className="track-section-head">Meals</h2>
 
       <DayLog
-        week={week}
+        slots={planSlots}
         selectedDate={selectedDate}
         logs={logs}
         components={components}

@@ -1,4 +1,4 @@
-// Pure — no storage imports, no DOM. Mirrors weekOps.js/componentOps.js.
+// Pure — no storage imports, no DOM. Mirrors planOps.js/componentOps.js.
 
 const NUDGE_AFTER_DAYS = 14
 const MS_PER_DAY = 24 * 60 * 60 * 1000
