@@ -25,6 +25,13 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false)
   const [fabSignal, setFabSignal] = useState(null)
   const [backupOverdue, setBackupOverdue] = useState(false)
+  // Screens unmount on tab switch (SCREENS[activeTab] below), so any state
+  // that must survive navigation can't live inside the screen itself — this
+  // mirrors why fabSignal is passed down rather than kept in TrackScreen.
+  // A generated-but-not-yet-imported Plan week is exactly that case: without
+  // lifting it here, switching tabs mid-review silently discards the AI
+  // result. In-memory only — a full reload clearing it is fine.
+  const [planDraft, setPlanDraft] = useState({ showGenerate: false, generateResult: null })
   const Screen = SCREENS[activeTab]
 
   // Round 2.6 §5: BackupNudge no longer lives in the global top bar — it's
@@ -61,6 +68,8 @@ export default function App() {
           onGoToSettings={() => setActiveTab('settings')}
           onGoToPlan={() => setActiveTab('plan')}
           fabSignal={activeTab === 'track' ? fabSignal : null}
+          planDraft={planDraft}
+          onPlanDraftChange={setPlanDraft}
         />
       </main>
       <TabBar active={activeTab} onChange={setActiveTab} onFab={handleFab} backupOverdue={backupOverdue} />

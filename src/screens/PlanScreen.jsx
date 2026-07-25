@@ -8,14 +8,13 @@ import WeekView from '../components/WeekView.jsx'
 import ImportReview from '../components/ImportReview.jsx'
 import AddDishToPlanSheet from '../components/AddDishToPlanSheet.jsx'
 
-export default function PlanScreen() {
+export default function PlanScreen({ planDraft, onPlanDraftChange }) {
   const [pantry, setPantry] = useState([])
   const [components, setComponents] = useState([])
   const [weeks, setWeeks] = useState([])
   const [feedback, setFeedback] = useState([])
   const [settings, setSettings] = useState(null)
-  const [showGenerate, setShowGenerate] = useState(false)
-  const [generateResult, setGenerateResult] = useState(null)
+  const { showGenerate, generateResult } = planDraft
   const [addingToPlan, setAddingToPlan] = useState(false)
 
   async function reload() {
@@ -41,8 +40,7 @@ export default function PlanScreen() {
   async function handleImported(applied) {
     await storage.set('components', applied.components)
     await storage.set('weeks', applied.weeks)
-    setShowGenerate(false)
-    setGenerateResult(null)
+    onPlanDraftChange({ ...planDraft, showGenerate: false, generateResult: null })
   }
 
   async function handleCommitWeek(nextWeek) {
@@ -97,7 +95,7 @@ export default function PlanScreen() {
             pantry={pantry}
             settings={settings}
             onCommit={handleCommitWeek}
-            onGenerateNew={() => setShowGenerate(true)}
+            onGenerateNew={() => onPlanDraftChange({ ...planDraft, showGenerate: true })}
             onSubstituteComponent={handleSubstituteComponent}
           />
         </>
@@ -126,10 +124,7 @@ export default function PlanScreen() {
               <button
                 type="button"
                 className="btn"
-                onClick={() => {
-                  setShowGenerate(false)
-                  setGenerateResult(null)
-                }}
+                onClick={() => onPlanDraftChange({ ...planDraft, showGenerate: false, generateResult: null })}
               >
                 ← Back to this week
               </button>
@@ -137,7 +132,7 @@ export default function PlanScreen() {
           )}
           <GenerateWeekForm
             state={{ pantry, components, feedback, settings }}
-            onGenerated={setGenerateResult}
+            onGenerated={(result) => onPlanDraftChange({ ...planDraft, generateResult: result })}
             components={components}
             weeks={weeks}
             onImported={handleImported}
@@ -151,7 +146,7 @@ export default function PlanScreen() {
                 components={components}
                 weeks={weeks}
                 onConfirm={handleImported}
-                onCancel={() => setGenerateResult(null)}
+                onCancel={() => onPlanDraftChange({ ...planDraft, generateResult: null })}
               />
             </div>
           )}
@@ -175,7 +170,7 @@ export default function PlanScreen() {
                 </details>
               )}
               <div className="button-row">
-                <button type="button" className="btn" onClick={() => setGenerateResult(null)}>
+                <button type="button" className="btn" onClick={() => onPlanDraftChange({ ...planDraft, generateResult: null })}>
                   Dismiss
                 </button>
               </div>
