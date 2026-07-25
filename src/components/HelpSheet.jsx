@@ -48,7 +48,10 @@ export default function HelpSheet({ onClose }) {
             anything already in your Library. Any off-hand ingredient you used
             lands in an advisory <strong>grocery ideas</strong> card — dismiss
             anything you don't need. Each upcoming slot can be logged to Track with
-            one tap once it has something in it.
+            one tap once it has something in it. <strong>What can I make?</strong> asks
+            AI for a dozen dish ideas from what's on hand — no recipes, just names and
+            a one-liner; ★ an idea to keep it around, or tap <strong>Prep →</strong> to
+            open Prep a dish already filled in with its ingredients.
           </p>
         </section>
 

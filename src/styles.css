@@ -488,6 +488,15 @@ textarea, input[type="text"], input[type="password"], input[type="file"] {
   font-weight: 600;
 }
 
+/* Idea cards' "buy" chips (Phase P2) — non-interactive, so no active/hover
+   states, just the amber "you'll need to buy this" signal. */
+.chip--amber {
+  background: rgba(255, 183, 77, 0.14);
+  border-color: var(--amber);
+  color: var(--amber);
+  cursor: default;
+}
+
 .pantry-section {
   margin-bottom: 20px;
 }
@@ -1972,6 +1981,70 @@ select {
 .grocery-row__sub {
   font-size: var(--fs-sub);
   color: var(--text-muted);
+}
+
+/* ---- Idea cards (Phase P2 "What can I make?") ---- */
+
+.idea-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.idea-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+}
+
+.idea-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.idea-card__head h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+}
+
+.idea-card__star {
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.idea-card__star--active {
+  color: var(--amber);
+}
+
+.idea-card__line {
+  font-size: var(--fs-sub);
+  color: var(--text-muted);
+  margin: 2px 0 8px;
+}
+
+.idea-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.idea-card__chips .chip {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 12.5px;
 }
 
 /* ---- Nutrition capture (Phase 4.5) ---- */

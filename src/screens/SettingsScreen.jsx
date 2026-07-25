@@ -16,6 +16,7 @@ const SUMMARY_LABELS = {
   logs: 'logs',
   feedback: 'feedback entries',
   grocery: 'grocery ideas',
+  ideas: 'dish ideas',
   categories: 'categories',
 }
 

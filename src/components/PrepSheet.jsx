@@ -35,6 +35,10 @@ function rowStatusText(pantryItem, macro) {
   return `${Math.round(macro.kcal)} kcal`
 }
 
+function rowFor(item) {
+  return { pantryId: item.id, name: item.name, checked: true, measure: item.nutrition ? defaultMeasureFor(item.nutrition) : '' }
+}
+
 /**
  * "＋ Prep a dish" (Phase P1's core new flow): pick ingredients from the
  * pantry, see live per-meal macros, then split the resulting dish across N
@@ -42,12 +46,21 @@ function rowStatusText(pantryItem, macro) {
  * written until step 2's Confirm —
  * PlanScreen owns creating the Component, updating planSlots, and adding any
  * off-hand ingredients to the advisory grocery list.
+ *
+ * initialName/initialRows (Phase P2) let a caller pre-seed this from an AI
+ * idea's name and matched pantry ingredients — both optional, and absent
+ * means exactly the prior (blank) behavior.
  */
-export default function PrepSheet({ pantry, components, planSlots, upcoming, onConfirm, onClose }) {
+export default function PrepSheet({ pantry, components, planSlots, upcoming, initialName = '', initialRows = [], onConfirm, onClose }) {
   const [step, setStep] = useState(1)
-  const [name, setName] = useState('')
+  const [name, setName] = useState(initialName)
   const [search, setSearch] = useState('')
-  const [rows, setRows] = useState([])
+  const [rows, setRows] = useState(() =>
+    initialRows
+      .map(({ pantryId }) => pantry.find((p) => p.id === pantryId))
+      .filter(Boolean)
+      .map(rowFor),
+  )
   const [servings, setServings] = useState(3)
   const [selectedSlots, setSelectedSlots] = useState([])
 
@@ -61,10 +74,7 @@ export default function PrepSheet({ pantry, components, planSlots, upcoming, onC
     : []
 
   function addRow(item) {
-    setRows((prev) => [
-      ...prev,
-      { pantryId: item.id, name: item.name, checked: true, measure: item.nutrition ? defaultMeasureFor(item.nutrition) : '' },
-    ])
+    setRows((prev) => [...prev, rowFor(item)])
     setSearch('')
   }
   function toggleRow(index) {

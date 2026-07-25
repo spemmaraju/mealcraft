@@ -1,10 +1,11 @@
-// BYOK regenerate loop (Phase 6; full-week generateWeekViaApi removed Phase
-// P1 with the AI week generator itself). Pure — `chatFn` is injectable
-// (defaults to aiClient.chat) so this is offline-testable with a stub.
-// Reuses aiReplyOps' single-component validator; zero new validation logic.
+// BYOK call loops (Phase 6; full-week generateWeekViaApi removed Phase P1
+// with the AI week generator itself; Phase P2 adds generateIdeasViaApi).
+// Pure — `chatFn` is injectable (defaults to aiClient.chat) so this is
+// offline-testable with a stub. Reuses aiReplyOps' validators and its
+// generic buildFixRequest; zero new validation or retry logic per flow.
 
 import * as aiClient from './aiClient.js'
-import { validateComponentReply, buildFixRequest } from './aiReplyOps.js'
+import { validateComponentReply, validateIdeasReply, buildFixRequest } from './aiReplyOps.js'
 
 function userMessage(text) {
   return { role: 'user', content: [{ type: 'text', text }] }
@@ -39,4 +40,18 @@ export async function regenerateComponentViaApi({ provider, apiKey, prompt, chat
   const outcome = await chatWithOneRetry({ provider, apiKey, prompt, chatFn, onProgress, validateFn: validateComponentReply })
   if (!outcome.ok) return outcome
   return { ok: true, component: outcome.result.component, attempts: outcome.attempts }
+}
+
+/** @returns {Promise<{ok:true, ideas, attempts} | {ok:false, errors, rawText?, attempts}>} */
+export async function generateIdeasViaApi({ provider, apiKey, pantry, prompt, chatFn = aiClient.chat, onProgress }) {
+  const outcome = await chatWithOneRetry({
+    provider,
+    apiKey,
+    prompt,
+    chatFn,
+    onProgress,
+    validateFn: (text) => validateIdeasReply(text, { pantry }),
+  })
+  if (!outcome.ok) return outcome
+  return { ok: true, ideas: outcome.result.ideas, attempts: outcome.attempts }
 }

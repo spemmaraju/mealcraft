@@ -4,27 +4,35 @@ import * as trackOps from '../trackOps.js'
 import * as planOps from '../planOps.js'
 import * as componentOps from '../componentOps.js'
 import * as pantryOps from '../pantryOps.js'
+import * as ideaOps from '../ideaOps.js'
 import { createComponent, createGroceryItem, createLogEntry, MEAL_LABELS } from '../schema.js'
 import PlanSlotList from '../components/PlanSlotList.jsx'
 import PrepSheet from '../components/PrepSheet.jsx'
 import AddDishToPlanSheet from '../components/AddDishToPlanSheet.jsx'
 import GroceryCard from '../components/GroceryCard.jsx'
+import IdeasSection from '../components/IdeasSection.jsx'
 import AddLogItemSheet from '../components/AddLogItemSheet.jsx'
 
 // Phase P1: replaces the AI full-week generator (run sheet / assembly cards
 // / week import) with a slot-based flow — prep a dish from pantry
 // ingredients, split it across N upcoming meal slots, log any slot
-// to Track with one tap. No AI round trip anywhere in this screen anymore.
+// to Track with one tap. Phase P2 adds one small, optional AI round trip
+// back: "What can I make?" dish ideas (IdeasSection) — everything else on
+// this screen stays AI-free.
 export default function PlanScreen({ onGoToSettings }) {
   const [pantry, setPantry] = useState([])
   const [components, setComponents] = useState([])
   const [planSlots, setPlanSlots] = useState([])
   const [logs, setLogs] = useState([])
   const [grocery, setGrocery] = useState([])
+  const [ideas, setIdeas] = useState([])
   const [categories, setCategories] = useState([])
   const [settings, setSettings] = useState(null)
 
-  const [prepOpen, setPrepOpen] = useState(false)
+  // null = closed; {} = blank "+ Prep a dish"; {initialName, initialRows,
+  // buy} = seeded from an idea's "Prep →" (buy carries idea.buy through to
+  // handlePrepConfirm, which isn't itself a PrepSheet field).
+  const [prepSeed, setPrepSeed] = useState(null)
   const [addingSavedDish, setAddingSavedDish] = useState(false)
   // { date, meal } | null — the slot whose "+ Add extra" opened the shared
   // AddLogItemSheet (card: null, per the prep-flow spec — this sheet is
@@ -39,12 +47,13 @@ export default function PlanScreen({ onGoToSettings }) {
   const toastTimerRef = useRef(null)
 
   async function reload() {
-    const [p, c, ps, l, g, cat, s] = await Promise.all([
+    const [p, c, ps, l, g, i, cat, s] = await Promise.all([
       storage.get('pantry'),
       storage.get('components'),
       storage.get('planSlots'),
       storage.get('logs'),
       storage.get('grocery'),
+      storage.get('ideas'),
       storage.get('categories'),
       storage.get('settings'),
     ])
@@ -53,6 +62,7 @@ export default function PlanScreen({ onGoToSettings }) {
     setPlanSlots(ps)
     setLogs(l)
     setGrocery(g)
+    setIdeas(i)
     setCategories(cat)
     setSettings(s)
   }
@@ -112,9 +122,10 @@ export default function PlanScreen({ onGoToSettings }) {
 
   // PrepSheet already decided WHAT to persist (ingredients, macros, which
   // slots) — this is the only place any of it is actually written: the new
-  // dish Component, its slot placements, and any off-hand ingredients added
-  // to the advisory grocery list (existing names skipped, case/whitespace
-  // insensitive).
+  // dish Component, its slot placements, and any off-hand ingredients (plus,
+  // Phase P2, the seeding idea's `buy` list) added to the advisory grocery
+  // list (existing names skipped, case/whitespace insensitive; the two
+  // sources are also deduped against each other).
   async function handlePrepConfirm({ name, ingredients, macrosPerServing, servings, offHandIngredients, pickedSlots }) {
     const dish = createComponent({ name, type: 'dish', ingredients, steps: [], servings, macrosPerServing, macroSource: 'derived' })
     await storage.set('components', componentOps.upsertComponent(components, dish))
@@ -126,13 +137,36 @@ export default function PlanScreen({ onGoToSettings }) {
     await storage.set('planSlots', nextSlots)
 
     const existingNames = new Set(grocery.map((g) => g.name.trim().toLowerCase()))
-    const newItems = offHandIngredients
-      .filter((ing) => !existingNames.has(ing.name.trim().toLowerCase()))
-      .map((ing) => createGroceryItem({ name: ing.name, forDish: name }))
+    const candidateNames = [...offHandIngredients.map((ing) => ing.name), ...(prepSeed?.buy || [])]
+    const seen = new Set()
+    const newItems = []
+    for (const candidate of candidateNames) {
+      const key = candidate.trim().toLowerCase()
+      if (existingNames.has(key) || seen.has(key)) continue
+      seen.add(key)
+      newItems.push(createGroceryItem({ name: candidate, forDish: name }))
+    }
     if (newItems.length > 0) await storage.set('grocery', [...grocery, ...newItems])
 
-    setPrepOpen(false)
+    setPrepSeed(null)
     showToast(`${name} slotted into your week`)
+  }
+
+  // Phase P2 "Prep →" on an idea card: pre-seed PrepSheet with the idea's
+  // name and its `uses` resolved to pantry rows; unmatched uses are just not
+  // pre-seeded (search-add covers that). The idea's `buy` list rides along
+  // in prepSeed for handlePrepConfirm to fold into the grocery list.
+  function handlePrepIdea(idea) {
+    const { pantryIds } = ideaOps.prepSeedForIdea(idea, pantry)
+    setPrepSeed({ initialName: idea.name, initialRows: pantryIds.map((pantryId) => ({ pantryId })), buy: idea.buy })
+  }
+
+  async function handleIdeasRefreshed(fresh) {
+    await storage.set('ideas', ideaOps.mergeFreshIdeas(ideas, fresh))
+  }
+
+  async function handleToggleIdeaStar(id) {
+    await storage.set('ideas', ideaOps.toggleStar(ideas, id))
   }
 
   async function handleAddSavedDish(componentId, pickedSlots) {
@@ -176,7 +210,7 @@ export default function PlanScreen({ onGoToSettings }) {
       {toast && <div className="message message--success">{toast}</div>}
 
       <div className="button-row">
-        <button type="button" className="btn btn--primary" onClick={() => setPrepOpen(true)}>
+        <button type="button" className="btn btn--primary" onClick={() => setPrepSeed({})}>
           ＋ Prep a dish
         </button>
         <button type="button" className="btn" onClick={() => setAddingSavedDish(true)}>
@@ -199,8 +233,27 @@ export default function PlanScreen({ onGoToSettings }) {
 
       <GroceryCard grocery={grocery} onDismiss={handleDismissGrocery} />
 
-      {prepOpen && (
-        <PrepSheet pantry={pantry} components={components} planSlots={planSlots} upcoming={upcoming} onConfirm={handlePrepConfirm} onClose={() => setPrepOpen(false)} />
+      <IdeasSection
+        ideas={ideas}
+        pantry={pantry}
+        components={components}
+        settings={settings}
+        onIdeasRefreshed={handleIdeasRefreshed}
+        onToggleStar={handleToggleIdeaStar}
+        onPrepIdea={handlePrepIdea}
+      />
+
+      {prepSeed && (
+        <PrepSheet
+          pantry={pantry}
+          components={components}
+          planSlots={planSlots}
+          upcoming={upcoming}
+          initialName={prepSeed.initialName || ''}
+          initialRows={prepSeed.initialRows || []}
+          onConfirm={handlePrepConfirm}
+          onClose={() => setPrepSeed(null)}
+        />
       )}
 
       {addingSavedDish && (

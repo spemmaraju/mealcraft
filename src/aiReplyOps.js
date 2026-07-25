@@ -1,11 +1,11 @@
-// Shared AI-reply JSON parsing/validation that survives outside the (Phase
-// P1 removed) full-week generation flow: extractJson is generic fence-
-// stripping used by nutritionMappers.js's label-photo mappers, and
+// Shared AI-reply JSON parsing/validation. extractJson is generic fence-
+// stripping used by nutritionMappers.js's label-photo mappers;
 // validateComponentReply/buildFixRequest back MicroActionSheet's single-
-// component BYOK regenerate/substitute actions (byok.js). Split out of the
-// old weekImport.js — which also validated/applied the full WeekPlan AI
-// envelope — when that envelope went away with the AI week generator; pure,
-// no storage imports, no DOM.
+// component BYOK regenerate/substitute actions, and validateIdeasReply backs
+// IdeasSection's "What can I make?" flow (byok.js drives both). buildFixRequest
+// is generic (just formats an error list as a retry message), so both flows
+// share it rather than each growing its own copy. Pure, no storage imports,
+// no DOM.
 
 import { createComponent, validate } from './schema.js'
 
@@ -68,4 +68,78 @@ export function validateComponentReply(text) {
   const errors = validate(full, 'Component')
   if (errors.length > 0) return { ok: false, errors, component: null }
   return { ok: true, errors: [], component: full }
+}
+
+// Same on-hand-name resolution rule as ideaOps.prepSeedForIdea (kept
+// duplicated rather than imported — this module stays storage/schema-free
+// aside from schema.js itself, and ideaOps.js is UI-state-shaped while this
+// is reply-parsing-shaped): exact match first, then a contains-match
+// fallback (either direction) so "chickpeas" matches "Chickpeas (can)".
+function matchesOnHand(name, pantry) {
+  const needle = (name || '').trim().toLowerCase()
+  if (!needle) return false
+  return pantry.some((p) => {
+    if (!p.onHand) return false
+    const pname = p.name.trim().toLowerCase()
+    return pname === needle || pname.includes(needle) || needle.includes(pname)
+  })
+}
+
+/**
+ * Validates a "What can I make?" ideas reply (Phase P2). Structurally
+ * malformed entries are hard errors; a structurally valid idea whose `uses`
+ * has NO on-hand pantry match is silently dropped (not an error) — the
+ * point of `uses` is to prove the idea is groundable in what's actually on
+ * hand, so a fully ungroundable idea just isn't worth showing.
+ * @returns {{ok:true, ideas} | {ok:false, errors, rawText}}
+ */
+export function validateIdeasReply(rawText, { pantry }) {
+  let parsed
+  try {
+    parsed = JSON.parse(extractJson(rawText))
+  } catch (e) {
+    return { ok: false, errors: [`(json): could not parse — ${e.message}`], rawText }
+  }
+  if (!isPlainObject(parsed)) {
+    return { ok: false, errors: [`(root): expected object, got ${describe(parsed)}`], rawText }
+  }
+  if (!Array.isArray(parsed.ideas)) {
+    return { ok: false, errors: [`ideas: expected array, got ${describe(parsed.ideas)}`], rawText }
+  }
+  if (parsed.ideas.length < 4 || parsed.ideas.length > 20) {
+    return { ok: false, errors: [`ideas: expected 4-20 entries (asked for 12), got ${parsed.ideas.length}`], rawText }
+  }
+
+  const errors = []
+  const ideas = []
+  parsed.ideas.forEach((raw, i) => {
+    const path = `ideas[${i}]`
+    if (!isPlainObject(raw)) {
+      errors.push(`${path}: expected object, got ${describe(raw)}`)
+      return
+    }
+    if (typeof raw.name !== 'string' || !raw.name.trim()) {
+      errors.push(`${path}.name: expected non-empty string, got ${describe(raw.name)}`)
+      return
+    }
+    if (typeof raw.line !== 'string' || !raw.line.trim()) {
+      errors.push(`${path}.line: expected non-empty string, got ${describe(raw.line)}`)
+      return
+    }
+    if (!Array.isArray(raw.uses) || !raw.uses.every((u) => typeof u === 'string')) {
+      errors.push(`${path}.uses: expected string array, got ${describe(raw.uses)}`)
+      return
+    }
+    if (!Array.isArray(raw.buy) || !raw.buy.every((b) => typeof b === 'string')) {
+      errors.push(`${path}.buy: expected string array, got ${describe(raw.buy)}`)
+      return
+    }
+    const validUses = raw.uses.filter((u) => matchesOnHand(u, pantry))
+    if (validUses.length === 0) return // ungroundable — dropped, not an error
+    ideas.push({ name: raw.name.trim(), line: raw.line.trim(), uses: validUses, buy: raw.buy.slice(0, 2) })
+  })
+
+  if (errors.length > 0) return { ok: false, errors, rawText }
+  if (ideas.length === 0) return { ok: false, errors: ['ideas: none had any on-hand pantry matches'], rawText }
+  return { ok: true, ideas }
 }

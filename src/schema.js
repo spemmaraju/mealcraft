@@ -13,6 +13,7 @@ export const SHAPE_NAMES = [
   'LogEntry',
   'WeeklyFeedback',
   'Settings',
+  'Idea',
 ]
 
 // Maps storage.js collection keys to the shape each record must satisfy.
@@ -23,6 +24,7 @@ export const COLLECTION_SHAPES = {
   logs: 'LogEntry',
   feedback: 'WeeklyFeedback',
   grocery: 'GroceryItem',
+  ideas: 'Idea',
 }
 
 export const NUTRITION_SOURCES = ['barcode', 'label_photo', 'seed_table', 'ai_estimate', 'manual', 'online_search']
@@ -161,6 +163,21 @@ export function createLogEntry(overrides = {}) {
   }
 }
 
+// AI dish idea (Phase P2 "What can I make?") — no recipes/steps, just a
+// name, one-liner, which on-hand pantry items it uses, and 0-2 things to
+// buy. starred:true survives the next mergeFreshIdeas refresh.
+export function createIdea(overrides = {}) {
+  return {
+    id: genId('idea'),
+    name: '',
+    line: '',
+    uses: [],
+    buy: [],
+    starred: false,
+    ...overrides,
+  }
+}
+
 export function createWeeklyFeedback(overrides = {}) {
   return {
     weekOf: '',
@@ -263,6 +280,14 @@ const SHAPES = {
     repeatWorthy: T.str(),
     diedUneaten: T.str(),
     boredomNotes: T.str(),
+  },
+  Idea: {
+    id: T.str(),
+    name: T.str(),
+    line: T.str(),
+    uses: T.strArray(),
+    buy: T.strArray(),
+    starred: T.bool(),
   },
   Settings: {
     proteinBand: T.obj({ low_g: T.num(), high_g: T.num() }),

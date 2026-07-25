@@ -6,8 +6,8 @@ import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName } from './nutritionOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 10
-const COLLECTIONS = ['pantry', 'components', 'planSlots', 'logs', 'feedback', 'grocery']
+const SCHEMA_VERSION = 11
+const COLLECTIONS = ['pantry', 'components', 'planSlots', 'logs', 'feedback', 'grocery', 'ideas']
 
 function describe(v) {
   if (v === undefined) return 'undefined'
@@ -46,6 +46,7 @@ function defaultState() {
     logs: [],
     feedback: [],
     grocery: [],
+    ideas: [],
     settings: createSettings(),
   }
 }
@@ -198,6 +199,12 @@ export function migrate(state) {
     delete state.weeks
     state.schemaVersion = 10
   }
+  // v10 -> v11: Phase P2 adds `ideas` (AI dish-idea shortlist, Idea shape) —
+  // always starts empty; nothing in prior schema versions maps onto it.
+  if (state.schemaVersion === 10) {
+    state.ideas = []
+    state.schemaVersion = 11
+  }
   return state
 }
 
@@ -240,7 +247,7 @@ export function subscribe(listener) {
   return () => listeners.delete(listener)
 }
 
-/** @param {string} collection one of pantry|components|planSlots|logs|feedback|grocery|settings */
+/** @param {string} collection one of pantry|components|planSlots|logs|feedback|grocery|ideas|settings */
 export async function get(collection) {
   return readRaw()[collection]
 }
