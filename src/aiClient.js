@@ -88,6 +88,18 @@ export function describeHttpError(provider, status) {
   return `${name} request failed (HTTP ${status}).`
 }
 
+// Generation can outlive a phone's auto-lock (iOS defaults to 30 s) — the OS
+// then suspends the PWA and kills the in-flight fetch, surfacing as a network
+// failure. Hold a screen wake lock for the duration where the API exists
+// (iOS 16.4+/Chrome); everywhere else this is a silent no-op.
+async function acquireWakeLock() {
+  try {
+    return (await globalThis.navigator?.wakeLock?.request('screen')) ?? null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Non-streaming chat call. Never throws — transport and HTTP failures both
  * resolve to {ok:false, error}, and the error string never includes the key.
@@ -97,21 +109,30 @@ export async function chat({ provider, apiKey, messages, maxTokens = 16000 }) {
   const { url, headers, body } =
     provider === 'google' ? buildGoogleRequest(apiKey, messages, maxTokens) : buildAnthropicRequest(apiKey, messages, maxTokens)
 
-  let res
+  const wakeLock = await acquireWakeLock()
   try {
-    res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
-  } catch {
-    return { ok: false, error: 'Network request failed — check your connection and try again.' }
-  }
-  if (!res.ok) return { ok: false, error: describeHttpError(provider, res.status) }
+    let res
+    try {
+      res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+    } catch {
+      return { ok: false, error: 'Network request failed — check your connection, and keep the app open until the reply arrives.' }
+    }
+    if (!res.ok) return { ok: false, error: describeHttpError(provider, res.status) }
 
-  let json
-  try {
-    json = await res.json()
-  } catch {
-    return { ok: false, error: 'Could not parse the provider response.' }
+    let json
+    try {
+      json = await res.json()
+    } catch {
+      return { ok: false, error: 'Could not parse the provider response.' }
+    }
+    return provider === 'google' ? extractGoogleText(json) : extractAnthropicText(json)
+  } finally {
+    try {
+      await wakeLock?.release()
+    } catch {
+      /* lock already released by the OS (e.g. tab hidden) — nothing to do */
+    }
   }
-  return provider === 'google' ? extractGoogleText(json) : extractAnthropicText(json)
 }
 
 /** @returns {Promise<{ok:true, text} | {ok:false, error}>} */
