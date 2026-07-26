@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripLeadingQty, matchPhrase, matchScalarUnit, formatQty, formatQtyForUnit, METRIC_UNITS } from '../measures.js'
+import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripLeadingQty, matchPhrase, matchScalarUnit, formatQty, formatQtyForUnit } from '../measures.js'
 
 // CLAUDE.md §5: measures stay free text at the schema level. This is a UI
 // affordance only — it composes/decomposes canonical strings ("1.5 cup",
@@ -35,11 +35,15 @@ import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripL
 // real unit on load (deriveInitial below).
 const UNIT_OPTIONS = ['g', 'kg', 'ml', 'tsp', 'tbsp', 'cup', 'fl oz', 'piece']
 
-// Quick-fraction chips shown above the qty box while it's focused: the iOS
-// decimal keypad has no "/" key, so fractions were untypable there. Tapping
-// a chip replaces the qty (or appends to a plain whole number: "1" + ½ ->
+// Quick-fraction picker: a compact native <select> next to the qty box —
+// the iOS decimal keypad has no "/" key, so fractions were untypable there.
+// Round 5 fix: this used to be a floating chip bar absolutely positioned
+// above the qty input while it was focused, which overflowed and covered
+// adjacent UI on narrow phone layouts. A plain inline <select> can't
+// overflow anything, and doesn't need focus at all to fire. Choosing an
+// option replaces the qty (or appends to a plain whole number: "1" + ½ ->
 // "1 1/2"); parseQty already understands the emitted ascii form.
-const FRACTION_CHIPS = [
+const FRACTION_OPTIONS = [
   ['¼', '1/4'],
   ['⅓', '1/3'],
   ['½', '1/2'],
@@ -47,24 +51,25 @@ const FRACTION_CHIPS = [
   ['¾', '3/4'],
 ]
 
-// METRIC_UNITS lives in measures.js (shared with formatQtyForUnit) — metric
-// units are always typed as decimals (nobody measures "1/3 kg" of anything),
-// and the fracbar exists solely to work around the iOS decimal keypad
-// missing a "/" key for kitchen units like cup/tbsp/piece, so it's
-// meaningless (and clutters the qty box) for g/kg/ml.
+// Units the fraction picker makes sense for. Round 5: was "anything
+// non-metric" (METRIC_UNITS check), which meant 'piece' and any unrecognized
+// unit showed it too — genuinely ambiguous ("1/2 piece" of what?). Now an
+// explicit allowlist of the kitchen volume units fractions are actually used
+// for; everything else (g/kg/ml/piece/anything else) hides it.
+const FRACTION_FRIENDLY_UNITS = new Set(['cup', 'tbsp', 'tsp', 'fl oz'])
 
 /**
- * Whether the currently-selected unit is one kitchen fractions make sense
- * for. A phrase unit is NOT automatically fraction-friendly (Round 5 fix —
- * a naturalUnits phrase like "100 g" or "250 ml" is metric-typed exactly
- * like the plain "g"/"ml" scalars and should render/type the same way);
- * look at the phrase's tail's first unit token and hide chips when THAT is
- * metric. Non-metric phrases ("half block", "1 cup chopped") keep chips.
+ * Whether the currently-selected unit is one the fraction picker applies
+ * to. A phrase unit isn't automatically fraction-friendly — a naturalUnits
+ * phrase like "100 g" or "250 ml" is metric-typed exactly like the plain
+ * "g"/"ml" scalars; look at the phrase's tail's first unit token instead and
+ * test THAT against the allowlist. Non-metric phrases ("half block", "1 cup
+ * chopped") show it when their tail unit qualifies.
  */
 function isFractionFriendlyUnit(state) {
-  if (!state.isPhraseUnit) return !METRIC_UNITS.has(state.unit)
+  if (!state.isPhraseUnit) return FRACTION_FRIENDLY_UNITS.has(state.unit)
   const tailUnit = parseMeasure(state.unit).unitTokens[0]
-  return tailUnit ? !METRIC_UNITS.has(tailUnit) : true
+  return tailUnit ? FRACTION_FRIENDLY_UNITS.has(tailUnit) : false
 }
 
 function unitFromTokens(tokens, allowed) {
@@ -123,7 +128,6 @@ function composedValue(state) {
 export default function MeasureInput({ value, onChange, placeholder, nutrition, autoFocus = false }) {
   const allowedUnits = nutrition ? resolvableUnitsFor(nutrition) : null
   const [state, setState] = useState(() => deriveInitial(value, allowedUnits, nutrition))
-  const [qtyFocused, setQtyFocused] = useState(false)
   const qtyRef = useRef(null)
 
   // Round 2 hot-fix #2: focus+select together, in the same effect, rather
@@ -147,15 +151,10 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
   }
 
   function applyFraction(frac) {
-    const el = qtyRef.current
-    const v = state.qtyText
-    // Mirror typing semantics: if the whole value is selected (the
-    // focus/select() behavior above), the chip replaces it; a plain whole
-    // number gets the fraction appended ("1" + ½ -> "1 1/2"); anything else
-    // (an existing fraction/decimal) is replaced.
-    const allSelected = el != null && v.length > 0 && el.selectionStart === 0 && el.selectionEnd === v.length
-    const trimmed = v.trim()
-    const next = !trimmed || allSelected ? frac : /^\d+$/.test(trimmed) ? `${trimmed} ${frac}` : frac
+    // A plain whole number gets the fraction appended ("1" + ½ -> "1 1/2");
+    // anything else (empty, an existing fraction/decimal) is replaced.
+    const trimmed = state.qtyText.trim()
+    const next = /^\d+$/.test(trimmed) ? `${trimmed} ${frac}` : frac
     setState((s) => ({ ...s, qtyText: next }))
     onChange(`${next} ${unitTextFor(state)}`.trim())
   }
@@ -259,11 +258,7 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
         className="measure-input__qty"
         value={state.qtyText}
         onChange={handleQtyChange}
-        onFocus={(e) => {
-          setQtyFocused(true)
-          e.target.select()
-        }}
-        onBlur={() => setQtyFocused(false)}
+        onFocus={(e) => e.target.select()}
         onMouseUp={(e) => {
           // Round 2 hot-fix #2 (part 2): clicking into a field that's
           // ALREADY focused (e.g. the user tapped it again after switching
@@ -279,16 +274,25 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
         }}
         placeholder="qty"
       />
-      {qtyFocused && isFractionFriendlyUnit(state) && (
-        // preventDefault on pointerdown keeps the qty input focused (no blur,
-        // keyboard stays up, selection intact) so onClick still fires after.
-        <div className="measure-input__fracbar" onPointerDown={(e) => e.preventDefault()}>
-          {FRACTION_CHIPS.map(([glyph, ascii]) => (
-            <button key={ascii} type="button" onClick={() => applyFraction(ascii)}>
+      {isFractionFriendlyUnit(state) && (
+        <select
+          className="measure-input__frac"
+          aria-label="Insert fraction"
+          // Always-empty controlled value: picking an option applies the
+          // fraction to the qty box and the select snaps back to its "+½"
+          // affordance label — it's an insert button, not a held value.
+          value=""
+          onChange={(e) => {
+            if (e.target.value) applyFraction(e.target.value)
+          }}
+        >
+          <option value="">+½</option>
+          {FRACTION_OPTIONS.map(([glyph, ascii]) => (
+            <option key={ascii} value={ascii}>
               {glyph}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
       )}
       {unitSelect}
     </div>

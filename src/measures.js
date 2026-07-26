@@ -86,7 +86,10 @@ function canonicalVolumeUnit(tokens) {
   return key ? VOLUME_CANONICAL[key] || key : null
 }
 
-/** @param {string} str e.g. "1/3", "1 1/2", "½", "1½", "2" @returns {number|null} */
+/**
+ * @param {string} str e.g. "1/3", "1 1/2", "½", "1½", "2", ".5", "1,5"
+ * @returns {number|null}
+ */
 export function parseQty(str) {
   if (typeof str !== 'string') return null
   const s = str.trim()
@@ -113,13 +116,22 @@ export function parseQty(str) {
     return whole + UNICODE_FRACTIONS[unicodeMatch[2]]
   }
 
-  if (/^\d+(\.\d+)?$/.test(s)) return parseFloat(s)
+  // Round 5: loosen decimal parsing beyond the strict "\d+(\.\d+)?" form —
+  // a leading-dot decimal (".5") and a comma-decimal (European style, "1,5")
+  // are both things a phone's decimal keypad or a pasted value can produce.
+  // The comma form is limited to 1-2 fraction digits so a thousands-grouped
+  // number like "1,000" is correctly rejected rather than silently read as
+  // "1.0" (2 digits after the comma alone isn't enough to disambiguate a
+  // 3-digit group, so 3+ digits after the comma just falls through to null).
+  const commaDecimal = s.match(/^(\d+),(\d{1,2})$/)
+  const normalized = commaDecimal ? `${commaDecimal[1]}.${commaDecimal[2]}` : s
+  if (/^(?:\d+(\.\d+)?|\.\d+)$/.test(normalized)) return parseFloat(normalized)
 
   return null
 }
 
 const QTY_PREFIX_RE = new RegExp(
-  `^(\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+\\s*[${UNICODE_FRACTION_CHARS}]|[${UNICODE_FRACTION_CHARS}]|\\d+(?:\\.\\d+)?)`,
+  `^(\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+\\s*[${UNICODE_FRACTION_CHARS}]|[${UNICODE_FRACTION_CHARS}]|\\d+,\\d{1,2}|\\.\\d+|\\d+(?:\\.\\d+)?)`,
 )
 
 /** @param {string} measure e.g. "2/3 cup drained" @returns {{qty: number|null, unitTokens: string[]}} */
@@ -494,9 +506,8 @@ export function formatQty(qty) {
 
 // Metric units are always typed/read as decimals — nobody measures "53 1/3
 // g" of anything. Kitchen fractions (formatQty's mixed-number output) are a
-// cup/tbsp/tsp/fl-oz/piece/phrase-unit affordance only. Shared with
-// MeasureInput.jsx (fracbar visibility) so the "which units are decimal"
-// list lives in exactly one place.
+// cup/tbsp/tsp/fl-oz/piece/phrase-unit affordance only. Used by
+// formatQtyForUnit below to pick decimal vs. kitchen-fraction rendering.
 export const METRIC_UNITS = new Set(['g', 'kg', 'ml'])
 
 /**

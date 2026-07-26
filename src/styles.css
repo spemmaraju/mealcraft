@@ -1078,39 +1078,6 @@ select {
   gap: 4px;
   flex: 1;
   min-width: 0;
-  position: relative; /* anchors the floating fraction chip bar below */
-}
-
-/* Quick-fraction chips (Round 4.5): floating bar above the qty box while
-   it's focused — the iOS decimal keypad has no "/" key. */
-.measure-input__fracbar {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 0;
-  display: flex;
-  gap: 6px;
-  padding: 6px;
-  background: var(--surface-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-btn);
-  box-shadow: var(--shadow-md);
-  z-index: 5;
-}
-
-.measure-input__fracbar button {
-  min-width: 44px;
-  min-height: 40px;
-  border: none;
-  border-radius: 10px;
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: 18px;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.measure-input__fracbar button:active {
-  background: var(--brand-soft);
 }
 
 .measure-input__qty {
@@ -1126,6 +1093,18 @@ select {
 .measure-input__custom {
   flex: 2;
   min-width: 0;
+}
+
+/* Quick-fraction picker (Round 5): a compact native <select> next to the
+   qty box — replaces a floating chip bar that used to overflow narrow
+   layouts on phones. Narrow and flex:none so it never crowds out the qty
+   input or unit select in tight rows (see .itemrow__controls below); the
+   base `select` rule above still supplies the 44px tap-target min-height. */
+.measure-input__frac {
+  flex: none;
+  width: 44px;
+  padding: 8px 4px;
+  text-align: center;
 }
 
 .measure-input__unit {
@@ -1873,12 +1852,15 @@ select {
   gap: 6px;
 }
 
-/* Compact qty/unit sizing scoped to this row only — MeasureInput's other
-   consumers (AddItemAmountStep's full-width amount step, IngredientListEditor's
-   recipe rows) keep their own default sizing. */
+/* Compact qty/frac/unit sizing scoped to this row only — MeasureInput's
+   other consumers (AddItemAmountStep's full-width amount step,
+   IngredientListEditor's recipe rows) keep their own default sizing.
+   Round 5: the qty input and unit select each shrink a bit from their
+   original width to make room for the fraction select alongside them —
+   three controls now share the space two used to. */
 .itemrow__controls .measure-input__qty {
-  width: 44px;
-  min-width: 44px;
+  width: 40px;
+  min-width: 40px;
   height: 36px;
   min-height: 36px;
   text-align: center;
@@ -1886,10 +1868,19 @@ select {
   padding: 0 4px;
 }
 
+.itemrow__controls .measure-input__frac {
+  width: 34px;
+  min-width: 34px;
+  height: 36px;
+  min-height: 36px;
+  border-radius: 10px;
+  padding: 0 2px;
+}
+
 .itemrow__controls .measure-input__unit {
   height: 36px;
   min-height: 36px;
-  max-width: 74px;
+  max-width: 60px;
   border-radius: 10px;
   padding: 0 4px;
 }
