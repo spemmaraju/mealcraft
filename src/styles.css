@@ -2508,3 +2508,19 @@ select {
   width: 100%;
   margin-top: 6px;
 }
+
+/* ---- Snapshots (Round 5 Fix 5: auto backup) ---- */
+
+.snapshot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.snapshot-row:first-of-type {
+  border-top: none;
+}

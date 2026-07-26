@@ -27,6 +27,20 @@ export default function App() {
   const [backupOverdue, setBackupOverdue] = useState(false)
   const Screen = SCREENS[activeTab]
 
+  // Round 5 Fix 5: a cheap daily safety-net snapshot (guards against a bad
+  // write or corruption bug) and a best-effort request for persistent
+  // storage, so the browser is less likely to evict localStorage under
+  // pressure. Both are fire-and-forget — neither may ever block or break
+  // app boot, hence the guards.
+  useEffect(() => {
+    storage.captureSnapshotIfNeeded()
+    try {
+      navigator.storage?.persist?.()?.catch(() => {})
+    } catch {
+      // Persistent storage is best-effort only.
+    }
+  }, [])
+
   // Round 2.6 §5: BackupNudge no longer lives in the global top bar — it's
   // a card at the bottom of Settings — but the tab bar still needs a light
   // signal (a dot on the Settings icon) that it's overdue.

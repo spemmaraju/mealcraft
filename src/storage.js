@@ -4,10 +4,18 @@
 import { validate, createSettings, COLLECTION_SHAPES } from './schema.js'
 import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName } from './nutritionOps.js'
+import { hasSnapshotForDate, rotateSnapshots } from './backupOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
 const SCHEMA_VERSION = 11
 const COLLECTIONS = ['pantry', 'components', 'planSlots', 'logs', 'feedback', 'grocery', 'ideas']
+
+// Daily auto-snapshots live under their OWN localStorage key, entirely
+// outside STORAGE_KEY's state object — so they never ride along inside the
+// user's exported backup JSON (exportState only ever serializes the state
+// object below). Newest MAX_SNAPSHOTS kept; see rotateSnapshots.
+const SNAPSHOTS_KEY = 'mealcraft.snapshots.v1'
+const MAX_SNAPSHOTS = 3
 
 function describe(v) {
   if (v === undefined) return 'undefined'
@@ -344,4 +352,51 @@ export async function importState(jsonString) {
   writeRaw(result.parsed)
   notify()
   return result
+}
+
+function readSnapshots() {
+  try {
+    const raw = localStorage.getItem(SNAPSHOTS_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function writeSnapshots(snapshots) {
+  localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots))
+}
+
+// Cheap, safe full-state capture: at most one per calendar day (guarded by
+// hasSnapshotForDate), oldest rotated out beyond MAX_SNAPSHOTS. Wrapped in
+// try/catch — a quota error or serialization hiccup must never break app
+// boot, so this fails silently rather than surfacing anywhere.
+export async function captureSnapshotIfNeeded() {
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const existing = readSnapshots()
+    if (hasSnapshotForDate(existing, today)) return
+    const state = readRaw()
+    const json = JSON.stringify({ ...state, settings: { ...state.settings, apiKey: null, fdcKey: null } })
+    const summary = Object.fromEntries(COLLECTIONS.map((c) => [c, (state[c] ?? []).length]))
+    const snapshot = { date: today, takenAt: new Date().toISOString(), size: json.length, summary, json }
+    writeSnapshots(rotateSnapshots(existing, snapshot, MAX_SNAPSHOTS))
+  } catch {
+    // Never let a snapshot failure break app boot.
+  }
+}
+
+/** Metadata for Settings' Snapshots list — newest first, without the (large) json payload. */
+export async function listSnapshots() {
+  return readSnapshots()
+    .map(({ json, ...meta }) => meta)
+    .reverse()
+}
+
+/** Restores full state from a daily snapshot, via the same validated path JSON import uses. */
+export async function restoreSnapshot(date) {
+  const found = readSnapshots().find((s) => s.date === date)
+  if (!found) return { ok: false, errors: [`snapshot: no snapshot found for ${date}`] }
+  return importState(found.json)
 }
