@@ -113,8 +113,12 @@ export default function PantryScreen() {
     setAddText('')
     setAddingIn(null)
     setLastCategory(category)
-    if (openEditor) setEditingItemId(item.id)
-    else if (nutrition) setAutofillToast({ itemId: item.id, text: `Nutrition auto-filled for "${name}"` })
+    // Round 5.1: an item the seed table couldn't fill is exactly the one
+    // that needs its details next — open it right away instead of leaving a
+    // bare row the user has to hunt down and tap. Seed-filled items keep the
+    // lighter "auto-filled" toast (rapid-fire adds stay fast).
+    if (openEditor || !nutrition) setEditingItemId(item.id)
+    else setAutofillToast({ itemId: item.id, text: `Nutrition auto-filled for "${name}"` })
   }
 
   function openQuickAdd() {
@@ -141,7 +145,10 @@ export default function PantryScreen() {
     setLastCategory(category)
     setQuickAdding(false)
     setQuickAddName('')
+    // Same Round 5.1 rule as commitAdd: no seed match -> straight into the
+    // editor; a seed match keeps the toast.
     if (nutrition) setAutofillToast({ itemId: item.id, text: `Nutrition auto-filled for "${name}"` })
+    else setEditingItemId(item.id)
   }
 
   const filtered = pantryOps.filterItems(pantry, { search, onHandOnly })
