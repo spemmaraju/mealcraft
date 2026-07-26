@@ -2,6 +2,7 @@
 // imports — callers (UI or smoke script) own persistence.
 
 import { createPantryItem } from './schema.js'
+import { gtinEquals } from './barcodes.js'
 
 export function addItem(pantry, overrides) {
   const item = createPantryItem(overrides)
@@ -110,10 +111,10 @@ export function findByExactName(pantry, name) {
   return (pantry || []).find((p) => p.name.trim().toLowerCase() === needle) || null
 }
 
-/** Pantry item already carrying this barcode, if any — a stronger identity signal than name for the barcode-scan duplicate guard. @returns {object|null} */
+/** Pantry item already carrying this barcode, if any — a stronger identity signal than name for the barcode-scan duplicate guard. gtinEquals handles the stored/queried code differing by 12-vs-13-digit zero-padding. @returns {object|null} */
 export function findByBarcode(pantry, code) {
   if (!code) return null
-  return (pantry || []).find((p) => p.nutrition && p.nutrition.barcode === code) || null
+  return (pantry || []).find((p) => p.nutrition && p.nutrition.barcode && gtinEquals(p.nutrition.barcode, code)) || null
 }
 
 /** Attaches `nutrition` to pantry item `id` only if it currently has none — never overwrites existing nutrition (CLAUDE.md §3 invariant). */

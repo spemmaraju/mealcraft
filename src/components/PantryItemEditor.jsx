@@ -10,8 +10,12 @@ export default function PantryItemEditor({ item, categories, fdcKey, byok, onSav
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [editingNutrition, setEditingNutrition] = useState(false)
 
-  function handleSaveNutrition(nutrition) {
-    onSaveNutrition(item.id, nutrition)
+  // newName is set only when NutritionInfoEditor's online lookup found a
+  // name the user explicitly accepted ("Use as item name") — never a
+  // silent overwrite (CLAUDE.md — propose, user drives).
+  function handleSaveNutrition(nutrition, newName) {
+    onSaveNutrition(item.id, nutrition, newName)
+    if (newName) setName(newName)
     setEditingNutrition(false)
   }
 

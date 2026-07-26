@@ -56,6 +56,27 @@ function fdcHouseholdNaturalUnit(servingSize, servingSizeUnit, householdServingF
   return { label: householdServingFullText.trim(), gramsOrFraction: servingSize }
 }
 
+/**
+ * OFF carries container size (`product_quantity`) and serving size
+ * (`serving_quantity`) as separate free-standing numeric fields (distinct
+ * from the `serving_size` free-text field naturalUnits parses) — dividing
+ * one by `basis` (the serving quantity for the per-serving branch, 100 for
+ * the per-100g branch) gives servings-per-container. Only trusted when both
+ * numbers are finite and positive, and only when neither quantity's unit
+ * field disagrees with the other (absent or 'g' on both sides) — an 'ml'
+ * container with a gram-based serving (or vice versa) isn't a unit ratio
+ * this can honestly compute. Rounded to 1 decimal.
+ * @returns {number|null}
+ */
+function offServingsPerContainer(product, basis) {
+  const productQty = Number(product.product_quantity)
+  const b = Number(basis)
+  if (!Number.isFinite(productQty) || productQty <= 0 || !Number.isFinite(b) || b <= 0) return null
+  const unitOk = (u) => u == null || u === '' || u === 'g'
+  if (!unitOk(product.product_quantity_unit) || !unitOk(product.serving_quantity_unit)) return null
+  return Math.round((productQty / b) * 10) / 10
+}
+
 /** @param {object} json Open Food Facts /api/v2/product/{code}.json body (or a search-hit wrapped as {product}) @returns {NutritionInfo|null} */
 export function mapOffProduct(json) {
   const product = json && json.product
@@ -73,6 +94,7 @@ export function mapOffProduct(json) {
       servingDesc: product.serving_size || '',
       perServing,
       barcode,
+      servingsPerContainer: offServingsPerContainer(product, product.serving_quantity),
     })
   }
 
@@ -87,11 +109,29 @@ export function mapOffProduct(json) {
       servingDesc: '100 g',
       perServing,
       barcode,
+      servingsPerContainer: offServingsPerContainer(product, 100),
       ...(household ? { naturalUnits: [household] } : {}),
     })
   }
 
   return null
+}
+
+/**
+ * Appends " — <firstBrand>" to a base name (the first comma-separated entry
+ * of a raw brands field, trimmed) — used to disambiguate OFF/FDC results
+ * that come back with a generic product_name/description ("Rolled Oats")
+ * and a separate brand field. Skipped when there's no brand, or the name
+ * already contains it case-insensitively (no "Rolled Oats — Quaker Quaker").
+ * Null/blank-safe on both arguments.
+ * @returns {string|null}
+ */
+export function composeNameWithBrand(name, brandsField) {
+  if (typeof name !== 'string' || !name.trim()) return typeof name === 'string' ? name : null
+  const trimmed = name.trim()
+  const firstBrand = typeof brandsField === 'string' ? brandsField.split(',')[0].trim() : ''
+  if (!firstBrand || trimmed.toLowerCase().includes(firstBrand.toLowerCase())) return trimmed
+  return `${trimmed} — ${firstBrand}`
 }
 
 /**

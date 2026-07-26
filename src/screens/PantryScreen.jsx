@@ -67,8 +67,10 @@ export default function PantryScreen() {
 
   // Nutrition writes/deletes can change what a 'derived' component resolves
   // to, so every save here re-derives across the board before persisting.
-  async function handleSaveNutrition(itemId, nutrition) {
-    const nextPantry = pantryOps.updateItem(pantry, itemId, { nutrition })
+  // newName (Fix 3): only set when the user explicitly accepted an online
+  // lookup's found name in NutritionInfoEditor — never a silent rename.
+  async function handleSaveNutrition(itemId, nutrition, newName) {
+    const nextPantry = pantryOps.updateItem(pantry, itemId, { nutrition, ...(newName ? { name: newName.trim() } : {}) })
     await storage.set('pantry', nextPantry)
     const { changed, components: nextComponents } = nutritionOps.resyncDerivedMacros(components, nextPantry)
     if (changed) await storage.set('components', nextComponents)

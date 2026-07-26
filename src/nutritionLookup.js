@@ -15,29 +15,48 @@ import {
   LABEL_PROMPT,
   mapPhotoFoodReply,
   PHOTO_FOOD_PROMPT,
+  composeNameWithBrand,
 } from './nutritionMappers.js'
+import { barcodeCandidates, gtinEquals } from './barcodes.js'
 
-export { mapOffProduct, mapOffSearchProduct, mapFdcFood, mapFdcSearchFood, mapLabelReply, LABEL_PROMPT, mapPhotoFoodReply, PHOTO_FOOD_PROMPT }
+export {
+  mapOffProduct,
+  mapOffSearchProduct,
+  mapFdcFood,
+  mapFdcSearchFood,
+  mapLabelReply,
+  LABEL_PROMPT,
+  mapPhotoFoodReply,
+  PHOTO_FOOD_PROMPT,
+  composeNameWithBrand,
+}
 
 /**
  * OFF -> FDC (if fdcKey given) -> {ok:false}. Each step try/caught so
  * offline or a blocked request degrades to the next step, then to manual.
- * @returns {Promise<{ok: true, nutrition: NutritionInfo} | {ok: false}>}
+ *
+ * OFF is tried once per barcodeCandidates(code) entry, in order — a code
+ * typed/scanned as 12-digit UPC-A but stored at OFF as 13-digit EAN-13 (or
+ * vice versa) otherwise looks like a miss even though the product exists
+ * (barcodes.js §Fix 2). In practice that's at most 2 requests.
+ * @returns {Promise<{ok: true, nutrition: NutritionInfo, name: string|null} | {ok: false}>}
  */
 export async function lookupBarcode(code, { fdcKey } = {}) {
-  try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`)
-    if (res.ok) {
-      const json = await res.json()
-      const mapped = mapOffProduct(json)
-      // `name` is additive (Round 2: AddLogItemSheet's cold-start "Scan
-      // barcode" has no existing item name to prefill, unlike
-      // NutritionInfoEditor's scan-into-an-already-named-item flow) —
-      // existing callers destructure {ok, nutrition} and ignore it.
-      if (mapped) return { ok: true, nutrition: mapped, name: json.product?.product_name || null }
+  for (const candidate of barcodeCandidates(code)) {
+    try {
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(candidate)}.json`)
+      if (res.ok) {
+        const json = await res.json()
+        const mapped = mapOffProduct(json)
+        // `name` is additive (Round 2: AddLogItemSheet's cold-start "Scan
+        // barcode" has no existing item name to prefill, unlike
+        // NutritionInfoEditor's scan-into-an-already-named-item flow) —
+        // existing callers destructure {ok, nutrition} and ignore it.
+        if (mapped) return { ok: true, nutrition: mapped, name: composeNameWithBrand(json.product?.product_name || null, json.product?.brands) }
+      }
+    } catch {
+      // offline or blocked — try the next candidate, then fall through to FDC
     }
-  } catch {
-    // offline or blocked — fall through to FDC
   }
 
   if (fdcKey) {
@@ -47,9 +66,24 @@ export async function lookupBarcode(code, { fdcKey } = {}) {
       if (res.ok) {
         const json = await res.json()
         const foods = json.foods || []
-        const food = foods.find((f) => f.gtinUpc === code) || foods[0] || null
-        const mapped = food ? mapFdcFood(food) : null
-        if (mapped) return { ok: true, nutrition: mapped, name: food?.description || null }
+        // A wrong product is worse than none (Fix 2) — no foods[0] fallback.
+        // gtinEquals handles the same 12/13-digit padding gap as OFF.
+        const food = foods.find((f) => f.gtinUpc && gtinEquals(f.gtinUpc, code)) || null
+        if (food) {
+          let mapped = null
+          try {
+            const detailUrl = `https://api.nal.usda.gov/fdc/v1/food/${food.fdcId}?api_key=${encodeURIComponent(fdcKey)}`
+            const detailRes = await fetch(detailUrl)
+            if (detailRes.ok) mapped = mapFdcFood(await detailRes.json())
+          } catch {
+            // detail fetch failed — fall back to mapping the search row below
+          }
+          if (!mapped) {
+            const fromSearchRow = mapFdcSearchFood(food)
+            mapped = fromSearchRow ? { ...fromSearchRow, source: 'barcode' } : null
+          }
+          if (mapped) return { ok: true, nutrition: mapped, name: composeNameWithBrand(food.description || null, food.brandOwner) }
+        }
       }
     } catch {
       // offline or blocked

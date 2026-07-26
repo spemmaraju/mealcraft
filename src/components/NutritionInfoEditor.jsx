@@ -4,7 +4,8 @@ import { findSeedForName } from '../nutritionOps.js'
 import { lookupBarcode } from '../nutritionLookup.js'
 import NaturalUnitsEditor from './NaturalUnitsEditor.jsx'
 import BarcodeScanner from './BarcodeScanner.jsx'
-import LabelPhotoButton from './LabelPhotoButton.jsx'
+import NutritionLookupBar from './NutritionLookupBar.jsx'
+import FoodSearchSheet from './FoodSearchSheet.jsx'
 
 function toNumOrZero(text) {
   const n = parseFloat(text)
@@ -41,7 +42,16 @@ export default function NutritionInfoEditor({
   const [barcode, setBarcode] = useState(base.barcode ?? null)
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   const [scanning, setScanning] = useState(false)
+  const [searchingOnline, setSearchingOnline] = useState(false)
   const [lookupMsg, setLookupMsg] = useState(null)
+  // A name a lookup found, offered without ever silently overwriting what
+  // the user already typed (CLAUDE.md — propose, user drives). In the
+  // askName form it just prefills a still-blank Name field; against an
+  // already-named pantry item it surfaces as a one-line "Use as item name"
+  // proposal until acceptedName is set (see the proposal line below and
+  // handleSave, which only forwards acceptedName once it's set).
+  const [foundName, setFoundName] = useState(null)
+  const [acceptedName, setAcceptedName] = useState(null)
 
   function applyPrefill(fresh) {
     setSource(fresh.source)
@@ -77,17 +87,34 @@ export default function NutritionInfoEditor({
     setLookupMsg({ type: 'success', text: 'Filled from the seed table — review and Save.' })
   }
 
+  // Shared by the barcode scan and the online search below — resets any
+  // stale acceptedName so a fresh find re-offers its own proposal.
+  function applyFoundName(fresh) {
+    if (!fresh) return
+    setFoundName(fresh)
+    setAcceptedName(null)
+    if (askName && !name.trim()) setName(fresh)
+  }
+
   async function handleScanned(code) {
     setScanning(false)
     setLookupMsg({ type: 'success', text: 'Looking up barcode…' })
     const result = await lookupBarcode(code, { fdcKey })
     if (result.ok) {
       applyPrefill(result.nutrition)
+      applyFoundName(result.name)
       setLookupMsg({ type: 'success', text: 'Found online — review and Save.' })
     } else {
       setBarcode(code)
       setLookupMsg({ type: 'error', text: 'Not found online — enter nutrition manually below.' })
     }
+  }
+
+  function handleSearchPick(food) {
+    applyPrefill(food.nutrition)
+    applyFoundName(food.name)
+    setSearchingOnline(false)
+    setLookupMsg({ type: 'success', text: 'Found online — review and Save.' })
   }
 
   function handleLabelPhotoResult(result) {
@@ -115,7 +142,7 @@ export default function NutritionInfoEditor({
         naturalUnits,
         barcode,
       },
-      name.trim(),
+      askName ? name.trim() : acceptedName || undefined,
     )
   }
 
@@ -138,16 +165,19 @@ export default function NutritionInfoEditor({
           </div>
         )}
 
-        <div className="button-row">
-          <button type="button" className="btn" onClick={() => setScanning(true)}>
-            Scan barcode
-          </button>
-          <button type="button" className="btn" onClick={handleFillFromSeed}>
-            Autofill from common foods
-          </button>
-          {byok && <LabelPhotoButton byok={byok} onResult={handleLabelPhotoResult} />}
-        </div>
-        {lookupMsg && <div className={`message message--${lookupMsg.type}`}>{lookupMsg.text}</div>}
+        <NutritionLookupBar
+          onScan={() => setScanning(true)}
+          onSearchOnline={() => setSearchingOnline(true)}
+          onFillFromSeed={handleFillFromSeed}
+          byok={byok}
+          onLabelPhotoResult={handleLabelPhotoResult}
+          lookupMsg={lookupMsg}
+          askName={askName}
+          itemName={itemName}
+          foundName={foundName}
+          acceptedName={acceptedName}
+          onAcceptFoundName={() => setAcceptedName(foundName)}
+        />
 
         <div className="field">
           <label htmlFor="nutrition-serving-desc">Serving size</label>
@@ -244,6 +274,20 @@ export default function NutritionInfoEditor({
         )}
 
         {scanning && <BarcodeScanner onCode={handleScanned} onCancel={() => setScanning(false)} />}
+
+        {searchingOnline && (
+          <div className="sheet-backdrop sheet-backdrop--stacked" onClick={() => setSearchingOnline(false)}>
+            <div className="sheet" onClick={(e) => e.stopPropagation()}>
+              <h2>Search online</h2>
+              <FoodSearchSheet
+                initialQuery={askName ? name : itemName}
+                fdcKey={fdcKey}
+                onPick={handleSearchPick}
+                onBack={() => setSearchingOnline(false)}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

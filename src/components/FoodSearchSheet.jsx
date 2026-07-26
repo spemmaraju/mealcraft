@@ -31,7 +31,15 @@ const ERROR_TEXT = {
 // double-tapping "Search". The box and Search button below are now purely
 // for editing that query and re-searching (fixing a typo, trying fewer
 // words after an 'empty' result, retrying after 'upstream'/'unreachable').
-export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, onAdhocStage, onGoToSettings, onBack }) {
+//
+// Fix 4: an optional `onPick(food)` prop turns this into a plain picker —
+// used by NutritionInfoEditor's "Search online" (no pantry/log write of its
+// own; the caller decides what to do with the picked result). Each result
+// row then renders a single "Use this" button instead of the Add/"Log
+// without saving" pair, and the pantry-saving caption + manual-entry
+// fallback (both meaningless without a save/log flow behind them) are
+// hidden.
+export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, onAdhocStage, onGoToSettings, onBack, onPick }) {
   const [query, setQuery] = useState(initialQuery || '')
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState(null)
@@ -77,7 +85,7 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (manualEntry) {
+  if (manualEntry && !onPick) {
     return (
       <NutritionInfoEditor
         itemName={query.trim() || 'New food'}
@@ -114,10 +122,17 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
 
       {!fdcKey && (
         <p className="field-caption">
-          Add a free USDA key for better US results —{' '}
-          <button type="button" className="link-btn" onClick={onGoToSettings}>
-            Settings
-          </button>
+          Add a free USDA key for better US results
+          {onGoToSettings ? (
+            <>
+              {' — '}
+              <button type="button" className="link-btn" onClick={onGoToSettings}>
+                Settings
+              </button>
+            </>
+          ) : (
+            '.'
+          )}
         </p>
       )}
 
@@ -130,9 +145,11 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
                 Retry
               </button>
             )}
-            <button type="button" className="btn" onClick={() => setManualEntry(true)}>
-              Enter manually
-            </button>
+            {!onPick && (
+              <button type="button" className="btn" onClick={() => setManualEntry(true)}>
+                Enter manually
+              </button>
+            )}
           </div>
         </>
       )}
@@ -147,9 +164,11 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
                 ? 'USDA'
                 : 'Open Food Facts'}
           </p>
-          <p className="field-caption">
-            “Add” also saves the food to your pantry for quick logging next time. “Log without saving” logs it just this once.
-          </p>
+          {!onPick && (
+            <p className="field-caption">
+              “Add” also saves the food to your pantry for quick logging next time. “Log without saving” logs it just this once.
+            </p>
+          )}
           <div className="picker-sheet__list">
             {results.map((food, i) => (
               <div key={i} className="row2 food-search__row">
@@ -171,12 +190,20 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
                     <span> · {food.nutrition.servingDesc}</span>
                   </span>
                   <div className="button-row food-search__actions">
-                    <button type="button" className="btn btn--primary" onClick={() => onSaveAndStage(food)}>
-                      Add
-                    </button>
-                    <button type="button" className="btn" onClick={() => onAdhocStage(food)}>
-                      Log without saving
-                    </button>
+                    {onPick ? (
+                      <button type="button" className="btn btn--primary" onClick={() => onPick(food)}>
+                        Use this
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="btn btn--primary" onClick={() => onSaveAndStage(food)}>
+                          Add
+                        </button>
+                        <button type="button" className="btn" onClick={() => onAdhocStage(food)}>
+                          Log without saving
+                        </button>
+                      </>
+                    )}
                   </div>
                 </span>
                 <span className="row2__side">
