@@ -232,6 +232,17 @@ export function measureToServings(measure, nutrition) {
     return wholeMatch.gramsOrFraction / perServingGrams
   }
 
+  // (b.5) pure-volume servingDesc with no gram figure at all (perServingGrams
+  // null, e.g. "46 ml") — a volume measure can still convert directly via the
+  // ml ratio between measure and servingDesc, without ever touching grams.
+  if (perServingGrams == null) {
+    const measureMlDirect = mlFromMeasure(measureText)
+    const servingMlDirect = mlFromMeasure(stripParenthetical(nutrition.servingDesc))
+    if (measureMlDirect != null && servingMlDirect != null && servingMlDirect > 0) {
+      return measureMlDirect / servingMlDirect
+    }
+  }
+
   if (perServingGrams == null || perServingGrams <= 0) return null
 
   // (c) grams path — direct unit (g/kg/oz/lb)...

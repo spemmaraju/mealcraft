@@ -18,25 +18,36 @@ function coerceNum(v) {
 }
 
 /**
- * OFF's `serving_size` is free text like "30 g" or "2 Tbsp (30 g)" — extract
- * the gram figure (parenthetical or bare, mirroring measures.js's
- * servingGrams regexes locally rather than importing a private helper) and
- * pair it with the text stripped of that parenthetical as the naturalUnits
- * label, so e.g. "2 Tbsp (30 g)" -> {label:'2 Tbsp', gramsOrFraction:30}.
- * Returns null when no gram figure is found or the stripped text doesn't
- * parse as a measure (parseMeasure(...).qty == null) — e.g. bare "30 ml"
- * correctly yields no grams and is skipped.
+ * Household-measure text like OFF's `serving_size` or a label-photo
+ * servingDesc is free text in either gram-then-measure order or
+ * measure-then-gram order — harvest whichever form carries BOTH a gram
+ * figure and a measure-parseable household phrase, as a naturalUnits entry:
+ *   "2 Tbsp (30 g)" -> {label:'2 Tbsp', gramsOrFraction:30}  (measure, then grams in parens)
+ *   "46 g (3 Tbsp)" -> {label:'3 Tbsp', gramsOrFraction:46}  (grams, then measure in parens — Round A)
+ * Returns null when only one form is present — gram-only text ("46 g") or
+ * bare volume ("30 ml") has nothing to harvest.
  * @returns {{label: string, gramsOrFraction: number}|null}
  */
-function offHouseholdNaturalUnit(servingSizeText) {
-  if (typeof servingSizeText !== 'string' || !servingSizeText.trim()) return null
-  const paren = servingSizeText.match(/\(([\d.]+)\s*g\)/i)
-  const bare = servingSizeText.match(/^([\d.]+)\s*g$/i)
-  const grams = paren ? parseFloat(paren[1]) : bare ? parseFloat(bare[1]) : null
-  if (grams == null) return null
-  const stripped = servingSizeText.replace(/\([^)]*\)/g, '').trim()
-  if (parseMeasure(stripped).qty == null) return null
-  return { label: stripped, gramsOrFraction: grams }
+function householdUnitFromServingText(text) {
+  if (typeof text !== 'string' || !text.trim()) return null
+  const trimmed = text.trim()
+
+  const parenGrams = trimmed.match(/\(([\d.]+)\s*g\)/i)
+  if (parenGrams) {
+    const stripped = trimmed.replace(/\([^)]*\)/g, '').trim()
+    if (parseMeasure(stripped).qty != null) return { label: stripped, gramsOrFraction: parseFloat(parenGrams[1]) }
+  }
+
+  const outsideGrams = trimmed.replace(/\([^)]*\)/g, '').trim().match(/^([\d.]+)\s*g$/i)
+  const parenContents = trimmed.match(/\(([^)]*)\)/)
+  if (outsideGrams && parenContents) {
+    const contents = parenContents[1].trim()
+    if (!/^[\d.]+\s*g$/i.test(contents) && parseMeasure(contents).qty != null) {
+      return { label: contents, gramsOrFraction: parseFloat(outsideGrams[1]) }
+    }
+  }
+
+  return null
 }
 
 /**
@@ -89,12 +100,14 @@ export function mapOffProduct(json) {
     const [kcal, protein_g, carbs_g, fat_g] = perServingValues
     const perServing = { kcal, protein_g, carbs_g, fat_g }
     if (typeof n.fiber_serving === 'number') perServing.fiber_g = n.fiber_serving
+    const household = householdUnitFromServingText(product.serving_size)
     return createNutritionInfo({
       source: 'barcode',
       servingDesc: product.serving_size || '',
       perServing,
       barcode,
       servingsPerContainer: offServingsPerContainer(product, product.serving_quantity),
+      ...(household ? { naturalUnits: [household] } : {}),
     })
   }
 
@@ -103,7 +116,7 @@ export function mapOffProduct(json) {
     const [kcal, protein_g, carbs_g, fat_g] = per100gValues
     const perServing = { kcal, protein_g, carbs_g, fat_g }
     if (typeof n.fiber_100g === 'number') perServing.fiber_g = n.fiber_100g
-    const household = offHouseholdNaturalUnit(product.serving_size)
+    const household = householdUnitFromServingText(product.serving_size)
     return createNutritionInfo({
       source: 'barcode',
       servingDesc: '100 g',
@@ -207,10 +220,12 @@ export function mapFdcSearchFood(food) {
 }
 
 /**
- * Shared perServing/servingDesc/servingsPerContainer parsing for both
- * label-photo mappers below — `parsed` is already-JSON-parsed model output.
+ * Shared perServing/servingDesc/servingsPerContainer/naturalUnits parsing for
+ * both label-photo mappers below — `parsed` is already-JSON-parsed model
+ * output. naturalUnits is harvested from servingDesc (Round A) so a label
+ * that prints both forms ("3 tbsp (46 g)") anchors volume conversion too.
  * Returns null when the required macro fields aren't all numeric.
- * @returns {{servingDesc: string, servingsPerContainer: number|null, perServing: object}|null}
+ * @returns {{servingDesc: string, servingsPerContainer: number|null, perServing: object, naturalUnits?: object[]}|null}
  */
 function parseServingFields(parsed) {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
@@ -227,10 +242,14 @@ function parseServingFields(parsed) {
   const fiber_g = coerceNum(ps.fiber_g)
   if (fiber_g !== null) perServing.fiber_g = fiber_g
 
+  const servingDesc = typeof parsed.servingDesc === 'string' ? parsed.servingDesc : ''
+  const household = householdUnitFromServingText(servingDesc)
+
   return {
-    servingDesc: typeof parsed.servingDesc === 'string' ? parsed.servingDesc : '',
+    servingDesc,
     servingsPerContainer: coerceNum(parsed.servingsPerContainer),
     perServing,
+    ...(household ? { naturalUnits: [household] } : {}),
   }
 }
 
@@ -250,7 +269,8 @@ export function mapLabelReply(text) {
 export const LABEL_PROMPT =
   'This photo shows a nutrition facts label. Output ONLY one JSON object — no prose, no markdown code fences: ' +
   '{"servingDesc": string, "servingsPerContainer": number|null, "perServing": {"kcal": number, "protein_g": number, ' +
-  '"carbs_g": number, "fat_g": number, "fiber_g"?: number}}.'
+  '"carbs_g": number, "fat_g": number, "fiber_g"?: number}}. ' +
+  '"servingDesc" must include BOTH the household measure and the weight exactly as printed when the label shows both, e.g. "3 tbsp (46 g)".'
 
 /**
  * Maps a BYOK front+label combined-photo reply to a name + NutritionInfo, or
@@ -277,4 +297,5 @@ export const PHOTO_FOOD_PROMPT =
   '{"name": string|null, "servingDesc": string, "servingsPerContainer": number|null, "perServing": {"kcal": number, ' +
   '"protein_g": number, "carbs_g": number, "fat_g": number, "fiber_g"?: number}}. ' +
   '"name" is a concise product name (brand + product, e.g. "Trader Joe\'s Rolled Oats") read from the front-of-package ' +
-  "photo if one was provided and the name is visible; null otherwise."
+  'photo if one was provided and the name is visible; null otherwise. ' +
+  '"servingDesc" must include BOTH the household measure and the weight exactly as printed when the label shows both, e.g. "3 tbsp (46 g)".'
