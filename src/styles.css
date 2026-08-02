@@ -1095,18 +1095,6 @@ select {
   min-width: 0;
 }
 
-/* Quick-fraction picker (Round 5): a compact native <select> next to the
-   qty box — replaces a floating chip bar that used to overflow narrow
-   layouts on phones. Narrow and flex:none so it never crowds out the qty
-   input or unit select in tight rows (see .itemrow__controls below); the
-   base `select` rule above still supplies the 44px tap-target min-height. */
-.measure-input__frac {
-  flex: none;
-  width: 44px;
-  padding: 8px 4px;
-  text-align: center;
-}
-
 .measure-input__unit {
   flex: none;
   width: auto;
@@ -1866,15 +1854,6 @@ select {
   text-align: center;
   border-radius: 10px;
   padding: 0 4px;
-}
-
-.itemrow__controls .measure-input__frac {
-  width: 34px;
-  min-width: 34px;
-  height: 36px;
-  min-height: 36px;
-  border-radius: 10px;
-  padding: 0 2px;
 }
 
 .itemrow__controls .measure-input__unit {

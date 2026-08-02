@@ -35,43 +35,13 @@ import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripL
 // real unit on load (deriveInitial below).
 const UNIT_OPTIONS = ['g', 'kg', 'ml', 'tsp', 'tbsp', 'cup', 'fl oz', 'piece']
 
-// Quick-fraction picker: a compact native <select> next to the qty box —
-// the iOS decimal keypad has no "/" key, so fractions were untypable there.
-// Round 5 fix: this used to be a floating chip bar absolutely positioned
-// above the qty input while it was focused, which overflowed and covered
-// adjacent UI on narrow phone layouts. A plain inline <select> can't
-// overflow anything, and doesn't need focus at all to fire. Choosing an
-// option sets the qty to that fraction (see applyFraction); parseQty already
-// understands the emitted ascii form.
-const FRACTION_OPTIONS = [
-  ['¼', '1/4'],
-  ['⅓', '1/3'],
-  ['½', '1/2'],
-  ['⅔', '2/3'],
-  ['¾', '3/4'],
-]
-
-// Units the fraction picker makes sense for. Round 5: was "anything
-// non-metric" (METRIC_UNITS check), which meant 'piece' and any unrecognized
-// unit showed it too — genuinely ambiguous ("1/2 piece" of what?). Now an
-// explicit allowlist of the kitchen volume units fractions are actually used
-// for; everything else (g/kg/ml/piece/anything else) hides it.
-const FRACTION_FRIENDLY_UNITS = new Set(['cup', 'tbsp', 'tsp', 'fl oz'])
-
-/**
- * Whether the currently-selected unit is one the fraction picker applies
- * to. A phrase unit isn't automatically fraction-friendly — a naturalUnits
- * phrase like "100 g" or "250 ml" is metric-typed exactly like the plain
- * "g"/"ml" scalars; look at the phrase's tail's first unit token instead and
- * test THAT against the allowlist. Non-metric phrases ("half block", "1 cup
- * chopped") show it when their tail unit qualifies.
- */
-function isFractionFriendlyUnit(state) {
-  if (!state.isPhraseUnit) return FRACTION_FRIENDLY_UNITS.has(state.unit)
-  const tailUnit = parseMeasure(state.unit).unitTokens[0]
-  return tailUnit ? FRACTION_FRIENDLY_UNITS.has(tailUnit) : false
-}
-
+// The quick-fraction picker (a "½" <select> between the qty box and the
+// unit) is GONE — deliberately, don't re-add it. Three UIs were tried
+// (floating chip bar in Round 4.5, "+½" append-select in Round 5, set-select
+// Aug 2026) and phone screenshots showed the last one still read as part of
+// the quantity: controls laid out as [1][½][cup] look like "1½ cup" no
+// matter what the middle one does. Fractions are typed instead — parseQty
+// accepts ".5" (iOS keypad has "."), "1,5", "1/2", and "1 1/2".
 function unitFromTokens(tokens, allowed) {
   const joined = tokens.join(' ')
   return allowed.includes(joined) ? joined : null
@@ -148,17 +118,6 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
     const qtyText = e.target.value
     setState((s) => ({ ...s, qtyText }))
     onChange(`${qtyText} ${unitTextFor(state)}`.trim())
-  }
-
-  function applyFraction(frac) {
-    // Always REPLACE the qty. This used to append to a plain whole number
-    // ("1" + ½ -> "1 1/2"), but the qty box is usually prefilled with "1",
-    // so picking ½ while expecting "1/2 cup" silently produced "1 1/2 cup"
-    // — user feedback (Aug 2026). Mixed numbers are still typable ("1.5",
-    // "1 1/2" on a real keyboard); the picker is only the one-tap path to a
-    // plain kitchen fraction.
-    setState((s) => ({ ...s, qtyText: frac }))
-    onChange(`${frac} ${unitTextFor(state)}`.trim())
   }
 
   function handleUnitChange(e) {
@@ -276,26 +235,6 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
         }}
         placeholder="qty"
       />
-      {isFractionFriendlyUnit(state) && (
-        <select
-          className="measure-input__frac"
-          aria-label="Set a fraction quantity"
-          // Always-empty controlled value: picking an option sets the qty
-          // box to that fraction and the select snaps back to its "½"
-          // affordance label — it's a set button, not a held value.
-          value=""
-          onChange={(e) => {
-            if (e.target.value) applyFraction(e.target.value)
-          }}
-        >
-          <option value="">½</option>
-          {FRACTION_OPTIONS.map(([glyph, ascii]) => (
-            <option key={ascii} value={ascii}>
-              {glyph}
-            </option>
-          ))}
-        </select>
-      )}
       {unitSelect}
     </div>
   )
