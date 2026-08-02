@@ -87,6 +87,21 @@ function canonicalVolumeUnit(tokens) {
 }
 
 /**
+ * Round C "teach a conversion": the canonical volume unit word ('cup',
+ * 'tbsp', 'tsp', 'fl oz', 'ml') a free-text measure's unit is expressed in,
+ * or null when the measure isn't volume-based at all ("150 g", "handful").
+ * Lets MealSection decide whether an unconvertible measure is even a
+ * candidate for teaching (only volume measures can be taught — grams already
+ * convert directly, and non-numeric units like "handful" have nothing to
+ * anchor).
+ * @param {string} measure @returns {string|null}
+ */
+export function volumeUnitOfMeasure(measure) {
+  const { unitTokens } = parseMeasure(measure)
+  return canonicalVolumeUnit(unitTokens)
+}
+
+/**
  * @param {string} str e.g. "1/3", "1 1/2", "½", "1½", "2", ".5", "1,5"
  * @returns {number|null}
  */

@@ -108,6 +108,32 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
     }
   }
 
+  // Round C "teach a conversion": a taught { label: '1 <unit>', gramsOrFraction }
+  // anchor is appended to the item's own nutrition.naturalUnits — pantry
+  // items write back to the shared pantry record (so every future log of
+  // that item benefits too), adhoc items only update this one log's
+  // snapshot. Never overwrites anything else in nutrition (CLAUDE.md §3);
+  // teaching is a no-op when the pantry item somehow has no nutrition yet
+  // (nothing to anchor onto).
+  async function handleTeachMeasure(dateISO, meal, index, entry) {
+    const log = logOrNew(dateISO, meal)
+    if (!log) return
+    const item = log.items[index]
+    if (!item) return
+    if (item.kind === 'pantry') {
+      const pantryItem = pantry.find((p) => p.id === item.pantryId)
+      const n = pantryItem?.nutrition
+      if (!n) return
+      await storage.set(
+        'pantry',
+        pantryOps.updateItem(pantry, item.pantryId, { nutrition: { ...n, naturalUnits: [...(n.naturalUnits || []), entry] } }),
+      )
+    } else if (item.kind === 'adhoc') {
+      const nutrition = { ...item.nutrition, naturalUnits: [...(item.nutrition.naturalUnits || []), entry] }
+      await storage.set('logs', trackOps.setItemNutrition(logs, dateISO, meal, index, nutrition))
+    }
+  }
+
   // Round 3 "Save as dish": builds a type:'dish' Component from a logged
   // meal and adds it to the library — it shows up under MY DISHES next time
   // the add sheet is opened (already wired via componentOps/filterComponents).
@@ -197,6 +223,7 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
         onSaveToPantry={handleSaveToPantry}
         onAttachNutrition={handleAttachNutrition}
         onSaveDish={handleSaveDish}
+        onTeachMeasure={handleTeachMeasure}
         onGoToSettings={onGoToSettings}
         onGoToPlan={onGoToPlan}
       />

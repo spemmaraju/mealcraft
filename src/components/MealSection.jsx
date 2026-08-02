@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as trackOps from '../trackOps.js'
-import { measureToServings, parseMeasure, formatQty } from '../measures.js'
+import { measureToServings, parseMeasure, formatQty, volumeUnitOfMeasure } from '../measures.js'
 import { MEAL_ICONS } from './Icons.jsx'
 import ProvenanceTag from './ProvenanceTag.jsx'
 import MeasureInput from './MeasureInput.jsx'
@@ -91,6 +91,7 @@ export default function MealSection({
   onRemoveLog,
   onOpenAdd,
   onOpenSaveDish,
+  onTeachMeasure,
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   // Which logged item's macro breakdown is expanded, one at a time. Reset on
@@ -150,6 +151,7 @@ export default function MealSection({
             const itemMacro = trackOps.itemMacros(item, components, pantry)
             const provenanceSource = itemProvenanceSource(item, components, pantry)
             const warning = itemMeasureWarning(item, pantry)
+            const teachUnit = warning ? volumeUnitOfMeasure(item.measure) : null
             const isExpanded = expandedIndex === index
             return (
               <div key={index} className="itemrow-wrap">
@@ -197,6 +199,11 @@ export default function MealSection({
                     </button>
                   </div>
                 </div>
+                {warning && teachUnit && (
+                  <button type="button" className="link-btn" onClick={() => onTeachMeasure(item, index, teachUnit)}>
+                    Teach…
+                  </button>
+                )}
                 {isExpanded && <ItemMacroPanel itemMacro={itemMacro} />}
               </div>
             )

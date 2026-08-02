@@ -5,6 +5,7 @@ import * as planOps from '../planOps.js'
 import MealSection from './MealSection.jsx'
 import AddLogItemSheet from './AddLogItemSheet.jsx'
 import SaveAsDishSheet from './SaveAsDishSheet.jsx'
+import TeachMeasureSheet from './TeachMeasureSheet.jsx'
 
 // Round 2.6: the day-strip moved into TrackHero (it's part of the hero card
 // per screens/track.html) — DayLog just renders one MealSection per MEALS
@@ -42,6 +43,7 @@ export default function DayLog({
   onSaveToPantry,
   onAttachNutrition,
   onSaveDish,
+  onTeachMeasure,
   onGoToSettings,
   onGoToPlan,
 }) {
@@ -51,6 +53,8 @@ export default function DayLog({
   const [addSheet, setAddSheet] = useState(null)
   // Round 3 "Save as dish": which meal's sheet is open, or null.
   const [dishSheetMeal, setDishSheetMeal] = useState(null)
+  // Round C "teach a conversion": { date, meal, index, item, unit } | null.
+  const [teach, setTeach] = useState(null)
   // Round 3 "Log it again" undo: { date, meal, priorLog, count, skipped } or
   // null. Scoped by (date, meal) so switching days never shows a stale undo
   // for the wrong card, and reverts land back on the exact day it came from
@@ -125,6 +129,7 @@ export default function DayLog({
             onRemoveLog={() => onRemoveLog(selectedDate, meal)}
             onOpenAdd={() => setAddSheet({ meal })}
             onOpenSaveDish={() => setDishSheetMeal(meal)}
+            onTeachMeasure={(item, index, unit) => setTeach({ date: selectedDate, meal, index, item, unit })}
           />
         )
       })}
@@ -152,6 +157,18 @@ export default function DayLog({
           onGoToSettings={onGoToSettings}
           onGoToPlan={onGoToPlan}
           onClose={() => setAddSheet(null)}
+        />
+      )}
+
+      {teach && (
+        <TeachMeasureSheet
+          name={teach.item.kind === 'pantry' ? pantry.find((p) => p.id === teach.item.pantryId)?.name || teach.item.pantryId : teach.item.name}
+          unit={teach.unit}
+          onTeach={(entry) => {
+            onTeachMeasure(teach.date, teach.meal, teach.index, entry)
+            setTeach(null)
+          }}
+          onClose={() => setTeach(null)}
         />
       )}
 

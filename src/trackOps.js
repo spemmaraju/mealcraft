@@ -96,6 +96,20 @@ export function setItemMeasure(log, index, measure) {
   return { ...log, items: log.items.map((item, i) => (i === index ? { ...item, measure } : item)) }
 }
 
+/**
+ * Immutable nutrition-snapshot edit for a kind:'adhoc' item at (date, meal,
+ * index) — Round C "teach a conversion". Takes the full logs[] and returns a
+ * new logs[] (like upsertLog), rather than a single already-looked-up log
+ * like setItemMeasure, since TrackScreen's handler works from `logs`
+ * directly here. No-op (same reference) when no log exists at (date, meal).
+ */
+export function setItemNutrition(logs, date, meal, index, nutrition) {
+  const entry = logFor(logs, date, meal)
+  if (!entry) return logs
+  const log = { ...entry.log, items: entry.log.items.map((item, i) => (i === index ? { ...item, nutrition } : item)) }
+  return upsertLog(logs, log)
+}
+
 export function removeItemAt(log, index) {
   return { ...log, items: log.items.filter((_, i) => i !== index) }
 }
