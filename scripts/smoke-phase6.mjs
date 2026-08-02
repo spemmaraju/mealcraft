@@ -9,6 +9,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import * as schema from '../src/schema.js'
 import * as storage from '../src/storage.js'
+import { SCHEMA_VERSION } from '../src/storage.js'
 import * as promptCompiler from '../src/promptCompiler.js'
 import * as weekImport from '../src/weekImport.js'
 import * as aiClient from '../src/aiClient.js'
@@ -85,7 +86,7 @@ try {
     const result = await storage.importState(JSON.stringify(v3State()))
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 9)
+    assert.equal(state.schemaVersion, SCHEMA_VERSION)
     assert.equal(state.settings.lastExportAt, null)
     assert.equal(state.settings.cookDay, 'Sun')
     assert.equal(state.settings.refreshDay, 'Wed')

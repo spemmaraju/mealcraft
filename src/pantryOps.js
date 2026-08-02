@@ -3,6 +3,7 @@
 
 import { createPantryItem } from './schema.js'
 import { gtinEquals } from './barcodes.js'
+import { enrichWithVolumeAnchor } from './nutritionOps.js'
 
 export function addItem(pantry, overrides) {
   const item = createPantryItem(overrides)
@@ -137,10 +138,10 @@ export function planPantrySave(pantry, categories, name, nutrition, code) {
   const existing = (code && findByBarcode(pantry, code)) || findByExactName(pantry, name)
   if (existing) {
     if (existing.nutrition) return { planKind: 'existing', pantryId: existing.id, nutrition: existing.nutrition }
-    return { planKind: 'attach', pantryId: existing.id, nutrition }
+    return { planKind: 'attach', pantryId: existing.id, nutrition: enrichWithVolumeAnchor(existing.name, nutrition) }
   }
   const category = guessCategory(name, categories) || categories[0] || ''
-  return { planKind: 'create', name, category, nutrition }
+  return { planKind: 'create', name, category, nutrition: enrichWithVolumeAnchor(name, nutrition) }
 }
 
 export function filterItems(pantry, { search = '', role = null, onHandOnly = false } = {}) {

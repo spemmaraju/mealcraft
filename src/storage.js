@@ -3,11 +3,11 @@
 
 import { validate, createSettings, COLLECTION_SHAPES } from './schema.js'
 import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
-import { findSeedForName } from './nutritionOps.js'
+import { findSeedForName, enrichWithVolumeAnchor } from './nutritionOps.js'
 import { hasSnapshotForDate, rotateSnapshots } from './backupOps.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-const SCHEMA_VERSION = 11
+export const SCHEMA_VERSION = 12
 const COLLECTIONS = ['pantry', 'components', 'planSlots', 'logs', 'feedback', 'grocery', 'ideas']
 
 // Daily auto-snapshots live under their OWN localStorage key, entirely
@@ -212,6 +212,26 @@ export function migrate(state) {
   if (state.schemaVersion === 10) {
     state.ideas = []
     state.schemaVersion = 11
+  }
+  // v11 -> v12: Round B adds curated volume-anchor bridging (volumeAnchors.js)
+  // for gram-only serving info (e.g. a barcode item whose servingDesc is
+  // just "46 g", no volume figure at all). enrichWithVolumeAnchor is
+  // append-only and idempotent — it never touches perServing/servingDesc,
+  // only appends a naturalUnits entry when one isn't already resolvable —
+  // so this retroactively anchors existing pantry items and adhoc log
+  // snapshots the same way a fresh save would today.
+  if (state.schemaVersion === 11) {
+    for (const item of Array.isArray(state.pantry) ? state.pantry : []) {
+      if (item.nutrition != null) item.nutrition = enrichWithVolumeAnchor(item.name, item.nutrition)
+    }
+    for (const log of Array.isArray(state.logs) ? state.logs : []) {
+      for (const logItem of Array.isArray(log.items) ? log.items : []) {
+        if (logItem.kind === 'adhoc' && logItem.nutrition != null) {
+          logItem.nutrition = enrichWithVolumeAnchor(logItem.name, logItem.nutrition)
+        }
+      }
+    }
+    state.schemaVersion = 12
   }
   return state
 }

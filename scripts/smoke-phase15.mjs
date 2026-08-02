@@ -10,6 +10,7 @@
 import assert from 'node:assert/strict'
 import * as schema from '../src/schema.js'
 import * as storage from '../src/storage.js'
+import { SCHEMA_VERSION } from '../src/storage.js'
 import * as trackOps from '../src/trackOps.js'
 import { findSeedForName } from '../src/nutritionSeeds.js'
 
@@ -188,7 +189,7 @@ try {
     const result = await storage.importState(JSON.stringify(v6))
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 9)
+    assert.equal(state.schemaVersion, SCHEMA_VERSION)
     assert.equal(state.pantry[0].nutrition.source, 'seed_table', 'v6->v7 seed backfill still ran')
     assert.deepEqual(state.settings.proteinBand, { low_g: 60, high_g: 90 })
   })

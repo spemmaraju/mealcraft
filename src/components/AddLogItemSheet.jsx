@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { MEALS, MEAL_LABELS } from '../schema.js'
 import * as pantryOps from '../pantryOps.js'
+import * as nutritionOps from '../nutritionOps.js'
 import * as logSearchOps from '../logSearchOps.js'
 import { buildAddSheetData, initialMeasureForPlan } from '../addSheetOps.js'
 import { defaultMeasureFor } from '../measures.js'
@@ -134,12 +135,18 @@ export default function AddLogItemSheet({
     setPending({ type: 'pantry', name: food.name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan })
   }
 
+  // The only place an adhoc log's pending nutrition snapshot is built —
+  // covers both the search-online path (FoodSearchSheet's onAdhocStage) and
+  // the manual-entry path (NutritionInfoEditor's onSave below), since both
+  // funnel through here. enrichWithVolumeAnchor is a no-op unless the food
+  // has gram-only serving info and a curated cup-weight match.
   function handleOnlineAdhocStage(food) {
+    const nutrition = nutritionOps.enrichWithVolumeAnchor(food.name, food.nutrition)
     setPending({
       type: 'adhoc',
       name: food.name,
-      nutrition: food.nutrition,
-      initialMeasure: logSearchOps.lastUsedFor(recents, 'adhoc', food.name) ?? defaultMeasureFor(food.nutrition),
+      nutrition,
+      initialMeasure: logSearchOps.lastUsedFor(recents, 'adhoc', food.name) ?? defaultMeasureFor(nutrition),
     })
   }
 

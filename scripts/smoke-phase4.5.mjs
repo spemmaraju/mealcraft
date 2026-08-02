@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict'
 import * as schema from '../src/schema.js'
 import * as storage from '../src/storage.js'
+import { SCHEMA_VERSION } from '../src/storage.js'
 import * as measures from '../src/measures.js'
 import * as nutritionSeeds from '../src/nutritionSeeds.js'
 import * as nutritionOps from '../src/nutritionOps.js'
@@ -307,7 +308,7 @@ try {
     const result = await storage.importState(exported)
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     const state = await storage.getFullState()
-    assert.equal(state.schemaVersion, 9)
+    assert.equal(state.schemaVersion, SCHEMA_VERSION)
   })
 
   // ==== nutritionLookup.js: pure mappers ====

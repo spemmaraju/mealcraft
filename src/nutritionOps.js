@@ -2,12 +2,38 @@
 // imports — callers (UI or smoke script) own persistence. Mirrors componentOps.js.
 
 import { nameMatches } from './componentOps.js'
-import { measureToServings } from './measures.js'
+import { measureToServings, servingGrams } from './measures.js'
 import { findSeedForName as lookupSeed } from './nutritionSeeds.js'
+import { volumeAnchorFor } from './volumeAnchors.js'
 
 /** @param {string} name @returns {NutritionInfo|null} */
 export function findSeedForName(name) {
   return lookupSeed(name)
+}
+
+/**
+ * Appends a curated {label:'1 cup', gramsOrFraction} naturalUnits anchor
+ * (volumeAnchors.js) to `nutrition` when it can't yet resolve a volume
+ * measure on its own but has known grams-per-serving and its `name` matches
+ * a food in the curated cup-weight table — e.g. a barcode-scanned "46 g"
+ * egg-whites serving gains a "1 cup" anchor so "1/2 cup" logs convert.
+ * Append-only: perServing/servingDesc/source/existing naturalUnits entries
+ * are never touched, only appended to. Idempotent: once "1 cup" already
+ * resolves (via this anchor or any other path — a seed-table item with its
+ * own '1 cup' naturalUnits, a pure-volume servingDesc, ...), a second call
+ * is a pure no-op, so callers may run it unconditionally on every save
+ * without piling up duplicate anchors. This is the single choke point every
+ * pantry-save / adhoc-log-stage / migration call site delegates to.
+ * @param {string} name @param {object|null} nutrition
+ * @returns {object|null} `nutrition` unchanged, or a shallow copy with the anchor appended
+ */
+export function enrichWithVolumeAnchor(name, nutrition) {
+  if (nutrition == null) return nutrition
+  if (measureToServings('1 cup', nutrition) != null) return nutrition
+  if (servingGrams(nutrition) == null) return nutrition
+  const anchor = volumeAnchorFor(name)
+  if (anchor == null) return nutrition
+  return { ...nutrition, naturalUnits: [...(nutrition.naturalUnits || []), anchor] }
 }
 
 /** @returns {NutritionInfo|null} the cached NutritionInfo of the pantry item already scanned for `code` */

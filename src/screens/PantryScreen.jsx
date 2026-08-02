@@ -70,7 +70,9 @@ export default function PantryScreen() {
   // newName (Fix 3): only set when the user explicitly accepted an online
   // lookup's found name in NutritionInfoEditor — never a silent rename.
   async function handleSaveNutrition(itemId, nutrition, newName) {
-    const nextPantry = pantryOps.updateItem(pantry, itemId, { nutrition, ...(newName ? { name: newName.trim() } : {}) })
+    const effectiveName = newName ? newName.trim() : pantry.find((p) => p.id === itemId)?.name
+    const enriched = nutritionOps.enrichWithVolumeAnchor(effectiveName, nutrition)
+    const nextPantry = pantryOps.updateItem(pantry, itemId, { nutrition: enriched, ...(newName ? { name: newName.trim() } : {}) })
     await storage.set('pantry', nextPantry)
     const { changed, components: nextComponents } = nutritionOps.resyncDerivedMacros(components, nextPantry)
     if (changed) await storage.set('components', nextComponents)
