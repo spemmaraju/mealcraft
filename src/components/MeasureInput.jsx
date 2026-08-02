@@ -41,8 +41,8 @@ const UNIT_OPTIONS = ['g', 'kg', 'ml', 'tsp', 'tbsp', 'cup', 'fl oz', 'piece']
 // above the qty input while it was focused, which overflowed and covered
 // adjacent UI on narrow phone layouts. A plain inline <select> can't
 // overflow anything, and doesn't need focus at all to fire. Choosing an
-// option replaces the qty (or appends to a plain whole number: "1" + ½ ->
-// "1 1/2"); parseQty already understands the emitted ascii form.
+// option sets the qty to that fraction (see applyFraction); parseQty already
+// understands the emitted ascii form.
 const FRACTION_OPTIONS = [
   ['¼', '1/4'],
   ['⅓', '1/3'],
@@ -151,12 +151,14 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
   }
 
   function applyFraction(frac) {
-    // A plain whole number gets the fraction appended ("1" + ½ -> "1 1/2");
-    // anything else (empty, an existing fraction/decimal) is replaced.
-    const trimmed = state.qtyText.trim()
-    const next = /^\d+$/.test(trimmed) ? `${trimmed} ${frac}` : frac
-    setState((s) => ({ ...s, qtyText: next }))
-    onChange(`${next} ${unitTextFor(state)}`.trim())
+    // Always REPLACE the qty. This used to append to a plain whole number
+    // ("1" + ½ -> "1 1/2"), but the qty box is usually prefilled with "1",
+    // so picking ½ while expecting "1/2 cup" silently produced "1 1/2 cup"
+    // — user feedback (Aug 2026). Mixed numbers are still typable ("1.5",
+    // "1 1/2" on a real keyboard); the picker is only the one-tap path to a
+    // plain kitchen fraction.
+    setState((s) => ({ ...s, qtyText: frac }))
+    onChange(`${frac} ${unitTextFor(state)}`.trim())
   }
 
   function handleUnitChange(e) {
@@ -277,16 +279,16 @@ export default function MeasureInput({ value, onChange, placeholder, nutrition, 
       {isFractionFriendlyUnit(state) && (
         <select
           className="measure-input__frac"
-          aria-label="Insert fraction"
-          // Always-empty controlled value: picking an option applies the
-          // fraction to the qty box and the select snaps back to its "+½"
-          // affordance label — it's an insert button, not a held value.
+          aria-label="Set a fraction quantity"
+          // Always-empty controlled value: picking an option sets the qty
+          // box to that fraction and the select snaps back to its "½"
+          // affordance label — it's a set button, not a held value.
           value=""
           onChange={(e) => {
             if (e.target.value) applyFraction(e.target.value)
           }}
         >
-          <option value="">+½</option>
+          <option value="">½</option>
           {FRACTION_OPTIONS.map(([glyph, ascii]) => (
             <option key={ascii} value={ascii}>
               {glyph}
