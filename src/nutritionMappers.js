@@ -17,6 +17,10 @@ function coerceNum(v) {
   return typeof n === 'number' && !Number.isNaN(n) ? n : null
 }
 
+function round1(n) {
+  return Math.round(n * 10) / 10
+}
+
 /**
  * Household-measure text like OFF's `serving_size` or a label-photo
  * servingDesc is free text in either gram-then-measure order or
@@ -185,10 +189,45 @@ export function mapFdcFood(food) {
 const FDC_NUTRIENT_IDS = { kcal: 1008, protein_g: 1003, carbs_g: 1005, fat_g: 1004, fiber_g: 1079 }
 
 /**
- * A USDA FDC /foods/search result. Non-branded hits (Foundation/SR Legacy)
- * carry nutrients as `foodNutrients: [{nutrientId, value}]` per 100 g;
- * branded hits carry `labelNutrients` like a single-food lookup, so those
- * fall through to mapFdcFood with the source overridden.
+ * Round 1: FNDDS "Survey" search hits carry ready-made household measures
+ * directly on the search response — `foodMeasures: [{disseminationText:
+ * "1 cup", gramWeight: 196, rank: 1}, ...]` — no detail fetch needed. Keeps
+ * only entries with a finite positive `gramWeight` AND a `disseminationText`
+ * that parses as a real quantity via parseMeasure (drops filler rows like
+ * "Quantity not specified", which parses to qty: null), sorted by `rank`.
+ * @returns {{label: string, gramsOrFraction: number}[]}
+ */
+function fnddsNaturalUnits(foodMeasures) {
+  if (!Array.isArray(foodMeasures)) return []
+  return foodMeasures
+    .filter(
+      (m) =>
+        m &&
+        typeof m.disseminationText === 'string' &&
+        Number.isFinite(m.gramWeight) &&
+        m.gramWeight > 0 &&
+        parseMeasure(m.disseminationText).qty != null,
+    )
+    .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
+    .map((m) => ({ label: m.disseminationText, gramsOrFraction: m.gramWeight }))
+}
+
+/**
+ * A USDA FDC /foods/search result. Non-branded hits (Foundation/SR Legacy,
+ * and Round 1's Survey/FNDDS) carry nutrients as `foodNutrients:
+ * [{nutrientId, value}]` per 100 g; branded hits carry `labelNutrients` like
+ * a single-food lookup, so those fall through to mapFdcFood with the source
+ * overridden.
+ *
+ * Round 1: for a Survey (FNDDS) hit with at least one usable foodMeasures
+ * entry, perServing is scaled from the per-100g values by the rank-1
+ * measure's gramWeight/100 — a generic cooked dish like "Biryani with
+ * chicken" then reads as "1 cup (196 g)" instead of a raw, unscoopable
+ * per-100g number. naturalUnits is the harvested measures (rank order) with
+ * a plain '100 g' appended. Any Survey hit with no usable measure (only
+ * "Quantity not specified") falls through to the same per-100g form as
+ * Foundation/SR Legacy — that path, and Foundation/SR Legacy/Branded
+ * results generally, are otherwise untouched by this change.
  * @returns {NutritionInfo|null}
  */
 export function mapFdcSearchFood(food) {
@@ -201,9 +240,32 @@ export function mapFdcSearchFood(food) {
   const byId = Object.fromEntries(food.foodNutrients.map((n) => [n.nutrientId, n.value]))
   const values = [byId[FDC_NUTRIENT_IDS.kcal], byId[FDC_NUTRIENT_IDS.protein_g], byId[FDC_NUTRIENT_IDS.carbs_g], byId[FDC_NUTRIENT_IDS.fat_g]]
   if (!hasAllNumbers(values)) return null
-  const [kcal, protein_g, carbs_g, fat_g] = values
-  const perServing = { kcal, protein_g, carbs_g, fat_g }
-  if (typeof byId[FDC_NUTRIENT_IDS.fiber_g] === 'number') perServing.fiber_g = byId[FDC_NUTRIENT_IDS.fiber_g]
+  const [kcal100, protein100, carbs100, fat100] = values
+  const fiber100 = typeof byId[FDC_NUTRIENT_IDS.fiber_g] === 'number' ? byId[FDC_NUTRIENT_IDS.fiber_g] : null
+
+  if (food.dataType === 'Survey (FNDDS)') {
+    const units = fnddsNaturalUnits(food.foodMeasures)
+    if (units.length > 0) {
+      const rank1 = units[0]
+      const factor = rank1.gramsOrFraction / 100
+      const perServing = {
+        kcal: round1(kcal100 * factor),
+        protein_g: round1(protein100 * factor),
+        carbs_g: round1(carbs100 * factor),
+        fat_g: round1(fat100 * factor),
+      }
+      if (fiber100 != null) perServing.fiber_g = round1(fiber100 * factor)
+      return createNutritionInfo({
+        source: 'online_search',
+        servingDesc: `${rank1.label} (${rank1.gramsOrFraction} g)`,
+        perServing,
+        naturalUnits: [...units, { label: '100 g', gramsOrFraction: 100 }],
+      })
+    }
+  }
+
+  const perServing = { kcal: kcal100, protein_g: protein100, carbs_g: carbs100, fat_g: fat100 }
+  if (fiber100 != null) perServing.fiber_g = fiber100
 
   // '100 g' stays first — macros above are per 100 g, and callers (e.g.
   // defaultMeasureFor) take naturalUnits[0]/scalar[0] as "the" serving.

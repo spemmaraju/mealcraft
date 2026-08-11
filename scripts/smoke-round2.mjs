@@ -303,11 +303,21 @@ try {
 
   // ==== nutritionLookup.matchTier / rankSearchResults / dedupeSearchResults (Round 2.5 §6) ====
 
-  await check('matchTier: exact < prefix < substring < unrelated, case/whitespace-insensitive', () => {
+  await check('matchTier: exact < prefix < substring < token-subset < unrelated, case/whitespace-insensitive', () => {
     assert.equal(matchTier('Rolled Oats', '  rolled oats '), 0)
     assert.equal(matchTier('Rolled Oats Cereal', 'rolled oats'), 1)
     assert.equal(matchTier('Trader Joe\'s Rolled Oats', 'rolled oats'), 2)
-    assert.equal(matchTier('Quinoa', 'rolled oats'), 3)
+    assert.equal(matchTier('Quinoa', 'rolled oats'), 4)
+  })
+
+  await check('matchTier: token-subset (tier 3) catches word-order-inverted names — Round 1 FNDDS generic dishes', () => {
+    // Every query token appears in the name, just not as a contiguous substring.
+    assert.equal(matchTier('Biryani with chicken', 'chicken biryani'), 3)
+    assert.equal(matchTier('Rice, fried, with chicken', 'chicken fried rice'), 3)
+    // Still tier 2 when the query IS a contiguous substring.
+    assert.equal(matchTier('Chicken Biryani', 'chicken biryani'), 0)
+    // A partial token overlap (missing "biryani") stays unrelated.
+    assert.equal(matchTier('Chicken curry', 'chicken biryani'), 4)
   })
 
   await check('matchTier: an empty query ranks everything as tier 1 (no-op ordering)', () => {

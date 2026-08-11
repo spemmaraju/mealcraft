@@ -18,6 +18,7 @@ import {
   composeNameWithBrand,
 } from './nutritionMappers.js'
 import { barcodeCandidates, gtinEquals } from './barcodes.js'
+import { normalizeTokens } from './componentOps.js'
 
 export {
   mapOffProduct,
@@ -111,7 +112,13 @@ function classifyFetchError(err) {
 
 // ---- Round 2.5 §6: search ranking + dedupe (pure, exported for smoke tests) --
 
-/** 0 exact, 1 prefix, 2 substring, 3 no textual relation to `query` at all (still worth keeping — the API decided it was relevant). */
+/**
+ * 0 exact, 1 prefix, 2 substring, 3 every query token appears somewhere in
+ * the name regardless of word order (Round 1 FNDDS generic dishes: query
+ * "chicken biryani" against name "Biryani with chicken" — a plain substring
+ * check would miss this), 4 no textual relation to `query` at all (still
+ * worth keeping — the API decided it was relevant).
+ */
 export function matchTier(name, query) {
   const n = (name || '').toLowerCase().trim()
   const q = (query || '').toLowerCase().trim()
@@ -119,14 +126,24 @@ export function matchTier(name, query) {
   if (n === q) return 0
   if (n.startsWith(q)) return 1
   if (n.includes(q)) return 2
-  return 3
+  const queryTokens = normalizeTokens(q)
+  const nameTokens = new Set(normalizeTokens(n))
+  if (queryTokens.length > 0 && queryTokens.every((t) => nameTokens.has(t))) return 3
+  return 4
 }
 
-/** Stable-sorts search results by match tier against `query` (exact -> prefix -> substring -> other), ties keep arrival order. */
-export function rankSearchResults(items, query) {
+/**
+ * Stable-sorts search results by match tier against `query` (exact -> prefix
+ * -> substring -> token-subset -> other), ties keep arrival order — unless
+ * `tieBreak(item)` is given, in which case ties sort by its return value
+ * (lower first) before falling back to arrival order. Round 1: the FDC block
+ * in searchFoods passes a tieBreak that prefers `generic` (FNDDS Survey)
+ * rows over Foundation/SR Legacy/Branded rows at the same tier.
+ */
+export function rankSearchResults(items, query, tieBreak) {
   return items
-    .map((item, i) => ({ item, i, tier: matchTier(item.name, query) }))
-    .sort((a, b) => a.tier - b.tier || a.i - b.i)
+    .map((item, i) => ({ item, i, tier: matchTier(item.name, query), tie: tieBreak ? tieBreak(item) : 0 }))
+    .sort((a, b) => a.tier - b.tier || a.tie - b.tie || a.i - b.i)
     .map((x) => x.item)
 }
 
@@ -217,12 +234,14 @@ export async function lookupFoodPhotos({ provider, apiKey, images }) {
  * more reliable, less duplicate-riddled source for branded US products —
  * the motivating case is a query like "trader joe's rolled oats") is
  * ranked ABOVE Open Food Facts; within each source, results are ordered
- * exact match -> prefix match -> substring match -> other. Near-identical
- * results (same name+brand, case-insensitive) across sources are deduped,
- * keeping whichever occurrence ranked first. Barcode lookups
+ * exact match -> prefix match -> substring match -> token-subset match ->
+ * other (see matchTier); within the FDC block, ties additionally prefer
+ * `generic` (Round 1 FNDDS Survey) rows. Near-identical results (same
+ * name+brand, case-insensitive) across sources are deduped, keeping
+ * whichever occurrence ranked first. Barcode lookups
  * (lookupBarcode) are unaffected — that stays OFF-first, unranked (a
  * barcode has exactly one right answer, not a ranked list).
- * @returns {Promise<{ok: true, results: {name: string, brand: string|null, source: 'off'|'fdc', nutrition: NutritionInfo}[]} | {ok: false, reason: 'offline'|'upstream'|'unreachable'}>}
+ * @returns {Promise<{ok: true, results: {name: string, brand: string|null, source: 'off'|'fdc', generic?: boolean, nutrition: NutritionInfo}[]} | {ok: false, reason: 'offline'|'upstream'|'unreachable'}>}
  */
 export async function searchFoods(query, { fdcKey } = {}) {
   const offResults = []
@@ -250,14 +269,18 @@ export async function searchFoods(query, { fdcKey } = {}) {
 
   if (fdcKey) {
     try {
-      const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(fdcKey)}&query=${encodeURIComponent(query)}&dataType=Foundation,SR%20Legacy,Branded&pageSize=8`
+      const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(fdcKey)}&query=${encodeURIComponent(query)}&dataType=Foundation,SR%20Legacy,Branded,Survey%20(FNDDS)&pageSize=10`
       const res = await fetch(url)
       if (res.ok) {
         sawSuccess = true
         const json = await res.json()
         for (const food of json.foods || []) {
           const nutrition = mapFdcSearchFood(food)
-          if (nutrition) fdcResults.push({ name: food.description || query, brand: food.brandOwner || null, source: 'fdc', nutrition })
+          // `generic` is transient (search-result-row only, never persisted —
+          // AddLogItemSheet's pantry-save and adhoc-stage paths only read
+          // food.name + food.nutrition) — Round 1: FNDDS "Survey" generic
+          // cooked-dish hits ("Biryani with chicken") vs branded/Foundation.
+          if (nutrition) fdcResults.push({ name: food.description || query, brand: food.brandOwner || null, source: 'fdc', generic: food.dataType === 'Survey (FNDDS)', nutrition })
         }
       } else if (res.status === 429 || res.status >= 500) {
         sawUpstreamError = true
@@ -268,7 +291,7 @@ export async function searchFoods(query, { fdcKey } = {}) {
   }
 
   const rankedOff = rankSearchResults(offResults, query)
-  const rankedFdc = rankSearchResults(fdcResults, query)
+  const rankedFdc = rankSearchResults(fdcResults, query, (item) => (item.generic ? 0 : 1))
   const ordered = fdcKey ? [...rankedFdc, ...rankedOff] : [...rankedOff, ...rankedFdc]
   const results = dedupeSearchResults(ordered)
 

@@ -186,7 +186,9 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
                   </span>
                   <span className="row2__sub">
                     {food.brand && <span>{food.brand} · </span>}
-                    <span className="provenance-tag provenance-tag--tiny">{food.source === 'off' ? 'Open Food Facts' : 'USDA FDC'}</span>
+                    <span className="provenance-tag provenance-tag--tiny">
+                      {food.source === 'off' ? 'Open Food Facts' : food.generic ? 'USDA generic' : 'USDA FDC'}
+                    </span>
                     <span> · {food.nutrition.servingDesc}</span>
                   </span>
                   <div className="button-row food-search__actions">
