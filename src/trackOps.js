@@ -125,6 +125,19 @@ export function logFor(logs, dateISO, meal) {
 }
 
 /**
+ * Round 2 (Recent-logs re-log): a source log is eligible to copy into today
+ * when it actually has items and isn't already today's own row — relogging
+ * today into today would just double it up. Null-safe on `log`/`log.items`
+ * so a stale/malformed row can't crash the Recent-logs list.
+ * @param {object|null|undefined} log
+ * @param {string} todayISO
+ * @returns {boolean}
+ */
+export function canRelogTo(log, todayISO) {
+  return !!(log && log.items && log.items.length > 0 && log.date !== todayISO)
+}
+
+/**
  * Round 3 "Log it again": the most recent non-empty log for `meal` strictly
  * within the 7 days before `dateISO` (today itself and anything older than a
  * week don't count — a week-old repeat is a coincidence, not a habit).

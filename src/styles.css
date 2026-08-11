@@ -2389,6 +2389,16 @@ select {
   flex: none;
 }
 
+/* Round 2: wraps "Log again" + the delete/confirm control together so
+   space-between on .recent-log-row only ever splits two groups (body vs.
+   actions), regardless of which actions are present for a given row. */
+.recent-log-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
 /* ---- Install hint / backup card ---- */
 
 .banner {

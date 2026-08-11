@@ -21,7 +21,7 @@ const SCREENS = {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('pantry')
+  const [activeTab, setActiveTab] = useState('track')
   const [showHelp, setShowHelp] = useState(false)
   const [fabSignal, setFabSignal] = useState(null)
   const [backupOverdue, setBackupOverdue] = useState(false)

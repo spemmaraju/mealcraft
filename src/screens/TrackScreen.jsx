@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as storage from '../storage.js'
 import * as trackOps from '../trackOps.js'
 import * as planOps from '../planOps.js'
@@ -7,6 +7,7 @@ import * as componentOps from '../componentOps.js'
 import { createLogEntry } from '../schema.js'
 import DayLog from '../components/DayLog.jsx'
 import TrackHero from '../components/TrackHero.jsx'
+import RecentLogsList from '../components/RecentLogsList.jsx'
 
 export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
   const [components, setComponents] = useState([])
@@ -17,6 +18,12 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
   const [settings, setSettings] = useState(null)
   const [confirmingRemove, setConfirmingRemove] = useState(null)
   const [selectedDate, setSelectedDate] = useState(trackOps.todayISO())
+  // Round 2 "Recent logs re-log" undo: { meal, priorLog, count, skipped } or
+  // null. Mirrors DayLog's own "Log it again" undo (same 6s window, same
+  // cleanup-on-unmount), but scoped to the Recent-logs list rather than a
+  // single meal card since the source row can be any past day.
+  const [relogUndo, setRelogUndo] = useState(null)
+  const relogUndoTimerRef = useRef(null)
 
   async function reload() {
     const [c, p, cat, ps, l, s] = await Promise.all([
@@ -45,6 +52,8 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
   useEffect(() => {
     if (fabSignal) setSelectedDate(trackOps.todayISO())
   }, [fabSignal])
+
+  useEffect(() => () => clearTimeout(relogUndoTimerRef.current), [])
 
   function logOrNew(dateISO, meal) {
     const entry = trackOps.logFor(logs, dateISO, meal)
@@ -147,6 +156,33 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
     setConfirmingRemove(null)
   }
 
+  // Round 2 "Recent logs re-log": one-tap copy of a past meal into TODAY
+  // (not the currently-selected date — the whole point is a fast path back
+  // to "today" from a past-day row). Mirrors DayLog.handleLogAgain exactly,
+  // just retargeted at (today, sourceLog.meal) instead of (selectedDate, meal).
+  async function handleLogAgain(sourceLog) {
+    const today = trackOps.todayISO()
+    const meal = sourceLog.meal
+    const priorEntry = trackOps.logFor(logs, today, meal)
+    const priorLog = priorEntry ? priorEntry.log : null
+    const { items, skipped } = trackOps.copyItemsForRelog(sourceLog, components, pantry)
+    if (items.length === 0) return
+    const newLog = priorLog ? trackOps.mergeItems(priorLog, items) : createLogEntry({ date: today, meal, items })
+    await handleSetLog(today, meal, newLog)
+    setSelectedDate(today)
+
+    clearTimeout(relogUndoTimerRef.current)
+    setRelogUndo({ meal, priorLog, count: items.length, skipped })
+    relogUndoTimerRef.current = setTimeout(() => setRelogUndo(null), 6000)
+  }
+
+  async function handleUndoRelog() {
+    if (!relogUndo) return
+    clearTimeout(relogUndoTimerRef.current)
+    await handleSetLog(trackOps.todayISO(), relogUndo.meal, relogUndo.priorLog)
+    setRelogUndo(null)
+  }
+
   // Saving a search result to the pantry (Phase 16) makes it resolve
   // offline next time; addItem's synchronously-returned id sidesteps any
   // read-after-write race with the freshly-created pantry item.
@@ -228,42 +264,18 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
         onGoToPlan={onGoToPlan}
       />
 
-      <div className="plan-section">
-        <h2>Recent logs</h2>
-        {recent.length === 0 ? (
-          <p className="placeholder">Nothing logged yet.</p>
-        ) : (
-          recent.map(({ log, index }) => (
-            <div key={index} className="recent-log-row">
-              <div className="recent-log-row__body">
-                <span className="recent-log-row__date">
-                  {log.date} · {log.meal}
-                </span>
-                <span className="recent-log-row__components">{log.items.map(itemName).join(', ') || '(none)'}</span>
-              </div>
-              {confirmingRemove === index ? (
-                <span className="recent-log-row__confirm">
-                  <button type="button" className="btn btn--danger" onClick={() => handleRemoveAt(index)}>
-                    Remove?
-                  </button>
-                  <button type="button" className="btn" onClick={() => setConfirmingRemove(null)}>
-                    Keep
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  className="assembly-card__x"
-                  onClick={() => setConfirmingRemove(index)}
-                  aria-label={`Remove log for ${log.date}`}
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          ))
-        )}
-      </div>
+      <RecentLogsList
+        recent={recent}
+        itemName={itemName}
+        todayISO={today}
+        confirmingRemove={confirmingRemove}
+        onConfirmRemove={setConfirmingRemove}
+        onCancelRemove={() => setConfirmingRemove(null)}
+        onRemoveAt={handleRemoveAt}
+        onLogAgain={handleLogAgain}
+        relogUndo={relogUndo}
+        onUndoRelog={handleUndoRelog}
+      />
     </div>
   )
 }
