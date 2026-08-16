@@ -310,16 +310,23 @@ export function measureToServings(measure, nutrition) {
 // calories) of what was logged.
 
 /**
- * Fixed units worth testing for resolvability against a given nutrition.
+ * Fixed units worth testing for resolvability against a given nutrition, IN
+ * this fixed order — 'serving' first, then metric, then volume, then piece.
  * Round 3.5: dropped kg/fl oz from this picker list (parsing still accepts
  * them as free text via gramsFromMeasure/mlFromMeasure — this list only
- * controls what the dropdown OFFERS). Round 4.5: dropped 'serving' too —
- * "1 serving" is meaningless at the shelf without knowing the serving size,
- * so the picker only offers real units. Parsing/conversion of stored
- * "N serving" measures is untouched (measureToServings path 0, qtyForUnit),
- * and resolvableUnitsFor still falls back to it when NOTHING else resolves.
+ * controls what the dropdown OFFERS).
+ *
+ * Round 4.5 dropped 'serving' from this list entirely — "1 serving" was
+ * meaningless at the shelf without knowing the serving size. Round 6
+ * reverses that: the amount step now ALWAYS shows "1 serving = {servingDesc}"
+ * plus a live kcal preview right next to the unit picker, so "serving" is a
+ * legible unit again — and it's the unit the MyFitnessPal-style logging habit
+ * this app is chasing actually reaches for first. 'serving' resolves for
+ * every item with any nutrition at all (measureToServings path 0 doesn't
+ * need naturalUnits/grams), so it's always offered — the picker no longer
+ * has an item that can offer NOTHING.
  */
-const SCALAR_UNIT_CANDIDATES = ['cup', 'tbsp', 'tsp', 'g', 'ml', 'piece']
+const SCALAR_UNIT_CANDIDATES = ['serving', 'g', 'ml', 'cup', 'tbsp', 'tsp', 'piece']
 
 /**
  * @param {object} nutrition
@@ -353,54 +360,30 @@ export function resolvableUnitsFor(nutrition) {
       if (unitTokens.length === 1 && scalarSet.has(unitTokens[0])) return false
       return true
     })
-  // Last resort only: an item whose nutrition can't resolve ANY real unit
-  // (no grams info, no naturalUnits) must stay loggable somehow.
-  if (scalar.length === 0 && phrases.length === 0) scalar.push('serving')
+  // Round 6: the old last-resort "if nothing else resolves, push 'serving'"
+  // fallback is gone — it's dead code now that 'serving' is a normal
+  // SCALAR_UNIT_CANDIDATES entry (first in the filter above) and resolves
+  // for every item with any nutrition at all, so `scalar` can never come
+  // back empty when `nutrition` is truthy.
   return { scalar, phrases }
 }
 
 /**
- * The unit `nutrition.servingDesc` is itself expressed in, IF that unit is
- * one of the offered scalars — an exact tail match ("100 g" -> "g", "1 tsp"
- * -> "tsp") or, for a volume tail with trailing descriptor words, its
- * canonical scalar equivalent ("1/2 cup dry" -> "cup", same coverage check
- * resolvableUnitsFor itself uses). Returns null when servingDesc doesn't
- * parse or its unit isn't actually offered, so callers fall back cleanly.
- * @returns {string|null}
- */
-function servingDescUnit(nutrition, scalar) {
-  const { unitTokens } = parseMeasure(stripParenthetical(nutrition.servingDesc))
-  if (unitTokens.length === 0) return null
-  const tail = unitTokens.join(' ')
-  if (scalar.includes(tail)) return tail
-  const volUnit = canonicalVolumeUnit(unitTokens)
-  return volUnit && scalar.includes(volUnit) ? volUnit : null
-}
-
-/**
- * The measure to prefill a fresh log of this item with: one serving,
- * expressed in whichever offered unit servingDesc itself uses when that's
- * available ("1 tsp (4.6 g)" -> "1 tsp", "100 g" -> "100 g", "1/2 cup dry
- * (40 g)" -> "1/2 cup"), else the first offered real unit in
- * SCALAR_UNIT_CANDIDATES order ("1/3 cup", "100 g") now that 'serving'
- * itself is no longer offered (Round 4.5). The servingDesc preference fixes
- * a mis-scaling bug: without it, a small teaspoon-sized serving like brown
- * sugar defaulted to "cup" (SCALAR_UNIT_CANDIDATES' fixed order puts cup
- * first) and rendered as an unreadable "0.02 cup". Doubles as the answer to
- * "what IS a serving of this?". Falls back to '1 serving' when nothing else
- * resolves (matching resolvableUnitsFor's last-resort picker), and to '' when
- * there's no nutrition at all (measure is pure free text there).
+ * The measure to prefill a fresh log of this item with: always "1 serving"
+ * when there's any nutrition to attach a serving to, else '' (pure free
+ * text). Round 4.5 had this resolve to some real unit ("1/3 cup", "100 g")
+ * because 'serving' wasn't offered and so meant nothing on its own. Round 6
+ * reverses that on purpose: the amount step now always pairs "1 serving"
+ * with an explicit "1 serving = {servingDesc}" line and a live kcal preview,
+ * so "serving" is legible again — and it's the unit this app's
+ * MyFitnessPal-habit target reaches for first. (The old servingDescUnit
+ * mis-scaling workaround — a teaspoon-sized serving defaulting to an
+ * unreadable "0.02 cup" — no longer applies; there's no unit-guessing left
+ * to get wrong.)
  * @returns {string}
  */
 export function defaultMeasureFor(nutrition) {
-  if (!nutrition) return ''
-  const { scalar, phrases } = resolvableUnitsFor(nutrition)
-  const unit = servingDescUnit(nutrition, scalar) || scalar[0] || phrases[0]
-  if (!unit || unit === 'serving') return '1 serving'
-  if (isPhraseLabel(unit, nutrition)) return unit
-  const qty = qtyForUnit(1, unit, nutrition)
-  if (qty == null) return '1 serving'
-  return `${formatQtyForUnit(qty, unit)} ${unit}`
+  return nutrition ? '1 serving' : ''
 }
 
 /**

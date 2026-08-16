@@ -29,10 +29,17 @@ import { parseMeasure, measureToServings, qtyForUnit, resolvableUnitsFor, stripL
 // (measures.js matchScalarUnit) is only used on the nutrition-aware path
 // below, where the descriptor really is safe to drop (the scalar unit
 // already covers the same honest math — see resolvableUnitsFor).
-// Round 4.5: 'serving' removed from both pickers — meaningless without
-// knowing the serving size. Stored "N serving" measures still parse
-// (measures.js keeps the conversion path) and are re-expressed as the first
-// real unit on load (deriveInitial below).
+// Round 4.5 removed 'serving' from both pickers — meaningless without
+// knowing the serving size, so stored "N serving" measures used to be
+// re-expressed as the first real unit on load (deriveInitial's old legacy
+// branch). Round 6 reverses that for the nutrition-aware picker only:
+// 'serving' is back in measures.js's SCALAR_UNIT_CANDIDATES (now that the
+// amount step always shows "1 serving = {servingDesc}" + a live kcal
+// preview, so it's legible again), which means a stored "2 servings" now
+// matches directly via matchScalarUnit below — the re-expression branch is
+// gone. UNIT_OPTIONS (this free-text picker, no nutrition — recipe
+// ingredient measures) is UNCHANGED: recipe ingredients aren't touched by
+// this round, and never offered 'serving' in the first place.
 const UNIT_OPTIONS = ['g', 'kg', 'ml', 'tsp', 'tbsp', 'cup', 'fl oz', 'piece']
 
 // The quick-fraction picker (a "½" <select> between the qty box and the
@@ -67,19 +74,14 @@ function deriveInitial(value, allowedUnits, nutrition) {
     // scalar unit now covers it, e.g. "1 cup chopped") still round-trips —
     // just as the scalar unit ("cup") + qty it's honestly equivalent to,
     // instead of falling through to an unnecessary custom/warning state.
+    // Round 6: 'serving' is a normal offered scalar unit again (measures.js
+    // SCALAR_UNIT_CANDIDATES), so a stored "2 servings" matches right here —
+    // normalizeTokens singularizes "servings" -> "serving", which is in
+    // allowedUnits.scalar for any item with nutrition. The old re-expression
+    // branch (rewriting it into "1/3 cup" etc. because 'serving' wasn't
+    // offered) is gone; there's nothing left for it to do.
     const scalarHit = matchScalarUnit(raw, allowedUnits.scalar)
     if (scalarHit) return { mode: 'structured', qtyText: formatQtyForUnit(scalarHit.qty, scalarHit.unit), unit: scalarHit.unit, custom: raw, isPhraseUnit: false }
-    // Round 4.5: legacy/stored "N serving(s)" with 'serving' no longer
-    // offered — re-express as the equivalent amount of the first offered
-    // unit ("1 serving" -> "1/3 cup") instead of dropping to raw-text mode.
-    const parsed = parseMeasure(raw)
-    if (parsed.qty != null && /^servings?$/.test(parsed.unitTokens.join(' '))) {
-      const unit = allowedUnits.scalar[0] || allowedUnits.phrases[0]
-      const rescaled = unit ? qtyForUnit(parsed.qty, unit, nutrition) : null
-      if (rescaled != null) {
-        return { mode: 'structured', qtyText: formatQtyForUnit(rescaled, unit), unit, custom: raw, isPhraseUnit: allowedUnits.phrases.includes(unit) }
-      }
-    }
     return { mode: 'custom', qtyText: '', unit: defaultUnit, custom: raw, isPhraseUnit: false }
   }
 

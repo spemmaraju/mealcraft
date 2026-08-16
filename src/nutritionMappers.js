@@ -267,8 +267,11 @@ export function mapFdcSearchFood(food) {
   const perServing = { kcal: kcal100, protein_g: protein100, carbs_g: carbs100, fat_g: fat100 }
   if (fiber100 != null) perServing.fiber_g = fiber100
 
-  // '100 g' stays first — macros above are per 100 g, and callers (e.g.
-  // defaultMeasureFor) take naturalUnits[0]/scalar[0] as "the" serving.
+  // '100 g' stays first — macros above are per 100 g, and this is what
+  // servingGrams()/measureToServings() anchor "1 serving" to when a caller
+  // (e.g. the amount step's "1 serving = {servingDesc}" line) needs to know
+  // what a serving of this actually is. Round 6: defaultMeasureFor itself no
+  // longer inspects naturalUnits/scalar — it just returns '1 serving'.
   const naturalUnits = [{ label: '100 g', gramsOrFraction: 100 }]
   const household = fdcHouseholdNaturalUnit(food.servingSize, food.servingSizeUnit, food.householdServingFullText)
   if (household) naturalUnits.push(household)

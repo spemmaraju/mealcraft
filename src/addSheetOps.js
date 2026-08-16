@@ -1,10 +1,14 @@
-// Pure row/group computation for AddLogItemSheet's unified search — split
-// out of the component (Round 2.6) purely to stay under CLAUDE.md §4.7's
-// ~300-line component budget. No DOM, no storage imports. Mirrors
+// Pure row/group computation (+ Round 6: pure "stage" builders) for
+// AddLogItemSheet's unified search — split out of the component (Round 2.6,
+// extended Round 6) purely to stay under CLAUDE.md §4.7's ~300-line
+// component budget. No DOM, no storage imports — pantryOps/nutritionOps are
+// themselves pure (no persistence), same convention as this file. Mirrors
 // logSearchOps.js/trackOps.js/pantryOps.js.
 
 import * as logSearchOps from './logSearchOps.js'
 import * as trackOps from './trackOps.js'
+import * as pantryOps from './pantryOps.js'
+import * as nutritionOps from './nutritionOps.js'
 import { filterComponents } from './componentOps.js'
 import { defaultMeasureFor } from './measures.js'
 
@@ -124,4 +128,62 @@ export function buildAddSheetData({ card, components, pantry, logs, today, query
 export function initialMeasureForPlan(plan, recents) {
   if (plan.planKind === 'create') return defaultMeasureFor(plan.nutrition)
   return logSearchOps.lastUsedFor(recents, 'pantry', plan.pantryId) ?? defaultMeasureFor(plan.nutrition)
+}
+
+/** Human-readable source tag text for one nutritionLookup.searchFoods result row. */
+function onlineSourceLabel(food) {
+  if (food.source === 'off') return 'Open Food Facts'
+  return food.generic ? 'USDA generic' : 'USDA'
+}
+
+/**
+ * Round 6: the ONLINE group's rows, from nutritionLookup.searchFoods'
+ * results — id is the array index (results aren't otherwise identified),
+ * label is the food name, sublabel carries brand + source tag + servingDesc
+ * (provenance stays visible per CLAUDE.md §5 even in a plain-text sublabel),
+ * kcal is the row's per-serving calories for AddSheetResults' existing
+ * {id, label, sublabel, kcal} row shape. Pure — no network, no state; the
+ * search itself lives in useOnlineFoodSearch.js.
+ */
+export function buildOnlineRows(results) {
+  return (results || []).map((food, i) => ({
+    id: i,
+    label: food.name,
+    sublabel: [food.brand, onlineSourceLabel(food), food.nutrition?.servingDesc].filter(Boolean).join(' · '),
+    kcal: food.nutrition?.perServing?.kcal ?? null,
+  }))
+}
+
+// ---- Amount-step "stage" builders (Round 6, generalized from AddLogItemSheet) --
+// Every non-instant pick (seed, online result, barcode scan, photo capture)
+// resolves to the SAME shape: { type: 'pantry'|'adhoc', name, nutrition,
+// initialMeasure, plan? } — exactly what AddLogItemSheet.setPending needs.
+// Pulling the (still write-free — hot-fix #1) plan-building logic out here
+// keeps AddLogItemSheet itself to thin one-line wrappers around setPending.
+
+/** Picking a COMMON FOODS (seed table) row — always a fresh 'create' plan; a seed entry can never already be in the pantry (buildAddSheetData's seedCandidates excludes anything nameMatches already covers). */
+export function stageForSeed(name, seedCandidates, categories) {
+  const entry = seedCandidates.find((s) => s.name === name)
+  if (!entry) return null
+  const nutrition = entry.build()
+  const category = pantryOps.guessCategory(entry.name, categories) || categories[0] || ''
+  const plan = { planKind: 'create', name: entry.name, category, nutrition }
+  return { type: 'pantry', name: entry.name, nutrition, initialMeasure: defaultMeasureFor(nutrition), plan }
+}
+
+/** Picking an ONLINE search result (or a barcode/photo match) that should save-and-log — the dedupe guard (barcode/name match wins; existing nutrition never overwritten) is pantryOps.planPantrySave's job, resolved here but not yet written (hot-fix #1: the write happens in handleAmountConfirm). `code` is barcode-scan only. */
+export function stageForPantrySave(name, nutrition, pantry, categories, recents, code) {
+  const plan = pantryOps.planPantrySave(pantry, categories, name, nutrition, code)
+  return { type: 'pantry', name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan }
+}
+
+/** "Log without saving" for an online/manual-entry food — an adhoc snapshot, never touches the pantry. enrichWithVolumeAnchor is a no-op unless the food has gram-only serving info and a curated cup-weight match. */
+export function stageForAdhoc(food, recents) {
+  const nutrition = nutritionOps.enrichWithVolumeAnchor(food.name, food.nutrition)
+  return {
+    type: 'adhoc',
+    name: food.name,
+    nutrition,
+    initialMeasure: logSearchOps.lastUsedFor(recents, 'adhoc', food.name) ?? defaultMeasureFor(nutrition),
+  }
 }

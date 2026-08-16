@@ -4,7 +4,10 @@ import { splitMatch } from '../textMatch.js'
 import { SearchIcon } from './Icons.jsx'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 
-const ERROR_TEXT = {
+// Exported so AddLogItemSheet's inline online-search status line (Round 6 —
+// no longer a separate "Search online" step) can reuse the exact same
+// honest offline/upstream/unreachable wording instead of duplicating it.
+export const ERROR_TEXT = {
   offline: "You're offline — add from pantry or enter manually.",
   upstream: 'Food database is busy — tap to retry.',
   unreachable: "Couldn't reach the food databases — a busy server or a network filter can cause this. Retry usually works.",

@@ -216,8 +216,10 @@ export async function lookupFoodPhotos({ provider, apiKey, images }) {
 /**
  * Free-text food search: Open Food Facts (keyless) + USDA FDC (only with a
  * key). Each endpoint individually try/caught so one failing/offline
- * endpoint doesn't block the other. Fires only on explicit submit — no
- * per-keystroke fetches (OFF etiquette + CLAUDE.md §2 user-triggered spirit).
+ * endpoint doesn't block the other. Round 6: fired either on explicit submit
+ * (FoodSearchSheet) or debounced while the user types a food search
+ * (useOnlineFoodSearch — 700ms idle, ≥3 chars, per-query cached; still
+ * user-triggered in CLAUDE.md §2's sense, and never per-keystroke).
  *
  * Round 2 honest error states: a genuine "0 matches" (an endpoint
  * responded, just found nothing) is `{ok:true, results:[]}`, NOT the same

@@ -1,15 +1,13 @@
 import { useRef, useState } from 'react'
-import { MEALS, MEAL_LABELS } from '../schema.js'
-import * as pantryOps from '../pantryOps.js'
-import * as nutritionOps from '../nutritionOps.js'
 import * as logSearchOps from '../logSearchOps.js'
-import { buildAddSheetData, initialMeasureForPlan } from '../addSheetOps.js'
-import { defaultMeasureFor } from '../measures.js'
+import { buildAddSheetData, initialMeasureForPlan, stageForSeed, stageForPantrySave, stageForAdhoc, buildOnlineRows } from '../addSheetOps.js'
 import { lookupBarcode } from '../nutritionLookup.js'
+import { useOnlineFoodSearch } from '../useOnlineFoodSearch.js'
 import { CloseIcon, SearchIcon, BarcodeIcon, ManualIcon, PlanIcon, CameraIcon } from './Icons.jsx'
+import AddSheetMealPicker from './AddSheetMealPicker.jsx'
 import AddSheetResults from './AddSheetResults.jsx'
 import AddItemAmountStep from './AddItemAmountStep.jsx'
-import FoodSearchSheet from './FoodSearchSheet.jsx'
+import { ERROR_TEXT as ONLINE_ERROR_TEXT } from './FoodSearchSheet.jsx'
 import BarcodeScanner from './BarcodeScanner.jsx'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 import PhotoCaptureSheet from './PhotoCaptureSheet.jsx'
@@ -20,6 +18,15 @@ import PhotoCaptureSheet from './PhotoCaptureSheet.jsx'
 // through the shared amount step (AddItemAmountStep) before anything is
 // logged. onPick's contract (a ready-to-merge LogEntry items[] array) is
 // unchanged — see MealSection.jsx.
+//
+// Round 6: a 6th group, ONLINE, is now folded into this SAME search box
+// instead of living behind a separate "Search online" action-grid button/
+// step — useOnlineFoodSearch debounces the query (700ms, >=3 chars) and
+// hits the same searchFoods() FoodSearchSheet always used. One fewer
+// decision per log: there's no more "Add (save+log) vs. Log without saving"
+// choice for an online result — tapping one always quietly saves to pantry
+// through the same dedupe-guarded plan (planPantrySave) every other save
+// path already uses.
 export default function AddLogItemSheet({
   card,
   components,
@@ -41,7 +48,6 @@ export default function AddLogItemSheet({
   onClose,
 }) {
   const [query, setQuery] = useState('')
-  const [showOnline, setShowOnline] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState(null)
   const [manualEntry, setManualEntry] = useState(false)
@@ -49,12 +55,6 @@ export default function AddLogItemSheet({
   // Set only when "Take photo" is tapped without a BYOK key configured —
   // rendered exactly like scanError, with a link into Settings alongside it.
   const [photoKeyWarning, setPhotoKeyWarning] = useState(false)
-  // Round 2.7 bugfix: the header's "Add to {Meal} ▾" caret used to be
-  // decorative — this is the real dropdown it opens. Switching meal only
-  // changes `meal`/`label`/`existingComponentIds` props on this SAME mounted
-  // instance (DayLog keeps one sheet alive across a meal switch), so query/
-  // showOnline/pending below survive untouched.
-  const [pickerOpen, setPickerOpen] = useState(false)
   // "From plan" (action grid) scrolls to the TODAY'S PLAN group rather than
   // filtering to it — AddSheetResults registers each group's DOM node here
   // via onGroupRef so this sheet doesn't need to own the group rendering.
@@ -69,7 +69,7 @@ export default function AddLogItemSheet({
   // backing out of the amount step (Back/close) never touches storage.
   const [pending, setPending] = useState(null)
 
-  const { groups, recents, byId, pantryById, seedCandidates, hasQuery, hasPlanCard } = buildAddSheetData({
+  const { groups: baseGroups, recents, byId, pantryById, seedCandidates, hasQuery, hasPlanCard } = buildAddSheetData({
     card,
     components,
     pantry,
@@ -78,6 +78,12 @@ export default function AddLogItemSheet({
     query,
     existingComponentIds,
   })
+
+  // Round 6: ONLINE is appended after the existing 5 groups, built from the
+  // same debounced search every keystroke already drives (useOnlineFoodSearch)
+  // — no separate step, no separate query box.
+  const { status: onlineStatus, results: onlineResults, errorReason: onlineErrorReason } = useOnlineFoodSearch(query, { fdcKey })
+  const groups = [...baseGroups, { key: 'online', title: 'ONLINE', rows: buildOnlineRows(onlineResults) }]
 
   // Round 4: CTA only when there's genuinely no plan for today (not just a
   // search with no matches) — see addSheetOps' hasPlanCard.
@@ -111,64 +117,52 @@ export default function AddLogItemSheet({
       const c = byId[id]
       if (!c) return
       setPending({ type: 'component', componentId: c.id, name: c.name, initialCount: logSearchOps.lastUsedFor(recents, 'component', c.id) ?? 1 })
+      return
+    }
+    if (groupKey === 'online') {
+      const food = onlineResults[id]
+      if (food) handleOnlineSaveAndStage(food)
     }
   }
 
-  // Hot-fix #1: this used to call onSaveToPantry immediately (writing a new
-  // PantryItem before the user ever pressed Add). Now it only stages a
-  // 'create' plan — the write happens in handleAmountConfirm.
+  // Hot-fix #1 (all four handlers below): the actual pantry write is
+  // deferred to handleAmountConfirm, when the user presses Add — these just
+  // resolve the write-free "stage" (addSheetOps.js) and hand it to
+  // setPending. Backing out of the amount step (Back/close) never touches
+  // storage.
   function handleSeedPick(name) {
-    const entry = seedCandidates.find((s) => s.name === name)
-    if (!entry) return
-    const nutrition = entry.build()
-    const category = pantryOps.guessCategory(entry.name, categories) || categories[0] || ''
-    const plan = { planKind: 'create', name: entry.name, category, nutrition }
-    setPending({ type: 'pantry', name: entry.name, nutrition, initialMeasure: defaultMeasureFor(nutrition), plan })
+    const stage = stageForSeed(name, seedCandidates, categories)
+    if (stage) setPending(stage)
   }
 
-  // Hot-fix #1: planPantrySave is a pure decision (no write) — the
-  // duplicate guard (barcode match wins over name match; existing
-  // nutrition is never overwritten, only attached when absent) is resolved
-  // here, but nothing is persisted until Add is pressed.
   function handleOnlineSaveAndStage(food) {
-    const plan = pantryOps.planPantrySave(pantry, categories, food.name, food.nutrition)
-    setPending({ type: 'pantry', name: food.name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan })
+    setPending(stageForPantrySave(food.name, food.nutrition, pantry, categories, recents))
   }
 
   // The only place an adhoc log's pending nutrition snapshot is built —
-  // covers both the search-online path (FoodSearchSheet's onAdhocStage) and
-  // the manual-entry path (NutritionInfoEditor's onSave below), since both
-  // funnel through here. enrichWithVolumeAnchor is a no-op unless the food
-  // has gram-only serving info and a curated cup-weight match.
+  // covers both the search-online path (an ONLINE row picked via "Log
+  // without saving" semantics is gone in Round 6, but manual-entry below
+  // still uses this) and the manual-entry path (NutritionInfoEditor's
+  // onSave), since both funnel through here.
   function handleOnlineAdhocStage(food) {
-    const nutrition = nutritionOps.enrichWithVolumeAnchor(food.name, food.nutrition)
-    setPending({
-      type: 'adhoc',
-      name: food.name,
-      nutrition,
-      initialMeasure: logSearchOps.lastUsedFor(recents, 'adhoc', food.name) ?? defaultMeasureFor(nutrition),
-    })
+    setPending(stageForAdhoc(food, recents))
   }
 
   async function handleScanned(code) {
     setScanning(false)
     const result = await lookupBarcode(code, { fdcKey })
     if (!result.ok) {
-      setScanError('Not found online — try Search online, or add nutrition manually from the pantry.')
+      setScanError('Not found online — try typing the name in search, or add nutrition manually.')
       return
     }
     setScanError(null)
-    const name = result.name || 'Scanned item'
-    const plan = pantryOps.planPantrySave(pantry, categories, name, result.nutrition, code)
-    setPending({ type: 'pantry', name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan })
+    setPending(stageForPantrySave(result.name || 'Scanned item', result.nutrition, pantry, categories, recents, code))
   }
 
   // Mirrors handleScanned: PhotoCaptureSheet already extracted+confirmed the
-  // name/nutrition, so this just resolves the same duplicate-guard plan and
-  // stages the amount step — no pantry write happens here (hot-fix #1).
+  // name/nutrition, so this just resolves the same duplicate-guard plan.
   function handlePhotoUse({ name, nutrition }) {
-    const plan = pantryOps.planPantrySave(pantry, categories, name, nutrition)
-    setPending({ type: 'pantry', name, nutrition: plan.nutrition, initialMeasure: initialMeasureForPlan(plan, recents), plan })
+    setPending(stageForPantrySave(name, nutrition, pantry, categories, recents))
     setPhotoOpen(false)
   }
 
@@ -237,140 +231,88 @@ export default function AddLogItemSheet({
           <button type="button" className="sheet-head__close" onClick={onClose} aria-label="Close">
             <CloseIcon size={16} />
           </button>
-          <div className="sheet-head__mealpicker">
-            {/* No onMealChange → the target meal is fixed by the caller (Plan's
-                per-slot "+ Add extra" — retargeting there could file items into
-                a breakfast/snack slot the Plan screen never displays), so the
-                header is a plain title instead of a picker. */}
-            {onMealChange ? (
-              <button
-                type="button"
-                className="sheet-head__title sheet-head__title--picker"
-                onClick={() => setPickerOpen((v) => !v)}
-                aria-haspopup="listbox"
-                aria-expanded={pickerOpen}
-              >
-                Add to {label || 'log'} <span className="sheet-head__caret" aria-hidden="true">▾</span>
-              </button>
-            ) : (
-              <span className="sheet-head__title">Add to {label || 'log'}</span>
-            )}
-            {onMealChange && pickerOpen && (
-              <>
-                {/* Covers just the sheet (its ancestor stops backdrop clicks) so
-                    tapping anywhere else closes the picker without also firing
-                    whatever's underneath. */}
-                <div className="sheet-head__mealscrim" onClick={() => setPickerOpen(false)} />
-                <div className="sheet-head__mealmenu" role="listbox" aria-label="Choose meal">
-                  {MEALS.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      role="option"
-                      aria-selected={m === meal}
-                      className={`sheet-head__mealoption${m === meal ? ' sheet-head__mealoption--active' : ''}`}
-                      onClick={() => {
-                        onMealChange(m)
-                        setPickerOpen(false)
-                      }}
-                    >
-                      {MEAL_LABELS[m]}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          <AddSheetMealPicker meal={meal} label={label} onMealChange={onMealChange} />
         </div>
 
-        {!showOnline ? (
-          <>
-            <label className="searchfield">
-              <SearchIcon size={18} />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search pantry, common foods, dishes…"
-                autoFocus
-              />
-            </label>
-
-            <div className="actiongrid">
-              <button
-                type="button"
-                className="actionbtn"
-                onClick={() => {
-                  setScanError(null)
-                  setScanning(true)
-                }}
-              >
-                <BarcodeIcon size={20} />
-                <span className="actionbtn__label">Scan barcode</span>
-              </button>
-              <button type="button" className="actionbtn" onClick={() => setShowOnline(true)}>
-                <SearchIcon size={20} />
-                <span className="actionbtn__label">Search online</span>
-              </button>
-              <button
-                type="button"
-                className="actionbtn"
-                onClick={() => {
-                  if (!byok) {
-                    setPhotoKeyWarning(true)
-                    return
-                  }
-                  setPhotoKeyWarning(false)
-                  setPhotoOpen(true)
-                }}
-              >
-                <CameraIcon size={20} />
-                <span className="actionbtn__label">Take photo</span>
-              </button>
-              <button type="button" className="actionbtn" onClick={handleFromPlan}>
-                <PlanIcon size={20} />
-                <span className="actionbtn__label">From plan</span>
-              </button>
-              <button type="button" className="actionbtn" onClick={() => setManualEntry(true)}>
-                <ManualIcon size={20} />
-                <span className="actionbtn__label">Enter manually</span>
-              </button>
-            </div>
-
-            <AddSheetResults
-              groups={groups}
-              query={query}
-              onPick={handleGroupPick}
-              hasQuery={hasQuery}
-              onGroupRef={(key, el) => (groupRefs.current[key] = el)}
-              planCta={planCta}
-            />
-            {scanError && <p className="inline-warning">{scanError}</p>}
-            {photoKeyWarning && (
-              <p className="inline-warning">
-                Add a Claude or Gemini API key in Settings to read photos.{' '}
-                <button
-                  type="button"
-                  className="link-btn"
-                  onClick={() => {
-                    onGoToSettings()
-                    onClose()
-                  }}
-                >
-                  Open Settings
-                </button>
-              </p>
-            )}
-          </>
-        ) : (
-          <FoodSearchSheet
-            initialQuery={query}
-            fdcKey={fdcKey}
-            onSaveAndStage={handleOnlineSaveAndStage}
-            onAdhocStage={handleOnlineAdhocStage}
-            onGoToSettings={onGoToSettings}
-            onBack={() => setShowOnline(false)}
+        <label className="searchfield">
+          <SearchIcon size={18} />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search pantry, common foods, dishes…"
+            autoFocus
           />
+        </label>
+
+        {/* Round 6: "Search online" is gone — ONLINE is now just another
+            group in AddSheetResults below, fed by the same box. */}
+        <div className="actiongrid">
+          <button
+            type="button"
+            className="actionbtn"
+            onClick={() => {
+              setScanError(null)
+              setScanning(true)
+            }}
+          >
+            <BarcodeIcon size={20} />
+            <span className="actionbtn__label">Scan barcode</span>
+          </button>
+          <button
+            type="button"
+            className="actionbtn"
+            onClick={() => {
+              if (!byok) {
+                setPhotoKeyWarning(true)
+                return
+              }
+              setPhotoKeyWarning(false)
+              setPhotoOpen(true)
+            }}
+          >
+            <CameraIcon size={20} />
+            <span className="actionbtn__label">Take photo</span>
+          </button>
+          <button type="button" className="actionbtn" onClick={handleFromPlan}>
+            <PlanIcon size={20} />
+            <span className="actionbtn__label">From plan</span>
+          </button>
+          <button type="button" className="actionbtn" onClick={() => setManualEntry(true)}>
+            <ManualIcon size={20} />
+            <span className="actionbtn__label">Enter manually</span>
+          </button>
+        </div>
+
+        <AddSheetResults
+          groups={groups}
+          query={query}
+          onPick={handleGroupPick}
+          hasQuery={hasQuery}
+          onGroupRef={(key, el) => (groupRefs.current[key] = el)}
+          planCta={planCta}
+        />
+        {/* Round 6: subtle, non-blocking online-search status — local groups
+            above stay fully usable while this is showing either state. */}
+        {onlineStatus === 'searching' && <p className="field-caption">Searching online…</p>}
+        {onlineStatus === 'error' && (
+          <p className="field-caption">{ONLINE_ERROR_TEXT[onlineErrorReason] || ONLINE_ERROR_TEXT.unreachable}</p>
+        )}
+        {scanError && <p className="inline-warning">{scanError}</p>}
+        {photoKeyWarning && (
+          <p className="inline-warning">
+            Add a Claude or Gemini API key in Settings to read photos.{' '}
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => {
+                onGoToSettings()
+                onClose()
+              }}
+            >
+              Open Settings
+            </button>
+          </p>
         )}
 
         {scanning && <BarcodeScanner onCode={handleScanned} onCancel={() => setScanning(false)} />}
@@ -382,6 +324,7 @@ export default function AddLogItemSheet({
             name={pending.name}
             kind={pending.type}
             nutrition={pending.nutrition}
+            macros={pending.type === 'component' ? byId[pending.componentId]?.macrosPerServing : null}
             initialMeasure={pending.initialMeasure}
             initialCount={pending.initialCount}
             onConfirm={handleAmountConfirm}

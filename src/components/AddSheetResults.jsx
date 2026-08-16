@@ -36,7 +36,7 @@ export default function AddSheetResults({ groups, query, onPick, hasQuery, onGro
     // false negative (nothing has been searched for yet). Only say "no
     // matches" once the user has actually typed something.
     return hasQuery ? (
-      <p className="library-empty">No matches — try a different search, or use Search online / Scan below.</p>
+      <p className="library-empty">No matches yet — online results can take a moment, or try Scan barcode / Enter manually below.</p>
     ) : (
       <p className="library-empty">Type to search pantry, common foods, or your dishes.</p>
     )
