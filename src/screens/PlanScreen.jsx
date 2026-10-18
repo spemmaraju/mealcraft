@@ -9,6 +9,7 @@ import PlanSlotList from '../components/PlanSlotList.jsx'
 import CookSheet from '../components/CookSheet.jsx'
 import CookDraftList from '../components/CookDraftList.jsx'
 import * as cookOps from '../cookOps.js'
+import * as stockOps from '../stockOps.js'
 import AddDishToPlanSheet from '../components/AddDishToPlanSheet.jsx'
 import GroceryCard from '../components/GroceryCard.jsx'
 import IdeasSection from '../components/IdeasSection.jsx'
@@ -146,7 +147,11 @@ export default function PlanScreen({ onGoToSettings }) {
     await storage.set('cookSessions', out.cookSessions)
     const names = [...cookOps.offHandRows(payload.rows, pantry).map((r) => r.name), ...(cookSeed?.buy || [])]
     const additions = cookOps.groceryAdditions(grocery, names, out.component.name)
-    if (additions.length > 0) await storage.set('grocery', [...grocery, ...additions])
+    // Phase 20: stock goes down; anything now low/out joins the advisory list.
+    const { pantry: nextPantry, changed } = cookOps.applyStockPatches(pantry, payload.stockPatches || {})
+    if (changed.length > 0) await storage.set('pantry', nextPantry)
+    const lowAdditions = stockOps.lowStockAdditions([...grocery, ...additions], changed)
+    if (additions.length + lowAdditions.length > 0) await storage.set('grocery', [...grocery, ...additions, ...lowAdditions])
     setCookSeed(null)
     const eaten = payload.eatNow ? `${payload.eatNow.count} logged to ${MEAL_LABELS[payload.eatNow.meal].toLowerCase()}` : null
     const kept = out.shelfEntry ? `${out.shelfEntry.servingsLeft} on the shelf` : null

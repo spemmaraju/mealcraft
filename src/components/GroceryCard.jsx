@@ -1,3 +1,5 @@
+import { STOCK_REASONS } from '../stockOps.js'
+
 // Advisory grocery-ideas card (Phase P1 prep flow). Unlike the old
 // WeekPlan.grocerySuggestions (a `dismissed` flag left in place), a
 // GroceryItem has no dismissed state — dismissing one removes its record
@@ -10,7 +12,7 @@ export default function GroceryCard({ grocery, onDismiss }) {
       {grocery.map((item, index) => (
         <div key={index} className="grocery-row">
           <span className="grocery-row__label">
-            {item.name} <span className="grocery-row__sub">for {item.forDish}</span>
+            {item.name} <span className="grocery-row__sub">{STOCK_REASONS.includes(item.forDish) ? item.forDish : `for ${item.forDish}`}</span>
           </span>
           <button
             type="button"

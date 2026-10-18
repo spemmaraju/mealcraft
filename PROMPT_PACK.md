@@ -611,18 +611,26 @@ GATE:
 
 ## PHASE 20 — Pantry stock + shopping haul
 
-Scope:
-- PantryItem stock: `{ qty, unit }` when stated, else level
-  plenty | some | low | out.
-- Shopping haul: free text → parser (mode: haul) → review → restock.
-- Cooking decrements stated quantities; unstated ones step the level down
-  and the review card offers a one-tap "still have X?" chip.
-- Low/out items appear in the advisory grocery list. No notifications.
+Scope (as approved 2026-10-18 — user chose to REUSE PantryItem.roughQty as
+the stated amount rather than add a parallel qty field):
+- roughQty stays free text; stockOps reads "N unit" for arithmetic and
+  writes text back. New PantryItem.level (plenty | some | low | null); out =
+  onHand:false. Schema v14.
+- Pantry: "🛒 Restock from shopping" -> parser mode 'haul' -> HaulReviewCard
+  -> applyHaul: stated amounts add up (same unit) or replace; unstated ->
+  plenty; new items get the chosen/guessed category and seed nutrition only.
+  Bought items drop off the grocery list.
+- Cook done step: "Pantry after cooking", pre-filled by stockOps.consume
+  (same-unit subtract, proportional via nutrition, else level step down;
+  zero -> out) with optional Plenty/Some/Low/Out chips.
+- Low/out after cooking -> advisory grocery entries "running low"/"ran out".
+- Pantry rows show the amount or level; editor gets level chips.
 
 GATE:
-1. "10 carrots, a bag of spinach" restocks: carrots qty 10, spinach a level.
-2. Cooking with 3 carrots leaves 7; cooking with spinach offers the chip.
-3. An item reaching "out" shows on the grocery list; dismissing it changes nothing else.
+1. "10 carrots and a bag of spinach" restocks: carrots "10 carrots", spinach plenty.
+2. Cooking with 3 carrots leaves "7 carrots"; spinach steps to "some"; chips override.
+3. Out -> off hand -> grocery list; restocking removes it.
+4. `npm test` + `npm run build` green; browser check at 390px.
 
 ---
 

@@ -1,4 +1,13 @@
-import { MEALS, MEAL_LABELS } from '../schema.js'
+import { MEALS, MEAL_LABELS, STOCK_LEVELS, STOCK_LEVEL_LABELS } from '../schema.js'
+import { choiceForPatch } from '../stockOps.js'
+
+const CHOICES = [...STOCK_LEVELS, 'out']
+const CHOICE_LABELS = { ...STOCK_LEVEL_LABELS, out: 'Out' }
+
+function afterText(patch) {
+  if (!patch.onHand) return 'out'
+  return patch.roughQty || patch.level || 'on hand'
+}
 
 function Stepper({ value, min, max, onChange, label }) {
   return (
@@ -20,7 +29,7 @@ function Stepper({ value, min, max, onChange, label }) {
  * whatever's left goes to the ready-to-eat shelf. Replaces P1's "split
  * across plan slots" step (user decision: shelf, not auto-filled slots).
  */
-export default function CookDoneStep({ name, servingsMade, keepsDays, eatNow, eatMeal, onServingsMade, onKeepsDays, onEatNow, onEatMeal, onBack, onConfirm }) {
+export default function CookDoneStep({ name, servingsMade, keepsDays, eatNow, eatMeal, stock = [], onServingsMade, onKeepsDays, onEatNow, onEatMeal, onStockChoice, onBack, onConfirm }) {
   const eating = Math.min(eatNow, servingsMade)
   const left = servingsMade - eating
   const parts = []
@@ -59,6 +68,33 @@ export default function CookDoneStep({ name, servingsMade, keepsDays, eatNow, ea
       )}
 
       <p className="prep-summary__macros">{parts.join(' · ') || 'Nothing to log or keep.'}</p>
+
+      {/* Phase 20: pre-filled from stockOps.consume — the chips are optional corrections, never required. */}
+      {stock.length > 0 && (
+        <div className="field">
+          <label>Pantry after cooking</label>
+          <ul className="stock-after">
+            {stock.map((s) => {
+              const active = choiceForPatch(s.patch)
+              return (
+                <li key={s.pantryId} className="stock-after__row">
+                  <span className="stock-after__name">
+                    {s.name} <span className="field-caption">→ {afterText(s.patch)}</span>
+                  </span>
+                  {s.how === 'unknown' && <span className="field-caption">Couldn’t tell how much this used — tap one if it changed.</span>}
+                  <span className="segmented">
+                    {CHOICES.map((c) => (
+                      <button key={c} type="button" className={`chip chip--small${active === c ? ' chip--active' : ''}`} aria-pressed={active === c} onClick={() => onStockChoice(s.pantryId, c)}>
+                        {CHOICE_LABELS[c]}
+                      </button>
+                    ))}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       <div className="button-row">
         <button type="button" className="btn btn--primary" onClick={onConfirm}>

@@ -8,7 +8,7 @@ import { hasSnapshotForDate, rotateSnapshots } from './backupOps.js'
 import { todayISO } from './dates.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-export const SCHEMA_VERSION = 13
+export const SCHEMA_VERSION = 14
 const COLLECTIONS = ['pantry', 'components', 'planSlots', 'logs', 'feedback', 'grocery', 'ideas', 'cookSessions', 'shelf']
 
 // Daily auto-snapshots live under their OWN localStorage key, entirely
@@ -245,6 +245,13 @@ export function migrate(state) {
     state.shelf = []
     if (state.settings) state.settings.anthropicModel ??= ANTHROPIC_MODELS[0]
     state.schemaVersion = 13
+  }
+  // v13 -> v14: Phase 20 adds PantryItem.level (plenty | some | low | null)
+  // — the soft stock signal for amounts the user never stated. roughQty
+  // stays the stated amount ("10 carrots"); nothing is inferred from it here.
+  if (state.schemaVersion === 13) {
+    for (const item of Array.isArray(state.pantry) ? state.pantry : []) item.level ??= null
+    state.schemaVersion = 14
   }
   return state
 }

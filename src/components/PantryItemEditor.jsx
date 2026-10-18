@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import ProvenanceTag from './ProvenanceTag.jsx'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
+import { STOCK_LEVELS, STOCK_LEVEL_LABELS } from '../schema.js'
 
 export default function PantryItemEditor({ item, categories, fdcKey, byok, onSave, onDelete, onSaveNutrition, onCancel }) {
   const [name, setName] = useState(item.name)
   const [category, setCategory] = useState(item.category)
   const [onHand, setOnHand] = useState(item.onHand)
   const [roughQty, setRoughQty] = useState(item.roughQty ?? '')
+  const [level, setLevel] = useState(item.level ?? null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [editingNutrition, setEditingNutrition] = useState(false)
 
@@ -27,6 +29,7 @@ export default function PantryItemEditor({ item, categories, fdcKey, byok, onSav
       category,
       onHand,
       roughQty: roughQty.trim() ? roughQty.trim() : null,
+      level,
     })
   }
 
@@ -60,14 +63,26 @@ export default function PantryItemEditor({ item, categories, fdcKey, byok, onSav
         </div>
 
         <div className="field">
-          <label htmlFor="item-qty">Rough quantity</label>
+          <label htmlFor="item-qty">How much</label>
           <input
             id="item-qty"
             type="text"
             value={roughQty}
             onChange={(e) => setRoughQty(e.target.value)}
-            placeholder="e.g. half bag, 2 blocks"
+            placeholder="e.g. 10 carrots, 2 blocks, half bag"
           />
+          <p className="field-caption">A number here (“10 carrots”) goes down as you cook with it. Optional.</p>
+        </div>
+
+        <div className="field">
+          <span>Level</span>
+          <div className="segmented">
+            {STOCK_LEVELS.map((lv) => (
+              <button key={lv} type="button" className={`chip${level === lv ? ' chip--active' : ''}`} aria-pressed={level === lv} onClick={() => setLevel(level === lv ? null : lv)}>
+                {STOCK_LEVEL_LABELS[lv]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="field">

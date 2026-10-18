@@ -20,10 +20,13 @@ export default function HelpSheet({ onClose }) {
         <section className="help-section">
           <h3>🥫 Pantry</h3>
           <p>
-            Track what you actually have on hand. Mark items as <strong>staple</strong>{' '}
-            (always around) or <strong>rotating</strong>, and toggle on-hand as you use
-            things up or restock. Categories are yours to rename or add to. You can
-            scan a barcode to pull in nutrition facts automatically.
+            Track what you actually have on hand. After shopping, tap{' '}
+            <strong>🛒 Restock from shopping</strong> and say what you bought — amounts
+            you mention (“10 carrots”) are kept and go down as you cook; anything
+            without an amount is just marked <strong>plenty</strong>. Nothing is
+            counted for you that you didn’t say. Toggle on-hand any time; an item
+            that runs out lands on Plan’s grocery ideas. Categories are yours to
+            rename or add to, and you can scan a barcode for nutrition facts.
           </p>
         </section>
 

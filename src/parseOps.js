@@ -233,3 +233,90 @@ export function setRowMeasure(row, measure) {
 export function rowsToLogItems(rows) {
   return rows.map(rowLogItem)
 }
+
+// ---- Mode 'haul' (Phase 20): what I just bought -> pantry restock ----------
+// A different reply shape (no macros — nothing is eaten, and no AI-guessed
+// nutrition is ever stored on the pantry): name, the amount bought in the
+// user's own words (or null), an exact pantry match, and a category from
+// the user's own list for new items.
+
+/** Clipboard/BYOK-ready prompt for a shopping haul. */
+export function compileHaulPrompt({ text, pantry, categories }) {
+  const names = pantry.map((p) => p.name).filter(Boolean)
+  const pantryList = names.length > 0 ? names.map((n) => `- ${n}`).join('\n') : '(none)'
+  const categoryList = categories.length > 0 ? categories.map((c) => `- ${c}`).join('\n') : '(none)'
+  return `You are reading a grocery haul that was typed or dictated (it may be run-on speech, with filler words). List each distinct thing that was bought.
+
+## What was bought
+${text.trim()}
+
+## The user's pantry (exact names)
+${pantryList}
+
+## The user's pantry categories (exact names)
+${categoryList}
+
+## Rules
+- One item per distinct product.
+- "measure": the amount bought in the user's own words ("10 carrots", "5 kg", "2 blocks", "a bag"), or null if no amount was said. Never invent an amount.
+- "pantryMatch": copy a pantry name EXACTLY from the list above when the product IS that pantry item, otherwise null.
+- "category": for items with no pantry match, copy the best-fitting category EXACTLY from the category list; otherwise null.
+
+## Output format
+Output ONLY one JSON object — no prose, no markdown fences:
+{"items": [{"name": "Carrots", "measure": "10 carrots", "pantryMatch": null, "category": "Vegetables"}]}`
+}
+
+/**
+ * Validates a haul reply. Invented pantry matches / categories are cleared
+ * (not errors), same rule as validateParseReply.
+ * @returns {{ok:true, items: {name, measure, pantryId, category}[]} | {ok:false, errors, rawText}}
+ */
+export function validateHaulReply(rawText, { pantry, categories }) {
+  let parsed
+  try {
+    parsed = JSON.parse(extractJson(rawText))
+  } catch (e) {
+    return { ok: false, errors: [`(json): could not parse — ${e.message}`], rawText }
+  }
+  if (!isPlainObject(parsed)) return { ok: false, errors: [`(root): expected object, got ${describe(parsed)}`], rawText }
+  if (!Array.isArray(parsed.items)) return { ok: false, errors: [`items: expected array, got ${describe(parsed.items)}`], rawText }
+  if (parsed.items.length === 0 || parsed.items.length > MAX_ITEMS) {
+    return { ok: false, errors: [`items: expected 1-${MAX_ITEMS} entries, got ${parsed.items.length}`], rawText }
+  }
+  const pantryByName = new Map(pantry.map((p) => [p.name.trim().toLowerCase(), p]))
+  const errors = []
+  const items = []
+  parsed.items.forEach((raw, i) => {
+    const path = `items[${i}]`
+    if (!isPlainObject(raw)) return errors.push(`${path}: expected object, got ${describe(raw)}`)
+    if (typeof raw.name !== 'string' || !raw.name.trim()) return errors.push(`${path}.name: expected non-empty string, got ${describe(raw.name)}`)
+    if (raw.measure != null && typeof raw.measure !== 'string') return errors.push(`${path}.measure: expected string or null, got ${describe(raw.measure)}`)
+    const match = typeof raw.pantryMatch === 'string' ? pantryByName.get(raw.pantryMatch.trim().toLowerCase()) : null
+    const category = typeof raw.category === 'string' && categories.includes(raw.category.trim()) ? raw.category.trim() : null
+    items.push({ name: raw.name.trim(), measure: raw.measure?.trim() || null, pantryId: match ? match.id : null, category })
+  })
+  if (errors.length > 0) return { ok: false, errors, rawText }
+  return { ok: true, items }
+}
+
+/**
+ * Editable review rows for a haul: restock an existing item, or create one
+ * in `category`. When the AI gave no pantry match, an exact (case-
+ * insensitive) name match still counts — the same rule stockOps.applyHaul
+ * uses on save, so the card never says "new" for something that restocks.
+ */
+export function buildHaulRows(items, pantry) {
+  const pantryById = new Map(pantry.map((p) => [p.id, p]))
+  const pantryByName = new Map(pantry.map((p) => [p.name.trim().toLowerCase(), p]))
+  return items.map((item, i) => {
+    const match = item.pantryId ? pantryById.get(item.pantryId) : pantryByName.get(item.name.trim().toLowerCase()) || null
+    return {
+      key: `haul_${i}`,
+      name: match ? match.name : item.name,
+      measure: item.measure || '',
+      pantryId: match ? match.id : null,
+      category: match ? match.category : item.category || '',
+    }
+  })
+}
