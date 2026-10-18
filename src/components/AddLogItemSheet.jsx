@@ -333,9 +333,10 @@ export default function AddLogItemSheet({
             pantry={pantry}
             components={components}
             confirmLabel={`Add to ${label || 'log'}`}
-            onConfirm={(rows) => {
+            onConfirm={(rows, meta) => {
               setDescribeOpen(false)
-              onPick(rowsToLogItems(rows))
+              // Phase 21: "I ate out" tags the meal; callers that don't tag (plan slots) ignore it.
+              onPick(rowsToLogItems(rows), meta.ateOut ? { where: 'out' } : {})
             }}
             onCancel={() => setDescribeOpen(false)}
           />

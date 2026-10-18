@@ -24,11 +24,13 @@ const DESCRIBE = { compile: compileParsePrompt, validate: validateParseReply, ro
 // `byok` is byokCredentials(settings) — null means paste mode. Phase 19
 // adds mode 'cook' (ingredients for 🍳 Cook); Phase 20 adds 'haul' (needs
 // `categories`). onConfirm(rows, meta, text) gets the reviewed rows,
-// {dishName, servings} hints (cook mode), and the typed text.
+// meta {dishName, servings} hints (cook mode) / {ateOut} (meal mode, Phase
+// 21), and the typed text.
 export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, categories = [], components, confirmLabel, onConfirm, onCancel }) {
   const copyText = MODE_TEXT[mode] || MODE_TEXT.meal
   const ops = mode === 'haul' ? HAUL : DESCRIBE
   const [text, setText] = useState('')
+  const [ateOut, setAteOut] = useState(false) // Phase 21, meal mode only
   const [rows, setRows] = useState(null)
   const [meta, setMeta] = useState({ dishName: null, servings: null })
   const [busyMsg, setBusyMsg] = useState('')
@@ -38,7 +40,7 @@ export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, catego
   const [copied, setCopied] = useState(null)
   const [pasteText, setPasteText] = useState('')
 
-  const prompt = ops.compile({ text, pantry, categories, mode })
+  const prompt = ops.compile({ text, pantry, categories, mode, ateOut })
 
   function accept(result) {
     setFailure(null)
@@ -101,7 +103,7 @@ export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, catego
               pantry={pantry}
               confirmLabel={confirmLabel}
               onRowsChange={setRows}
-              onConfirm={() => onConfirm(rows, meta, text)}
+              onConfirm={() => onConfirm(rows, { ...meta, ateOut }, text)}
               onBack={() => setRows(null)}
             />
           )}
@@ -124,6 +126,12 @@ export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, catego
           placeholder={copyText.placeholder}
           aria-label={copyText.label}
         />
+        {mode === 'meal' && (
+          <label className="checkbox-field">
+            <input type="checkbox" checked={ateOut} onChange={(e) => setAteOut(e.target.checked)} />
+            I ate out (restaurant, takeout, delivery)
+          </label>
+        )}
 
         {byok ? (
           <div className="button-row">

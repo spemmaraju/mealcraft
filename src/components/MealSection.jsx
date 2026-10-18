@@ -5,6 +5,8 @@ import { MEAL_ICONS } from './Icons.jsx'
 import ProvenanceTag from './ProvenanceTag.jsx'
 import MeasureInput from './MeasureInput.jsx'
 import ItemMacroPanel from './ItemMacroPanel.jsx'
+import { WHERE_LABELS } from '../schema.js'
+import { nextWhere, whereOf } from '../insightsOps.js'
 
 function itemLabel(item, components, pantry) {
   if (item.kind === 'component') return components.find((c) => c.id === item.componentId)?.name || item.componentId
@@ -89,6 +91,7 @@ export default function MealSection({
   onSetItemMeasure,
   onRemoveItem,
   onRemoveLog,
+  onSetWhere,
   onOpenAdd,
   onOpenSaveDish,
   onTeachMeasure,
@@ -107,15 +110,28 @@ export default function MealSection({
   const showLogFromPlan = slot && slot.items.length > 0 && !hasItems
   const macros = hasItems ? trackOps.logMacros(log, components, pantry) : null
   const Icon = MEAL_ICONS[meal]
+  const where = hasItems ? whereOf(log) : null
 
   return (
     <div className="meal-section">
       <div className="meal-section__header">
         <Icon className="meal-section__icon" size={22} strokeWidth={1.8} />
         <h3 className="meal-section__title">{label}</h3>
+        {/* Phase 21: where it was eaten — one tap cycles; a guessed tag is shown muted. */}
+        {hasItems && (
+          <button
+            type="button"
+            className={`where-tag${log.where ? '' : ' where-tag--guess'}`}
+            aria-label={`${label}: eaten ${where ? WHERE_LABELS[where].toLowerCase() : 'untagged'} — tap to change`}
+            onClick={() => onSetWhere(nextWhere(where))}
+          >
+            {where ? WHERE_LABELS[where] : 'Tag'}
+          </button>
+        )}
         <span className={`meal-section__kcal${macros && macros.kcal > 0 ? '' : ' meal-section__kcal--empty'}`}>
           {macros && macros.kcal > 0 ? Math.round(macros.kcal) : '—'}
           <span>kcal</span>
+          {macros && macros.protein_g > 0 && <span className="meal-section__protein">{Math.round(macros.protein_g)} g protein</span>}
         </span>
       </div>
       <div className="meal-section__divider" />

@@ -80,6 +80,10 @@ export const ANTHROPIC_MODEL_LABELS = {
 export const COOK_STATUSES = ['draft', 'done']
 // Phase 20: soft stock level for amounts nobody counted. "Out" is onHand:false.
 export const STOCK_LEVELS = ['plenty', 'some', 'low']
+// Phase 21: where a meal was eaten. null on a log = not set by the user;
+// insightsOps.whereOf guesses it at read time.
+export const WHERES = ['home', 'packed', 'out']
+export const WHERE_LABELS = { home: 'Home', packed: 'Packed', out: 'Out' }
 export const STOCK_LEVEL_LABELS = { plenty: 'Plenty', some: 'Some', low: 'Low' }
 export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const REFRESH_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -175,6 +179,7 @@ export function createLogEntry(overrides = {}) {
     meal: 'lunch',
     items: [],
     quickRating: null,
+    where: null,
     ...overrides,
   }
 }
@@ -206,6 +211,7 @@ export function createCookSession(overrides = {}) {
     rows: [],
     servingsMade: null,
     componentId: null,
+    doneOn: null, // local YYYY-MM-DD the cook was finished (Phase 21)
     ...overrides,
   }
 }
@@ -321,6 +327,7 @@ const SHAPES = {
     meal: T.enumOf(MEALS),
     items: logItemsField,
     quickRating: T.enumOf(RATINGS, { nullable: true }),
+    where: T.enumOf(WHERES, { nullable: true }),
   },
   WeeklyFeedback: {
     weekOf: T.str(),
@@ -353,6 +360,7 @@ const SHAPES = {
     ),
     servingsMade: T.num({ nullable: true }),
     componentId: T.str({ nullable: true }),
+    doneOn: T.str({ nullable: true }),
   },
   ShelfEntry: {
     id: T.str(),
