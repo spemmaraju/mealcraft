@@ -68,7 +68,7 @@ try {
   // ==== schema v13 + migration ====
 
   await check('schema v13: factories validate; new collections registered', () => {
-    assert.equal(SCHEMA_VERSION, 13)
+    assert.ok(SCHEMA_VERSION >= 13)
     assert.deepEqual(schema.validate(schema.createCookSession({ createdAt: '2026-10-18T10:00:00Z' }), 'CookSession'), [])
     assert.deepEqual(schema.validate(schema.createShelfEntry({ componentId: 'c', servingsLeft: 2, cookedOn: '2026-10-18', eatBy: '2026-10-21' }), 'ShelfEntry'), [])
     assert.equal(schema.COLLECTION_SHAPES.cookSessions, 'CookSession')
@@ -76,11 +76,11 @@ try {
     assert.equal(schema.createSettings().anthropicModel, 'claude-sonnet-5-5')
   })
 
-  await check('migration v12 -> v13: empty cookSessions/shelf, default model; idempotent', () => {
+  await check('migration v12 -> current: empty cookSessions/shelf, default model; idempotent', () => {
     const v12 = { schemaVersion: 12, pantry: [], components: [], logs: [], settings: { ...schema.createSettings(), anthropicModel: undefined } }
     delete v12.settings.anthropicModel
     const once = migrate(v12)
-    assert.equal(once.schemaVersion, 13)
+    assert.equal(once.schemaVersion, SCHEMA_VERSION)
     assert.deepEqual(once.cookSessions, [])
     assert.deepEqual(once.shelf, [])
     assert.equal(once.settings.anthropicModel, 'claude-sonnet-5-5')

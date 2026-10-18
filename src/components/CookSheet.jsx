@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { mealForTime } from '../trackOps.js'
-import { rowForPantryItem, rowsFromReview, rowsFromSession } from '../cookOps.js'
+import { rowForPantryItem, rowsFromReview, rowsFromSession, stockSuggestions } from '../cookOps.js'
+import { patchForChoice } from '../stockOps.js'
 import { defaultMeasureFor } from '../measures.js'
 import CookIngredientsStep from './CookIngredientsStep.jsx'
 import CookDoneStep from './CookDoneStep.jsx'
@@ -36,8 +37,19 @@ export default function CookSheet({ seed, pantry, components, byok, onSaveDraft,
   const [keepsDays, setKeepsDays] = useState(DEFAULT_KEEPS_DAYS)
   const [eatNow, setEatNow] = useState(1)
   const [eatMeal, setEatMeal] = useState(() => mealForTime())
+  // Phase 20: { [pantryId]: 'plenty'|'some'|'low'|'out' } — only rows the user re-chipped.
+  const [stockChoices, setStockChoices] = useState({})
 
   const base = { sessionId: session?.id || null, name: name.trim(), text, rows }
+
+  // What the pantry will look like after this cook: stockOps' suggestion,
+  // unless the user tapped a chip for that item.
+  const stock = stockSuggestions(rows, pantry).map((s) => {
+    const choice = stockChoices[s.pantryId]
+    if (!choice) return s
+    const item = pantry.find((p) => p.id === s.pantryId)
+    return { ...s, patch: patchForChoice({ ...item, ...s.patch }, choice), how: 'chosen' }
+  })
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -64,13 +76,21 @@ export default function CookSheet({ seed, pantry, components, byok, onSaveDraft,
             keepsDays={keepsDays}
             eatNow={eatNow}
             eatMeal={eatMeal}
+            stock={stock}
+            onStockChoice={(pantryId, choice) => setStockChoices((prev) => ({ ...prev, [pantryId]: choice }))}
             onServingsMade={setServings}
             onKeepsDays={setKeepsDays}
             onEatNow={setEatNow}
             onEatMeal={setEatMeal}
             onBack={() => setStep(1)}
             onConfirm={() =>
-              onDone({ ...base, servingsMade: servings, keepsDays, eatNow: eatNow > 0 ? { count: Math.min(eatNow, servings), meal: eatMeal } : null })
+              onDone({
+                ...base,
+                servingsMade: servings,
+                keepsDays,
+                eatNow: eatNow > 0 ? { count: Math.min(eatNow, servings), meal: eatMeal } : null,
+                stockPatches: Object.fromEntries(stock.map((s) => [s.pantryId, s.patch])),
+              })
             }
           />
         )}

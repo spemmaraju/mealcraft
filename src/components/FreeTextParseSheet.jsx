@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { compileParsePrompt, validateParseReply, buildDraftRows } from '../parseOps.js'
+import { compileParsePrompt, validateParseReply, buildDraftRows, compileHaulPrompt, validateHaulReply, buildHaulRows } from '../parseOps.js'
 import { buildFixRequest } from '../aiReplyOps.js'
-import { parseTextViaApi } from '../byok.js'
+import { parseTextViaApi, parseHaulViaApi } from '../byok.js'
 import ParseReviewCard from './ParseReviewCard.jsx'
+import HaulReviewCard from './HaulReviewCard.jsx'
 
 const busyAskingFor = (provider) => `Asking ${provider === 'google' ? 'Gemini' : 'Claude'}…`
 const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
@@ -10,16 +11,23 @@ const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
 const MODE_TEXT = {
   meal: { title: 'Describe what you ate', label: 'What you ate', placeholder: 'e.g. two rotis with a bowl of toor dal, some raita and a handful of almonds' },
   cook: { title: 'Describe the ingredients', label: 'What goes into the dish', placeholder: 'e.g. two cups toor dal, two tomatoes, an onion, a tablespoon of ghee — makes about four servings' },
+  haul: { title: 'What did you buy?', label: 'What you bought', placeholder: 'e.g. ten carrots, a bag of spinach, five kilos of rice, two blocks of paneer' },
 }
+
+// mode 'haul' (Phase 20) has its own prompt, reply shape, rows and review card.
+const HAUL = { compile: compileHaulPrompt, validate: validateHaulReply, rows: buildHaulRows, api: parseHaulViaApi }
+const DESCRIBE = { compile: compileParsePrompt, validate: validateParseReply, rows: buildDraftRows, api: parseTextViaApi }
 
 // Phase 18 "Describe it": type or dictate (Wispr Flow via the system
 // keyboard — the box is big and autofocused), parse with BYOK or the
 // copy-prompt / paste-reply fallback, then review before anything is used.
 // `byok` is byokCredentials(settings) — null means paste mode. Phase 19
-// adds mode 'cook' (ingredients for 🍳 Cook). onConfirm(rows, meta, text) gets the
-// reviewed parseOps draft rows, {dishName, servings} hints (cook mode), and the typed text.
-export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, components, confirmLabel, onConfirm, onCancel }) {
+// adds mode 'cook' (ingredients for 🍳 Cook); Phase 20 adds 'haul' (needs
+// `categories`). onConfirm(rows, meta, text) gets the reviewed rows,
+// {dishName, servings} hints (cook mode), and the typed text.
+export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, categories = [], components, confirmLabel, onConfirm, onCancel }) {
   const copyText = MODE_TEXT[mode] || MODE_TEXT.meal
+  const ops = mode === 'haul' ? HAUL : DESCRIBE
   const [text, setText] = useState('')
   const [rows, setRows] = useState(null)
   const [meta, setMeta] = useState({ dishName: null, servings: null })
@@ -30,22 +38,23 @@ export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, compon
   const [copied, setCopied] = useState(null)
   const [pasteText, setPasteText] = useState('')
 
-  const prompt = compileParsePrompt({ text, pantry, mode })
+  const prompt = ops.compile({ text, pantry, categories, mode })
 
   function accept(result) {
     setFailure(null)
     setMeta({ dishName: result.dishName ?? null, servings: result.servings ?? null })
-    setRows(buildDraftRows(result.items, pantry))
+    setRows(ops.rows(result.items, pantry))
   }
 
   async function handleParse() {
     setBusyMsg(busyAskingFor(byok.provider))
     setFailure(null)
-    const result = await parseTextViaApi({
+    const result = await ops.api({
       provider: byok.provider,
       apiKey: byok.apiKey,
       model: byok.model,
       pantry,
+      categories,
       prompt,
       onProgress: (stage) => stage === 'retrying' && setBusyMsg(BUSY_RETRYING),
     })
@@ -74,7 +83,7 @@ export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, compon
   }
 
   function handleReadReply() {
-    const result = validateParseReply(pasteText, { pantry })
+    const result = ops.validate(pasteText, { pantry, categories })
     if (result.ok) accept(result)
     else setFailure({ errors: result.errors, rawText: result.rawText })
   }
@@ -83,15 +92,19 @@ export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, compon
     return (
       <div className="sheet-backdrop sheet-backdrop--stacked" onClick={onCancel}>
         <div className="sheet sheet--tall" onClick={(e) => e.stopPropagation()}>
-          <ParseReviewCard
-            rows={rows}
-            components={components}
-            pantry={pantry}
-            confirmLabel={confirmLabel}
-            onRowsChange={setRows}
-            onConfirm={() => onConfirm(rows, meta, text)}
-            onBack={() => setRows(null)}
-          />
+          {mode === 'haul' ? (
+            <HaulReviewCard rows={rows} pantry={pantry} categories={categories} onRowsChange={setRows} onConfirm={() => onConfirm(rows, meta, text)} onBack={() => setRows(null)} />
+          ) : (
+            <ParseReviewCard
+              rows={rows}
+              components={components}
+              pantry={pantry}
+              confirmLabel={confirmLabel}
+              onRowsChange={setRows}
+              onConfirm={() => onConfirm(rows, meta, text)}
+              onBack={() => setRows(null)}
+            />
+          )}
         </div>
       </div>
     )

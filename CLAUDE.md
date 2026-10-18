@@ -45,7 +45,7 @@ If anything is ambiguous, STOP and ask the user before writing code.
 All modules communicate through these shapes (source of truth:
 `src/schema.js`). Changing a schema requires explicit user approval and a
 `SCHEMA_VERSION` bump in `src/storage.js` with a migration step (older
-exports must still import). Current: **v13**.
+exports must still import). Current: **v14**.
 
 ```
 State (localStorage key "mealcraft.v1") {
@@ -59,8 +59,10 @@ State (localStorage key "mealcraft.v1") {
 
 PantryItem {
   id, name, category,
-  onHand: bool,
-  roughQty: string | null,       // free text: "half bag", "2 blocks"
+  onHand: bool,                  // false = out
+  roughQty: string | null,       // the STATED amount, free text: "10 carrots", "half bag".
+                                 // Read as qty+unit only for arithmetic (stockOps), written back as text.
+  level: "plenty" | "some" | "low" | null,   // soft stock when no amount was stated (v14)
   nutrition: NutritionInfo | null
 }
 
@@ -135,9 +137,11 @@ Settings {
 }
 ```
 
-Planned (Phases 20–21, pending each phase's approval): pantry stock
-(`qty+unit` when stated, else a level) and a `where: home | packed | out`
-tag on log entries. See `docs/kitchen-loop-plan.md`.
+GroceryItem.forDish "running low" / "ran out" marks a stock-driven entry
+(Phase 20) and renders without "for".
+
+Planned (Phase 21, pending approval): a `where: home | packed | out` tag on
+log entries. See `docs/kitchen-loop-plan.md`.
 
 ## 4. Process rules (phase gating — engineering, not habit)
 

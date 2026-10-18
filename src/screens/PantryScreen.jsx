@@ -7,6 +7,7 @@ import PantryItemEditor from '../components/PantryItemEditor.jsx'
 import CategoryManager from '../components/CategoryManager.jsx'
 import { SearchIcon } from '../components/Icons.jsx'
 import { byokCredentials } from '../byok.js'
+import RestockSheet from '../components/RestockSheet.jsx'
 
 export default function PantryScreen() {
   const [pantry, setPantry] = useState([])
@@ -25,6 +26,8 @@ export default function PantryScreen() {
   const [quickAddCategory, setQuickAddCategory] = useState('')
   const [lastCategory, setLastCategory] = useState(null)
   const [autofillToast, setAutofillToast] = useState(null) // { itemId, text } | null
+  const [restocking, setRestocking] = useState(false) // Phase 20
+  const [restockMsg, setRestockMsg] = useState(null)
   // Set by Enter in the quick-add input just before it blurs; blur owns the
   // single commit path so Enter-then-blur can't create the item twice.
   const openEditorRef = useRef(false)
@@ -225,6 +228,13 @@ export default function PantryScreen() {
     <div className="screen">
       <h1>Pantry</h1>
 
+      <div className="button-row">
+        <button type="button" className="btn btn--primary" onClick={() => setRestocking(true)}>
+          🛒 Restock from shopping
+        </button>
+      </div>
+      {restockMsg && <div className="message message--success">{restockMsg}</div>}
+
       {autofillToast && (
         <div className="banner">
           <span className="banner__text">{autofillToast.text}</span>
@@ -320,6 +330,20 @@ export default function PantryScreen() {
           onDelete={handleDeleteItem}
           onSaveNutrition={handleSaveNutrition}
           onCancel={() => setEditingItemId(null)}
+        />
+      )}
+
+      {restocking && (
+        <RestockSheet
+          byok={byok}
+          pantry={pantry}
+          categories={categories}
+          components={components}
+          onDone={(msg) => {
+            setRestocking(false)
+            setRestockMsg(msg ? `Pantry updated — ${msg}.` : 'Pantry updated.')
+          }}
+          onCancel={() => setRestocking(false)}
         />
       )}
 

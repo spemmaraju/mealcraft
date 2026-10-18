@@ -78,6 +78,9 @@ export const ANTHROPIC_MODEL_LABELS = {
   'claude-haiku-5-5': 'Haiku 5.5 (fastest, cheapest)',
 }
 export const COOK_STATUSES = ['draft', 'done']
+// Phase 20: soft stock level for amounts nobody counted. "Out" is onHand:false.
+export const STOCK_LEVELS = ['plenty', 'some', 'low']
+export const STOCK_LEVEL_LABELS = { plenty: 'Plenty', some: 'Some', low: 'Low' }
 export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const REFRESH_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 export const DAY_NAMES = {
@@ -119,6 +122,7 @@ export function createPantryItem(overrides = {}) {
     category: '',
     onHand: false,
     roughQty: null,
+    level: null,
     nutrition: null,
     ...overrides,
   }
@@ -279,6 +283,7 @@ const SHAPES = {
     category: T.str(),
     onHand: T.bool(),
     roughQty: T.str({ nullable: true }),
+    level: T.enumOf(STOCK_LEVELS, { nullable: true }),
     nutrition: T.obj(nutritionInfoFields, { nullable: true }),
   },
   Component: {

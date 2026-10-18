@@ -6,9 +6,12 @@ import { TrashIcon } from './Icons.jsx'
 // the "on hand" fallback only fills in when the item actually IS on hand
 // (an off-hand item with no roughQty note has nothing to say there; showing
 // "on hand" next to a toggle that's visibly off would contradict it).
+// Phase 20: an on-hand item with no stated amount shows its soft level
+// (plenty / some / low) instead of the generic "on hand".
 function pantrySubline(item) {
   if (item.roughQty) return item.roughQty
-  return item.onHand ? 'on hand' : null
+  if (!item.onHand) return null
+  return item.level || 'on hand'
 }
 
 // Per-row delete affordance (users weren't finding the editor's buried
@@ -29,7 +32,8 @@ export default function PantryItemRow({ item, onToggleOnHand, onOpenEditor, onDe
           </span>
           {(subline || item.role) && (
             <span className="row2__sub">
-              {subline && <span>{subline}</span>}
+              {subline && <span className={subline === 'low' ? 'pantry-row__low' : undefined}>{subline}</span>}
+              {item.onHand && item.level === 'low' && item.roughQty && <span className="pantry-row__low"> · low</span>}
               {subline && item.role && <span> · </span>}
               {item.role && <span className="pantry-row__roletag">{item.role}</span>}
             </span>

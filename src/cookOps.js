@@ -13,6 +13,7 @@ import { createComponent, createCookSession, createGroceryItem, createLogEntry }
 import { itemMacros, logFor, mergeItems, upsertLog } from './trackOps.js'
 import { buildDraftRows, rowLogItem } from './parseOps.js'
 import { shelfEntryFor } from './shelfOps.js'
+import { consume } from './stockOps.js'
 
 let rowSeq = 0
 function rowKey() {
@@ -173,4 +174,39 @@ export function groceryAdditions(grocery, names, forDish) {
     out.push(createGroceryItem({ name: candidate, forDish }))
   }
   return out
+}
+
+/**
+ * Phase 20: what each used pantry item should look like after this cook
+ * (stockOps.consume, applied in row order so an item used twice is
+ * consumed twice). Only checked pantry rows with an amount count.
+ * @returns {{pantryId, name, patch, how}[]}
+ */
+export function stockSuggestions(rows, pantry) {
+  const current = new Map(pantry.map((p) => [p.id, p]))
+  const order = []
+  const byId = new Map()
+  for (const row of rows) {
+    if (!row.checked || !row.pantryId || !row.measure.trim()) continue
+    const item = current.get(row.pantryId)
+    if (!item) continue
+    const { patch, how } = consume(item, row.measure)
+    current.set(item.id, { ...item, ...patch })
+    if (!byId.has(item.id)) order.push(item.id)
+    byId.set(item.id, { pantryId: item.id, name: item.name, patch, how })
+  }
+  return order.map((id) => byId.get(id))
+}
+
+/** Pantry with the chosen stock patches applied, plus the items that changed. */
+export function applyStockPatches(pantry, patches) {
+  const changed = []
+  const next = pantry.map((p) => {
+    const patch = patches[p.id]
+    if (!patch) return p
+    const updated = { ...p, ...patch }
+    changed.push(updated)
+    return updated
+  })
+  return { pantry: next, changed }
 }

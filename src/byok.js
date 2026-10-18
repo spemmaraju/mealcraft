@@ -7,7 +7,7 @@
 
 import * as aiClient from './aiClient.js'
 import { validateComponentReply, validateIdeasReply, buildFixRequest } from './aiReplyOps.js'
-import { validateParseReply } from './parseOps.js'
+import { validateParseReply, validateHaulReply } from './parseOps.js'
 
 /**
  * The {provider, apiKey, model} triple every BYOK call needs, or null when
@@ -83,4 +83,19 @@ export async function parseTextViaApi({ provider, apiKey, model, pantry, prompt,
   if (!outcome.ok) return outcome
   const { items, dishName, servings } = outcome.result
   return { ok: true, items, dishName, servings, attempts: outcome.attempts }
+}
+
+/** Phase 20 shopping-haul parse. @returns {Promise<{ok:true, items, attempts} | {ok:false, errors, rawText?, attempts}>} */
+export async function parseHaulViaApi({ provider, apiKey, model, pantry, categories, prompt, chatFn = aiClient.chat, onProgress }) {
+  const outcome = await chatWithOneRetry({
+    provider,
+    apiKey,
+    model,
+    prompt,
+    chatFn,
+    onProgress,
+    validateFn: (text) => validateHaulReply(text, { pantry, categories }),
+  })
+  if (!outcome.ok) return outcome
+  return { ok: true, items: outcome.result.items, attempts: outcome.attempts }
 }
