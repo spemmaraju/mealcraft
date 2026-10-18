@@ -32,6 +32,7 @@ export default function IdeasSection({ ideas, pantry, components, settings, onId
     const result = await generateIdeasViaApi({
       provider: settings.provider,
       apiKey: settings.apiKey,
+      model: settings.anthropicModel,
       pantry,
       prompt,
       onProgress: (stage) => {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { compileParsePrompt, validateParseReply, buildDraftRows, rowsToLogItems } from '../parseOps.js'
+import { compileParsePrompt, validateParseReply, buildDraftRows } from '../parseOps.js'
 import { buildFixRequest } from '../aiReplyOps.js'
 import { parseTextViaApi } from '../byok.js'
 import ParseReviewCard from './ParseReviewCard.jsx'
@@ -7,14 +7,22 @@ import ParseReviewCard from './ParseReviewCard.jsx'
 const busyAskingFor = (provider) => `Asking ${provider === 'google' ? 'Gemini' : 'Claude'}…`
 const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
 
-// Phase 18 "Describe what I ate": type or dictate (Wispr Flow via the
-// system keyboard — the box is big and autofocused), parse with BYOK or the
-// copy-prompt / paste-reply fallback, then review before logging. `byok` is
-// the {provider, apiKey} | null pair AddLogItemSheet already receives;
-// null means paste mode. onLog gets a ready-to-merge LogEntry items[].
-export default function FreeTextParseSheet({ byok, pantry, components, mealLabel, onLog, onCancel }) {
+const MODE_TEXT = {
+  meal: { title: 'Describe what you ate', label: 'What you ate', placeholder: 'e.g. two rotis with a bowl of toor dal, some raita and a handful of almonds' },
+  cook: { title: 'Describe the ingredients', label: 'What goes into the dish', placeholder: 'e.g. two cups toor dal, two tomatoes, an onion, a tablespoon of ghee — makes about four servings' },
+}
+
+// Phase 18 "Describe it": type or dictate (Wispr Flow via the system
+// keyboard — the box is big and autofocused), parse with BYOK or the
+// copy-prompt / paste-reply fallback, then review before anything is used.
+// `byok` is byokCredentials(settings) — null means paste mode. Phase 19
+// adds mode 'cook' (ingredients for 🍳 Cook). onConfirm(rows, meta, text) gets the
+// reviewed parseOps draft rows, {dishName, servings} hints (cook mode), and the typed text.
+export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, components, confirmLabel, onConfirm, onCancel }) {
+  const copyText = MODE_TEXT[mode] || MODE_TEXT.meal
   const [text, setText] = useState('')
   const [rows, setRows] = useState(null)
+  const [meta, setMeta] = useState({ dishName: null, servings: null })
   const [busyMsg, setBusyMsg] = useState('')
   const [failure, setFailure] = useState(null) // {errors, rawText?}
   // {at: 'prompt' | 'fix', ok, text, value} — rendered under the button that copied;
@@ -22,11 +30,12 @@ export default function FreeTextParseSheet({ byok, pantry, components, mealLabel
   const [copied, setCopied] = useState(null)
   const [pasteText, setPasteText] = useState('')
 
-  const prompt = compileParsePrompt({ text, pantry })
+  const prompt = compileParsePrompt({ text, pantry, mode })
 
-  function accept(items) {
+  function accept(result) {
     setFailure(null)
-    setRows(buildDraftRows(items, pantry))
+    setMeta({ dishName: result.dishName ?? null, servings: result.servings ?? null })
+    setRows(buildDraftRows(result.items, pantry))
   }
 
   async function handleParse() {
@@ -35,12 +44,13 @@ export default function FreeTextParseSheet({ byok, pantry, components, mealLabel
     const result = await parseTextViaApi({
       provider: byok.provider,
       apiKey: byok.apiKey,
+      model: byok.model,
       pantry,
       prompt,
       onProgress: (stage) => stage === 'retrying' && setBusyMsg(BUSY_RETRYING),
     })
     setBusyMsg('')
-    if (result.ok) accept(result.items)
+    if (result.ok) accept(result)
     else setFailure({ errors: result.errors, rawText: result.rawText })
   }
 
@@ -65,7 +75,7 @@ export default function FreeTextParseSheet({ byok, pantry, components, mealLabel
 
   function handleReadReply() {
     const result = validateParseReply(pasteText, { pantry })
-    if (result.ok) accept(result.items)
+    if (result.ok) accept(result)
     else setFailure({ errors: result.errors, rawText: result.rawText })
   }
 
@@ -77,9 +87,9 @@ export default function FreeTextParseSheet({ byok, pantry, components, mealLabel
             rows={rows}
             components={components}
             pantry={pantry}
-            confirmLabel={`Add to ${mealLabel || 'log'}`}
+            confirmLabel={confirmLabel}
             onRowsChange={setRows}
-            onConfirm={() => onLog(rowsToLogItems(rows))}
+            onConfirm={() => onConfirm(rows, meta, text)}
             onBack={() => setRows(null)}
           />
         </div>
@@ -91,15 +101,15 @@ export default function FreeTextParseSheet({ byok, pantry, components, mealLabel
   return (
     <div className="sheet-backdrop sheet-backdrop--stacked" onClick={onCancel}>
       <div className="sheet sheet--tall" onClick={(e) => e.stopPropagation()}>
-        <h3 className="parse-review__title">Describe what you ate</h3>
+        <h3 className="parse-review__title">{copyText.title}</h3>
         <textarea
           className="dictation-box"
           rows={5}
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="e.g. two rotis with a bowl of toor dal, some raita and a handful of almonds"
-          aria-label="What you ate"
+          placeholder={copyText.placeholder}
+          aria-label={copyText.label}
         />
 
         {byok ? (

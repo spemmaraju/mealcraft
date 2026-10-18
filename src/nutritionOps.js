@@ -43,13 +43,18 @@ export function findCachedBarcode(pantry, code) {
   return hit ? hit.nutrition : null
 }
 
-/** @returns {{ok: true, servings: number, perServing: object} | {ok: false, reason: string}} */
+/**
+ * Pantry first (by name), then the ingredient's own nutrition snapshot
+ * (Phase 19 — e.g. an AI-estimated ingredient that isn't in the pantry).
+ * @returns {{ok: true, servings: number, perServing: object} | {ok: false, reason: string}}
+ */
 export function resolveIngredient(ing, pantry) {
-  const match = (pantry || []).find((p) => p.name && nameMatches(ing.name, p.name))
-  if (!match || !match.nutrition) return { ok: false, reason: 'no nutrition data' }
-  const servings = measureToServings(ing.measure, match.nutrition)
+  const match = (pantry || []).find((p) => p.name && p.nutrition && nameMatches(ing.name, p.name))
+  const nutrition = match?.nutrition || ing.nutrition || null
+  if (!nutrition) return { ok: false, reason: 'no nutrition data' }
+  const servings = measureToServings(ing.measure, nutrition)
   if (servings == null) return { ok: false, reason: 'unresolvable measure' }
-  return { ok: true, servings, perServing: match.nutrition.perServing }
+  return { ok: true, servings, perServing: nutrition.perServing }
 }
 
 function round1(n) {
@@ -57,8 +62,13 @@ function round1(n) {
 }
 
 /**
- * @returns {{ok: true, macrosPerServing: object} | {ok: false, unresolved: {name: string, reason: string}[]}}
- * Never sums partial results — every ingredient must resolve or the whole derivation fails.
+ * Phase 19: PARTIAL by design. Sums every ingredient that resolves and
+ * reports the rest as `unresolved` + a `coverage` count, instead of failing
+ * the whole dish over one unknown ingredient (which used to wipe a dish's
+ * macros on every pantry change via resyncDerivedMacros). Directional, per
+ * CLAUDE.md §1 — callers show "N of M ingredients counted".
+ * ok:false only when servings aren't set or NOTHING resolves.
+ * @returns {{ok: true, macrosPerServing: object, unresolved: {name, reason}[], coverage: {counted: number, total: number}} | {ok: false, unresolved: {name: string, reason: string}[]}}
  */
 export function deriveComponentMacros(component, pantry) {
   if (!component.servings || component.servings <= 0) {
@@ -82,7 +92,8 @@ export function deriveComponentMacros(component, pantry) {
     totals.fat_g += perServing.fat_g * servings
   }
 
-  if (unresolved.length > 0) return { ok: false, unresolved }
+  const counted = ingredients.length - unresolved.length
+  if (counted === 0) return { ok: false, unresolved }
 
   return {
     ok: true,
@@ -92,12 +103,14 @@ export function deriveComponentMacros(component, pantry) {
       carbs_g: round1(totals.carbs_g / component.servings),
       fat_g: round1(totals.fat_g / component.servings),
     },
+    unresolved,
+    coverage: { counted, total: ingredients.length },
   }
 }
 
 /**
- * Re-derives every macroSource:'derived' component. A component that fails
- * derivation reverts to macrosPerServing: null (macroSource stays 'derived')
+ * Re-derives every macroSource:'derived' component. A component where NO
+ * ingredient resolves any more reverts to macrosPerServing: null (macroSource stays 'derived')
  * rather than keeping stale numbers.
  * @returns {{changed: boolean, components: object[]}}
  */

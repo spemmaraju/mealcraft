@@ -15,6 +15,8 @@ const SUMMARY_LABELS = {
   feedback: 'feedback entries',
   grocery: 'grocery ideas',
   ideas: 'dish ideas',
+  cookSessions: 'cook sessions',
+  shelf: 'shelf batches',
   categories: 'categories',
 }
 

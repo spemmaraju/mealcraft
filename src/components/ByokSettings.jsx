@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as storage from '../storage.js'
 import { testConnection } from '../aiClient.js'
-import { API_MODES, PROVIDERS } from '../schema.js'
+import { API_MODES, PROVIDERS, ANTHROPIC_MODELS, ANTHROPIC_MODEL_LABELS } from '../schema.js'
 
 const MODE_LABELS = { paste: 'Paste (no key)', byok: 'Bring your own key' }
 const PROVIDER_LABELS = { anthropic: 'Claude (Anthropic)', google: 'Gemini (Google)' }
@@ -9,6 +9,7 @@ const PROVIDER_LABELS = { anthropic: 'Claude (Anthropic)', google: 'Gemini (Goog
 export default function ByokSettings() {
   const [apiMode, setApiModeState] = useState('paste')
   const [provider, setProviderState] = useState('anthropic')
+  const [model, setModelState] = useState(ANTHROPIC_MODELS[0])
   const [apiKey, setApiKey] = useState('')
   const [keyDraft, setKeyDraft] = useState('')
   const [keyMsg, setKeyMsg] = useState(null)
@@ -19,6 +20,7 @@ export default function ByokSettings() {
     storage.get('settings').then((settings) => {
       setApiModeState(settings.apiMode)
       setProviderState(settings.provider)
+      setModelState(settings.anthropicModel)
       setApiKey(settings.apiKey ?? '')
       setKeyDraft(settings.apiKey ?? '')
     })
@@ -56,10 +58,16 @@ export default function ByokSettings() {
     setKeyMsg({ type: 'success', text: 'Key removed.' })
   }
 
+  async function handleSetModel(nextModel) {
+    setModelState(nextModel)
+    setTestMsg(null)
+    await updateSettings({ anthropicModel: nextModel })
+  }
+
   async function handleTestConnection() {
     setTesting(true)
     setTestMsg(null)
-    const result = await testConnection({ provider, apiKey: keyDraft.trim() })
+    const result = await testConnection({ provider, apiKey: keyDraft.trim(), model })
     setTesting(false)
     setTestMsg(result.ok ? { type: 'success', text: 'Connection OK.' } : { type: 'error', text: result.error })
   }
@@ -99,6 +107,19 @@ export default function ByokSettings() {
               ))}
             </select>
           </div>
+
+          {provider === 'anthropic' && (
+            <div className="field">
+              <label htmlFor="byok-model">Model</label>
+              <select id="byok-model" value={model} onChange={(e) => handleSetModel(e.target.value)}>
+                {ANTHROPIC_MODELS.map((m) => (
+                  <option key={m} value={m}>
+                    {ANTHROPIC_MODEL_LABELS[m]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="field">
             <label htmlFor="byok-key">API key</label>

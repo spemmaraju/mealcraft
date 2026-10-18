@@ -32,7 +32,8 @@ If anything is ambiguous, STOP and ask the user before writing code.
 - BYOK mode: user's Claude/Gemini API key is stored ONLY in localStorage,
   sent ONLY to the provider's official endpoint, never logged or embedded,
   and nulled out of every export/snapshot.
-- Default Anthropic model: `claude-sonnet-5-5` (structured extraction).
+- Default Anthropic model: `claude-sonnet-5-5` (structured extraction);
+  Settings offers Opus 5.5 / Haiku 5.5 (Phase 19).
   The user approved using their key extensively for parsing (Phase 17).
 - PWA: manifest + service worker for offline use.
 - No barcode/vision/nutrition network calls except: Open Food Facts API,
@@ -44,14 +45,15 @@ If anything is ambiguous, STOP and ask the user before writing code.
 All modules communicate through these shapes (source of truth:
 `src/schema.js`). Changing a schema requires explicit user approval and a
 `SCHEMA_VERSION` bump in `src/storage.js` with a migration step (older
-exports must still import). Current: **v12**.
+exports must still import). Current: **v13**.
 
 ```
 State (localStorage key "mealcraft.v1") {
   schemaVersion, categories: [string],          // category list is user-editable
   pantry: [PantryItem], components: [Component], planSlots: [PlanSlot],
   logs: [LogEntry], feedback: [WeeklyFeedback], grocery: [GroceryItem],
-  ideas: [Idea], settings: Settings
+  ideas: [Idea], cookSessions: [CookSession], shelf: [ShelfEntry],
+  settings: Settings
 }
 // Daily snapshots (newest 3) live under "mealcraft.snapshots.v1", never in exports.
 
@@ -78,7 +80,8 @@ NutritionInfo {
 Component {                       // a recipe component or a composed dish
   id, name,
   type: "base" | "protein" | "veg" | "sauce" | "finisher" | "dish",
-  ingredients: [ { name, measure } ],   // measure is FREE TEXT (cup/g/handful)
+  ingredients: [ { name, measure,        // measure is FREE TEXT (cup/g/handful)
+                   nutrition?: NutritionInfo | null } ],  // snapshot used when no pantry item resolves it (v13)
   steps: [string],
   shelfLifeDays: number,
   storage: string,
@@ -86,7 +89,7 @@ Component {                       // a recipe component or a composed dish
   activeMin, passiveMin,
   servings: number | null,
   macrosPerServing: { kcal, protein_g, carbs_g, fat_g } | null,
-  macroSource: NutritionInfo.source | "derived",
+  macroSource: NutritionInfo.source | "derived",   // "derived" is PARTIAL: sums what resolves (v13)
   rating: "repeat" | "fine" | "never" | null,
   archived: bool
 }
@@ -108,6 +111,13 @@ LogEntry {
 PlanSlot { date, meal, items: [LogItem] }    // an editable proposal for a future meal
 GroceryItem { name, forDish }                // ADVISORY ONLY; dismiss = delete
 Idea { id, name, line, uses: [string], buy: [string], starred: bool }   // "What can I make?"
+
+CookSession {                      // 🍳 Cook: a draft, then what actually went in (v13)
+  id, status: "draft" | "done", createdAt, name, text,
+  rows: [ { name, measure, pantryId: string | null, nutrition: NutritionInfo | null, checked: bool } ],
+  servingsMade: number | null, componentId: string | null   // set when done
+}
+ShelfEntry { id, componentId, servingsLeft, cookedOn, eatBy }   // ready-to-eat shelf (v13)
 WeeklyFeedback { weekOf, repeatWorthy, diedUneaten, boredomNotes }
 // No UI since Phase 11; collection kept so old exports still import.
 
@@ -120,15 +130,14 @@ Settings {
   fdcKey: string | null,           // USDA key; nulled in exports
   lastExportAt: string | null,     // ISO timestamp, drives the backup nudge
   cookDay: "Sun".."Sat",
-  refreshDay: "Mon".."Fri" | null
+  refreshDay: "Mon".."Fri" | null,
+  anthropicModel: "claude-sonnet-5-5" | "claude-opus-5-5" | "claude-haiku-5-5"   // v13
 }
 ```
 
-Planned for v13 (Phase 19–21, pending each phase's approval): pantry stock
-(`qty+unit` when stated, else a level), cook sessions (draft → done), a
-ready-to-eat shelf (servings left + eat-by on cooked batches), and a
-`where: home | packed | out` tag on log entries. See
-`docs/kitchen-loop-plan.md`.
+Planned (Phases 20–21, pending each phase's approval): pantry stock
+(`qty+unit` when stated, else a level) and a `where: home | packed | out`
+tag on log entries. See `docs/kitchen-loop-plan.md`.
 
 ## 4. Process rules (phase gating — engineering, not habit)
 

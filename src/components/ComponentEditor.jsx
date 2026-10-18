@@ -52,9 +52,9 @@ export default function ComponentEditor({ component, isNew, pantry, onSave, onDe
       setCarbs(String(result.macrosPerServing.carbs_g))
       setFat(String(result.macrosPerServing.fat_g))
       setMacroSource('derived')
-      setDeriveError(null)
+      setDeriveError(result.unresolved.length > 0 ? { partial: true, unresolved: result.unresolved, coverage: result.coverage } : null)
     } else {
-      setDeriveError(result.unresolved)
+      setDeriveError({ partial: false, unresolved: result.unresolved })
     }
   }
 

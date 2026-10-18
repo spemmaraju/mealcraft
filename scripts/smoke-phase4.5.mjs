@@ -166,7 +166,9 @@ try {
     assert.deepEqual(result.macrosPerServing, { kcal: 297, protein_g: 8.9, carbs_g: 61, fat_g: 1.5 })
   })
 
-  await check('deriveComponentMacros: unresolvable measure names the ingredient, ok:false', () => {
+  // Phase 19: derivation is partial — an unresolvable ingredient is named
+  // and left out, the rest still count (was all-or-nothing ok:false).
+  await check('deriveComponentMacros: unresolvable measure is named and skipped; the rest still count', () => {
     const pantry = pantryWithChickpeasRiceOnion()
     const component = schema.createComponent({
       servings: 2,
@@ -176,8 +178,10 @@ try {
       ],
     })
     const result = nutritionOps.deriveComponentMacros(component, pantry)
-    assert.equal(result.ok, false)
+    assert.equal(result.ok, true)
     assert.deepEqual(result.unresolved, [{ name: 'rice', reason: 'unresolvable measure' }])
+    assert.deepEqual(result.coverage, { counted: 1, total: 2 })
+    assert.equal(result.macrosPerServing.kcal, 70, 'chickpeas only: 2 servings x 70 kcal / 2')
   })
 
   await check('deriveComponentMacros: servings not set is ok:false', () => {
@@ -190,7 +194,7 @@ try {
     assert.equal(result.ok, false)
   })
 
-  await check('resyncDerivedMacros: reverts to null gracefully when an ingredient loses nutrition, and restores', () => {
+  await check('resyncDerivedMacros: losing one ingredient keeps partial macros; losing all reverts to null; restores', () => {
     let pantry = pantryWithChickpeasRiceOnion()
     const component = schema.createComponent({
       servings: 2,
@@ -206,13 +210,21 @@ try {
     assert.ok(components[0].macrosPerServing)
     assert.deepEqual(schema.validate(components[0], 'Component'), [])
 
-    // Remove onion's nutrition -> revert to null, source stays 'derived'.
+    const full = components[0].macrosPerServing
+
+    // Phase 19: remove onion's nutrition -> macros drop to the two that still
+    // resolve (was: wiped to null). Source stays 'derived'.
     pantry = pantry.map((p) => (p.name === 'Onion' ? { ...p, nutrition: null } : p))
     ;({ changed, components } = nutritionOps.resyncDerivedMacros(components, pantry))
     assert.equal(changed, true)
-    assert.equal(components[0].macrosPerServing, null)
+    assert.equal(components[0].macrosPerServing.kcal, full.kcal - 22, 'onion (44 kcal / 2 servings) no longer counted')
     assert.equal(components[0].macroSource, 'derived')
     assert.deepEqual(schema.validate(components[0], 'Component'), [])
+
+    // Nothing resolves -> null.
+    const stripped = pantry.map((p) => ({ ...p, nutrition: null }))
+    const { components: none } = nutritionOps.resyncDerivedMacros(components, stripped)
+    assert.equal(none[0].macrosPerServing, null)
 
     // Re-add onion's nutrition -> derivation returns.
     pantry = pantry.map((p) => (p.name === 'Onion' ? { ...p, nutrition: nutritionSeeds.findSeedForName('onion') } : p))

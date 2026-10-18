@@ -582,20 +582,30 @@ GATE:
 
 ## PHASE 19 — Cook session + ready-to-eat shelf
 
-Scope:
-- Settings: Anthropic model picker (moved from Phase 18; shares the v13 bump).
-- Cook session record: draft (planned ingredients) → done (what actually
-  went in, servings made). Saving "done": creates/updates the dish, logs
-  the user's portion to the current meal, puts remaining servings on the
-  shelf with an eat-by date (from shelfLifeDays).
-- Macros per serving derived from pantry nutrition; partial coverage shows
-  "~N% of ingredients known" instead of failing the whole dish.
-- Track: "Ready to eat" shelf — one tap logs a serving and decrements it.
+Scope (as approved 2026-10-18 — user chose option A: the shelf REPLACES P1's
+split-across-plan-slots step; "+ Add saved dish" still plans by hand):
+- "＋ Prep a dish" becomes "🍳 Cook" (PrepSheet -> CookSheet +
+  CookIngredientsStep + CookDoneStep). "✎ Describe ingredients" runs the
+  Phase 18 parser in mode 'cook' (dishName/servings hints).
+- Save draft -> cookSessions (status draft); drafts listed on Plan, resume or
+  delete (two-tap confirm).
+- Done: servings made, keeps-for days, eating now (logged to a chosen meal);
+  the rest -> shelf with eat-by. Session kept as status done.
+- Track: "Ready to eat" shelf — Eat 1 (logs + decrements, Undo), ✕ discard (Undo).
+- Partial macros: deriveComponentMacros sums what resolves and reports
+  coverage; ingredients may carry a nutrition snapshot. Fixes the P1/4.5
+  bug where one unknown ingredient wiped a derived dish on any pantry change.
+- Settings: Anthropic model picker (Sonnet 5.5 default / Opus 5.5 / Haiku 5.5),
+  threaded through every BYOK call via byokCredentials(settings).
+- Schema v13: cookSessions, shelf, Component.ingredients[].nutrition?,
+  Settings.anthropicModel.
 
 GATE:
-1. Draft → edit → done produces a dish, a log entry, and a shelf entry.
-2. A dish with one unknown ingredient still shows macros with a coverage note.
-3. Logging from the shelf decrements servings; 0 removes it (with undo).
+1. Draft -> edit -> done produces a dish, a log entry (if eating now), and a shelf entry.
+2. A dish with one unknown ingredient keeps macros (with coverage) after a pantry change.
+3. Eating from the shelf decrements servings; 0 removes it; both undoable.
+4. The model chosen in Settings is the one sent (smoke test).
+5. `npm test` + `npm run build` green.
 
 ---
 

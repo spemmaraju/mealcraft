@@ -1,15 +1,15 @@
 // The ONLY module that touches localStorage. Every function is async so a
 // future IndexedDB backend can replace the internals without touching callers.
 
-import { validate, createSettings, COLLECTION_SHAPES } from './schema.js'
+import { validate, createSettings, COLLECTION_SHAPES, ANTHROPIC_MODELS } from './schema.js'
 import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName, enrichWithVolumeAnchor } from './nutritionOps.js'
 import { hasSnapshotForDate, rotateSnapshots } from './backupOps.js'
 import { todayISO } from './dates.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-export const SCHEMA_VERSION = 12
-const COLLECTIONS = ['pantry', 'components', 'planSlots', 'logs', 'feedback', 'grocery', 'ideas']
+export const SCHEMA_VERSION = 13
+const COLLECTIONS = ['pantry', 'components', 'planSlots', 'logs', 'feedback', 'grocery', 'ideas', 'cookSessions', 'shelf']
 
 // Daily auto-snapshots live under their OWN localStorage key, entirely
 // outside STORAGE_KEY's state object — so they never ride along inside the
@@ -56,6 +56,8 @@ function defaultState() {
     feedback: [],
     grocery: [],
     ideas: [],
+    cookSessions: [],
+    shelf: [],
     settings: createSettings(),
   }
 }
@@ -234,6 +236,16 @@ export function migrate(state) {
     }
     state.schemaVersion = 12
   }
+  // v12 -> v13: Phase 19 adds cook sessions (draft -> done), the ready-to-eat
+  // shelf, and the Anthropic model picker. Both collections start empty;
+  // Component.ingredients[].nutrition is optional, so existing dishes are
+  // already valid.
+  if (state.schemaVersion === 12) {
+    state.cookSessions = []
+    state.shelf = []
+    if (state.settings) state.settings.anthropicModel ??= ANTHROPIC_MODELS[0]
+    state.schemaVersion = 13
+  }
   return state
 }
 
@@ -276,7 +288,7 @@ export function subscribe(listener) {
   return () => listeners.delete(listener)
 }
 
-/** @param {string} collection one of pantry|components|planSlots|logs|feedback|grocery|ideas|settings */
+/** @param {string} collection one of pantry|components|planSlots|logs|feedback|grocery|ideas|cookSessions|shelf|categories|settings */
 export async function get(collection) {
   return readRaw()[collection]
 }

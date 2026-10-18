@@ -28,6 +28,7 @@ export default function MicroActionSheet({ mode, component, pantry, settings, on
     const result = await regenerateComponentViaApi({
       provider: settings.provider,
       apiKey: settings.apiKey,
+      model: settings.anthropicModel,
       prompt,
       onProgress: (stage) => {
         if (stage === 'retrying') setBusyMsg(BUSY_RETRYING)

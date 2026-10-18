@@ -48,7 +48,7 @@ function findPantryMatch(name, pantry) {
 
 /**
  * Resolves idea.uses against the pantry so "Prep →" can pre-seed
- * PrepSheet's ingredient rows. Ingredients that don't resolve are just
+ * the Cook sheet's ingredient rows (CookSheet, Phase 19). Ingredients that don't resolve are just
  * left out of pantryIds (the user can search-add them) — `unmatched`
  * exists for callers that want to know, but P2's own UI ignores it.
  * @returns {{pantryIds: string[], unmatched: string[]}}

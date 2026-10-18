@@ -31,13 +31,29 @@ function isNonNegativeNumber(v) {
   return typeof v === 'number' && Number.isFinite(v) && v >= 0
 }
 
-/** Clipboard/BYOK-ready prompt for mode 'meal'. Pantry names let the model match. */
-export function compileParsePrompt({ text, pantry }) {
+const MODE_COPY = {
+  meal: {
+    intro: 'You are reading a food log entry that was typed or dictated (it may be run-on speech, with filler words). Split it into the individual foods that were eaten.',
+    heading: 'What was eaten',
+    estimate: 'your best estimate of the macros for the whole amount eaten (not per 100 g)',
+    extra: '',
+  },
+  cook: {
+    intro: 'You are reading the ingredient list for a home-cooked dish, typed or dictated (it may be run-on speech, with filler words). Split it into the individual ingredients that go into the pot.',
+    heading: 'What goes into the dish',
+    estimate: 'your best estimate of the macros for the whole amount of that ingredient used (not per 100 g)',
+    extra: '\n- Optional top-level "dishName" (string) if the dish was named, and "servings" (number) if the user said how many servings it makes. Omit them otherwise.',
+  },
+}
+
+/** Clipboard/BYOK-ready prompt. mode 'meal' (what I ate) or 'cook' (what goes into a dish). */
+export function compileParsePrompt({ text, pantry, mode = 'meal' }) {
+  const copy = MODE_COPY[mode] || MODE_COPY.meal
   const names = pantry.map((p) => p.name).filter(Boolean)
   const pantryList = names.length > 0 ? names.map((n) => `- ${n}`).join('\n') : '(none)'
-  return `You are reading a food log entry that was typed or dictated (it may be run-on speech, with filler words). Split it into the individual foods that were eaten.
+  return `${copy.intro}
 
-## What was eaten
+## ${copy.heading}
 ${text.trim()}
 
 ## The user's pantry (exact names)
@@ -45,9 +61,9 @@ ${pantryList}
 
 ## Rules
 - One item per distinct food. Keep the user's own words for the amount in "measure" ("2 rotis", "a bowl", "a handful", "150 g"). If no amount was said, use "1 serving". Never invent precise amounts the user didn't say.
-- "pantryMatch": copy a pantry name EXACTLY from the list above only when the eaten food IS that pantry item (e.g. "toor dal" -> "Toor dal (cooked)"). Do not match a dish to one of its ingredients (roti is not "Atta"). Otherwise null.
-- "grams": your best estimate of the weight eaten, a positive number.
-- "estimate": your best estimate of the macros for the whole amount eaten (not per 100 g).
+- "pantryMatch": copy a pantry name EXACTLY from the list above only when the food IS that pantry item (e.g. "toor dal" -> "Toor dal (cooked)"). Do not match a dish to one of its ingredients (roti is not "Atta"). Otherwise null.
+- "grams": your best estimate of the weight, a positive number.
+- "estimate": ${copy.estimate}.${copy.extra}
 
 ## Output format
 Output ONLY one JSON object — no prose, no markdown fences:
@@ -55,7 +71,7 @@ Output ONLY one JSON object — no prose, no markdown fences:
 }
 
 /**
- * Validates a mode 'meal' reply. Structural problems are named errors (the
+ * Validates a parse reply (either mode — same item shape). Structural problems are named errors (the
  * caller turns them into a fix request). A pantryMatch that isn't an exact
  * (case-insensitive) pantry name is NOT an error — models paraphrase — it's
  * cleared and remembered as `suggestedMatch` so the review card can say so.
@@ -124,8 +140,11 @@ export function validateParseReply(rawText, { pantry }) {
     })
   })
 
+  // Optional cook-mode meta; anything malformed is just ignored (it's a hint).
   if (errors.length > 0) return { ok: false, errors, rawText }
-  return { ok: true, items }
+  const dishName = typeof parsed.dishName === 'string' && parsed.dishName.trim() ? parsed.dishName.trim() : null
+  const servings = typeof parsed.servings === 'number' && parsed.servings > 0 ? Math.round(parsed.servings) : null
+  return { ok: true, items, dishName, servings }
 }
 
 /**

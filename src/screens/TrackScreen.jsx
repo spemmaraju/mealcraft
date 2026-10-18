@@ -8,6 +8,8 @@ import { createLogEntry } from '../schema.js'
 import DayLog from '../components/DayLog.jsx'
 import TrackHero from '../components/TrackHero.jsx'
 import RecentLogsList from '../components/RecentLogsList.jsx'
+import ShelfSection from '../components/ShelfSection.jsx'
+import { byokCredentials } from '../byok.js'
 
 export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
   const [components, setComponents] = useState([])
@@ -203,7 +205,7 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
 
   // Same derivation as PantryScreen: only pass a usable key down, never the
   // raw settings object, and only when BYOK mode is actually configured.
-  const byok = settings.apiMode === 'byok' && settings.apiKey ? { provider: settings.provider, apiKey: settings.apiKey } : null
+  const byok = byokCredentials(settings)
 
   const today = trackOps.todayISO()
   const weekOf = trackOps.currentWeekSundayISO(today)
@@ -235,6 +237,8 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
       />
+
+      <ShelfSection components={components} />
 
       <h2 className="track-section-head">Meals</h2>
 

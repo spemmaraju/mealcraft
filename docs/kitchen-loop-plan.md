@@ -1,6 +1,6 @@
 # Kitchen Loop — design plan (Phases 17–21)
 
-Status: Phase 17 in progress; 18–21 are proposals. Each phase still restates
+Status: Phases 17–19 built; 20–21 are proposals. Each phase still restates
 its plan and waits for approval (CLAUDE.md §4). Decisions recorded here came
 from the user on 2026-10-18.
 
