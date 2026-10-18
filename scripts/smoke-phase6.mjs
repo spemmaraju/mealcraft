@@ -11,11 +11,10 @@ import * as schema from '../src/schema.js'
 import * as storage from '../src/storage.js'
 import { SCHEMA_VERSION } from '../src/storage.js'
 import * as promptCompiler from '../src/promptCompiler.js'
-import * as weekImport from '../src/weekImport.js'
+import * as aiReplyOps from '../src/aiReplyOps.js'
 import * as aiClient from '../src/aiClient.js'
 import * as byok from '../src/byok.js'
 import * as componentOps from '../src/componentOps.js'
-import * as weekOps from '../src/weekOps.js'
 import * as nutritionLookup from '../src/nutritionLookup.js'
 import * as backupOps from '../src/backupOps.js'
 
@@ -103,45 +102,6 @@ try {
     assert.equal(v4Result.ok, true, `unexpected errors: ${JSON.stringify(v4Result.errors)}`)
   })
 
-  await check('regression: compileWeekPrompt 5 sections; validatePayload/applyImport round-trip', () => {
-    const pantry = [schema.createPantryItem({ name: 'Basmati rice', role: 'staple', onHand: true })]
-    const components = [schema.createComponent({ name: 'Mint chutney', rating: 'repeat', archived: false })]
-    const settings = schema.createSettings()
-    const opts = { servings: 5, cook: true, refresh: true, notes: '', weekOf: '2026-07-19' }
-    const prompt = promptCompiler.compileWeekPrompt({ pantry, components, feedback: [], settings }, opts)
-    for (let n = 1; n <= 5; n++) assert.ok(prompt.includes(`## ${n}.`), `missing section ${n}`)
-
-    const payload = {
-      components: [
-        {
-          name: 'Coconut rice base',
-          type: 'base',
-          cuisineTags: ['thai'],
-          ingredients: [{ name: 'basmati rice', measure: '2 cups' }],
-          steps: ['Rinse rice', 'Cook with coconut milk'],
-          shelfLifeDays: 5,
-          storage: 'fridge airtight',
-          station: 'instant_pot',
-          activeMin: 10,
-          passiveMin: 20,
-          macrosPerServing: { kcal: 210, protein_g: 4, carbs_g: 40, fat_g: 5 },
-        },
-      ],
-      weekPlan: {
-        weekOf: '2026-07-19',
-        componentIds: [],
-        runSheet: [],
-        assembly: [],
-        refresh: { day: 'Wed', steps: [], componentNames: [] },
-        grocerySuggestions: [],
-      },
-    }
-    const result = weekImport.validatePayload(JSON.stringify(payload))
-    assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
-    const applied = weekImport.applyImport(result.payload, {}, [], [])
-    assert.deepEqual(schema.validate(applied.weeks[0], 'WeekPlan'), [])
-  })
-
   await check('sw.js static: version string present; all four network-only hostnames listed; precache is BASE-relative (no hardcoded absolute/cross-origin URLs)', () => {
     const swText = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf-8')
     assert.match(swText, /CACHE\s*=\s*['"]mealcraft-shell-v\d+['"]/)
@@ -162,35 +122,23 @@ try {
 
   // ==== Gate 2: BYOK, zero manual JSON ====
 
-  function goldenWeekPayload() {
-    return {
-      components: [
-        {
-          name: 'Coconut rice base',
-          type: 'base',
-          cuisineTags: ['thai'],
-          ingredients: [{ name: 'basmati rice', measure: '2 cups' }],
-          steps: ['Rinse rice', 'Cook with coconut milk'],
-          shelfLifeDays: 5,
-          storage: 'fridge airtight',
-          station: 'instant_pot',
-          activeMin: 10,
-          passiveMin: 20,
-          macrosPerServing: { kcal: 210, protein_g: 4, carbs_g: 40, fat_g: 5 },
-        },
-      ],
-      weekPlan: {
-        weekOf: '2026-07-19',
-        runSheet: [],
-        assembly: [],
-        refresh: { day: 'Wed', steps: [], componentNames: [] },
-        grocerySuggestions: [],
-      },
+  // Phase 17: the retry-loop checks below originally drove the removed
+  // generateWeekViaApi; they now drive regenerateComponentViaApi, which
+  // shares the same chatWithOneRetry loop in byok.js.
+  function goldenComponentReplyText() {
+    const component = {
+      name: 'Coconut rice base',
+      type: 'base',
+      ingredients: [{ name: 'basmati rice', measure: '2 cups' }],
+      steps: ['Rinse rice', 'Cook with coconut milk'],
+      shelfLifeDays: 5,
+      storage: 'fridge airtight',
+      station: 'instant_pot',
+      activeMin: 10,
+      passiveMin: 20,
+      macrosPerServing: { kcal: 210, protein_g: 4, carbs_g: 40, fat_g: 5 },
     }
-  }
-
-  function goldenWeekReplyText() {
-    return 'Here is the week:\n```json\n' + JSON.stringify(goldenWeekPayload()) + '\n```\nEnjoy!'
+    return 'Here it is:\n```json\n' + JSON.stringify(component) + '\n```\nEnjoy!'
   }
 
   await check('buildAnthropicRequest: exact URL/headers, model, no temperature/top_p', () => {
@@ -200,8 +148,9 @@ try {
     assert.equal(headers['anthropic-version'], '2023-06-01')
     assert.equal(headers['anthropic-dangerous-direct-browser-access'], 'true')
     assert.equal(headers['content-type'], 'application/json')
-    assert.equal(body.model, 'claude-opus-4-8')
+    assert.equal(body.model, 'claude-sonnet-5-5') // Phase 17
     assert.equal(body.max_tokens, 1000)
+    assert.deepEqual(body.thinking, { type: 'between_tools' }, 'thinking off so small max_tokens calls never truncate')
     assert.ok(!('temperature' in body))
     assert.ok(!('top_p' in body))
   })
@@ -228,6 +177,10 @@ try {
     const truncated = aiClient.extractAnthropicText({ content: [{ type: 'text', text: 'partial' }], stop_reason: 'max_tokens' })
     assert.equal(truncated.ok, false)
     assert.ok(truncated.error.toLowerCase().includes('cut off'))
+
+    const refused = aiClient.extractAnthropicText({ content: [], stop_reason: 'refusal' })
+    assert.equal(refused.ok, false)
+    assert.ok(refused.error.toLowerCase().includes('declined'))
   })
 
   await check('extractGoogleText: Gemini fixture multi-part join', () => {
@@ -256,26 +209,24 @@ try {
     assert.deepEqual(google.body.contents[0].parts[1], { inline_data: { mime_type: 'image/jpeg', data: 'BASE64DATA' } })
   })
 
-  await check('generateWeekViaApi: happy path fenced/prose reply -> ok attempts:1; flows through findConflicts+applyImport', async () => {
-    const stubChat = async () => ({ ok: true, text: goldenWeekReplyText() })
-    const result = await byok.generateWeekViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'compile...', chatFn: stubChat })
+  await check('regenerateComponentViaApi: happy path fenced/prose reply -> ok attempts:1; valid Component', async () => {
+    const stubChat = async () => ({ ok: true, text: goldenComponentReplyText() })
+    const result = await byok.regenerateComponentViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'compile...', chatFn: stubChat })
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     assert.equal(result.attempts, 1)
-    assert.deepEqual(weekImport.findConflicts(result.payload, []), [])
-    const applied = weekImport.applyImport(result.payload, {}, [], [])
-    assert.deepEqual(schema.validate(applied.week, 'WeekPlan'), [])
+    assert.deepEqual(schema.validate(result.component, 'Component'), [])
   })
 
-  await check('generateWeekViaApi: retry loop rebuilds messages [prompt, assistant garbage, fix-request]; valid second -> attempts:2', async () => {
+  await check('regenerateComponentViaApi: retry loop rebuilds messages [prompt, assistant garbage, fix-request]; valid second -> attempts:2', async () => {
     let callCount = 0
     let secondMessages = null
     const stubChat = async ({ messages }) => {
       callCount++
       if (callCount === 1) return { ok: true, text: 'not json at all' }
       secondMessages = messages
-      return { ok: true, text: goldenWeekReplyText() }
+      return { ok: true, text: goldenComponentReplyText() }
     }
-    const result = await byok.generateWeekViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'THE PROMPT', chatFn: stubChat })
+    const result = await byok.regenerateComponentViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'THE PROMPT', chatFn: stubChat })
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     assert.equal(result.attempts, 2)
     assert.equal(secondMessages.length, 3)
@@ -287,13 +238,13 @@ try {
     assert.ok(secondMessages[2].content[0].text.includes('validation errors'))
   })
 
-  await check('generateWeekViaApi: double failure -> errors+rawText; transport failure -> 1 attempt, no retry', async () => {
+  await check('regenerateComponentViaApi: double failure -> errors+rawText; transport failure -> 1 attempt, no retry', async () => {
     let callCount = 0
     const alwaysGarbage = async () => {
       callCount++
       return { ok: true, text: 'still not json' }
     }
-    const doubleFail = await byok.generateWeekViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'p', chatFn: alwaysGarbage })
+    const doubleFail = await byok.regenerateComponentViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'p', chatFn: alwaysGarbage })
     assert.equal(doubleFail.ok, false)
     assert.equal(doubleFail.attempts, 2)
     assert.ok(Array.isArray(doubleFail.errors) && doubleFail.errors.length > 0)
@@ -305,7 +256,7 @@ try {
       callCount++
       return { ok: false, error: 'Network request failed — check your connection and try again.' }
     }
-    const failResult = await byok.generateWeekViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'p', chatFn: transportFail })
+    const failResult = await byok.regenerateComponentViaApi({ provider: 'anthropic', apiKey: 'k', prompt: 'p', chatFn: transportFail })
     assert.equal(failResult.ok, false)
     assert.equal(failResult.attempts, 1)
     assert.equal(callCount, 1, 'transport failure must not retry')
@@ -340,26 +291,26 @@ try {
       passiveMin: 0,
       macrosPerServing: null,
     }
-    const result = weekImport.validateComponentReply('```json\n' + JSON.stringify(good) + '\n```')
+    const result = aiReplyOps.validateComponentReply('```json\n' + JSON.stringify(good) + '\n```')
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     assert.equal(result.component.origin, 'ai')
     assert.equal(result.component.macroSource, 'ai_estimate')
     assert.deepEqual(schema.validate(result.component, 'Component'), [])
 
-    const missingName = weekImport.validateComponentReply(JSON.stringify({ type: 'sauce' }))
+    const missingName = aiReplyOps.validateComponentReply(JSON.stringify({ type: 'sauce' }))
     assert.equal(missingName.ok, false)
     assert.ok(missingName.errors[0].startsWith('name:'))
 
-    const badType = weekImport.validateComponentReply(JSON.stringify({ ...good, type: 'nonsense' }))
+    const badType = aiReplyOps.validateComponentReply(JSON.stringify({ ...good, type: 'nonsense' }))
     assert.equal(badType.ok, false)
     assert.ok(badType.errors.some((e) => e.includes('type')))
 
-    const garbage = weekImport.validateComponentReply('not json')
+    const garbage = aiReplyOps.validateComponentReply('not json')
     assert.equal(garbage.ok, false)
     assert.ok(garbage.errors[0].startsWith('(json)'))
   })
 
-  await check('regenerate keeps id+rating through upsertComponent; substitute swaps componentIds for that day only', () => {
+  await check('regenerate keeps id+rating through upsertComponent', () => {
     const original = schema.createComponent({ id: 'c-orig', name: 'Old sauce', rating: 'repeat' })
     const newDraft = schema.createComponent({ id: 'c-new-draft', name: 'New sauce', rating: null, origin: 'ai' })
     const replaced = { ...newDraft, id: original.id, rating: original.rating }
@@ -368,20 +319,25 @@ try {
     assert.equal(library[0].id, 'c-orig')
     assert.equal(library[0].name, 'New sauce')
     assert.equal(library[0].rating, 'repeat')
+  })
 
-    const substituteComponent = schema.createComponent({ id: 'c-sub', name: 'Substitute sauce', origin: 'ai' })
-    const week = schema.createWeekPlan({
-      weekOf: '2026-07-19',
-      componentIds: ['c-orig', 'c-other'],
-      assembly: [
-        { day: 'Mon', componentIds: ['c-orig', 'c-other'], note: '' },
-        { day: 'Tue', componentIds: ['c-orig'], note: '' },
-      ],
-    })
-    const substitutedWeek = weekOps.substituteComponent(week, 'Mon', 'c-orig', substituteComponent.id)
-    assert.deepEqual(substitutedWeek.assembly[0].componentIds, ['c-sub', 'c-other'])
-    assert.deepEqual(substitutedWeek.assembly[1].componentIds, ['c-orig'], 'other days are untouched')
-    assert.deepEqual(schema.validate(substitutedWeek, 'WeekPlan'), [])
+  // Phase 17: moved here from smoke-phase3.mjs (deleted with weekImport.js);
+  // these helpers now live in aiReplyOps.js and serve every paste/BYOK flow.
+  await check('extractJson strips markdown fences and surrounding prose', () => {
+    const text = 'Sure, here you go:\n```json\n{"a": 1}\n```\nHope that helps!'
+    assert.equal(aiReplyOps.extractJson(text), '{"a": 1}')
+  })
+
+  await check('extractJson passes through already-bare JSON', () => {
+    assert.equal(aiReplyOps.extractJson('{"a": 1}'), '{"a": 1}')
+  })
+
+  await check('buildFixRequest yields a copy-ready paste-back message', () => {
+    const msg = aiReplyOps.buildFixRequest(['components[0].type: expected "base" | "sauce", got "entree"'])
+    assert.ok(msg.includes('components[0].type'))
+    assert.ok(msg.includes('output the corrected FULL JSON only'))
+    assert.ok(msg.includes('no prose'))
+    assert.ok(msg.includes('no fences'))
   })
 
   await check('mapLabelReply: fenced-JSON -> valid NutritionInfo source:label_photo; garbage -> null', () => {

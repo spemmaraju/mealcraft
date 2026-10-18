@@ -63,7 +63,10 @@ export default function HelpSheet({ onClose }) {
             anything else, tap <strong>+ Add</strong> and pick a source: today's
             plan, your library, a pantry item (with an amount), or an online search.
             Search results can be logged as a one-off or saved to the pantry so the
-            same food resolves offline next time. The small tag under each macro
+            same food resolves offline next time. Or tap <strong>✎ Describe it</strong>{' '}
+            and type or dictate the whole meal in plain English — it's split into
+            items (matched to your pantry where it can be), and you check and edit
+            every row before anything is logged. The small tag under each macro
             number shows where it came from — <strong>seed_table</strong>/
             <strong>ai_estimate</strong> are rough estimates,{' '}
             <strong>barcode</strong>/<strong>label_photo</strong>/

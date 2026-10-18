@@ -1,6 +1,6 @@
 // Zero-dependency Node smoke test for Phase 15 (multi-meal flexible
 // logging, schema v8). Shims localStorage, same pattern as
-// scripts/smoke-phase5.mjs. trackOps.js's day-to-day API (buildLogFromCard,
+// scripts/smoke-phase5.mjs. trackOps.js's day-to-day API (upsertLog,
 // setItemCount, logMacros, dayMacros, plateMix, estimateFraction, ...) is
 // exercised in the updated scripts/smoke-phase5.mjs; this file focuses on
 // what's new here: the v7->v8 migration and the discriminated-union schema.
@@ -39,6 +39,15 @@ async function check(label, fn) {
   await fn()
   passed++
   console.log(`ok - ${label}`)
+}
+
+// One component item per id, count 1 (Phase 17: replaces the removed buildLogFromCard).
+function logOf(componentIds, date, meal = 'lunch') {
+  return schema.createLogEntry({
+    date,
+    meal,
+    items: componentIds.map((componentId) => ({ kind: 'component', componentId, count: 1 })),
+  })
 }
 
 function v7State(overrides = {}) {
@@ -145,8 +154,8 @@ try {
   // ==== upsertLog identity (date, meal) for every meal, not just lunch ====
 
   await check('upsertLog: breakfast/dinner/snack all replace-on-match too, not just lunch', () => {
-    let logs = [trackOps.buildLogFromCard({ componentIds: ['c1'] }, '2026-01-05', 'dinner')]
-    logs = trackOps.upsertLog(logs, trackOps.buildLogFromCard({ componentIds: ['c2'] }, '2026-01-05', 'dinner'))
+    let logs = [logOf(['c1'], '2026-01-05', 'dinner')]
+    logs = trackOps.upsertLog(logs, logOf(['c2'], '2026-01-05', 'dinner'))
     assert.equal(logs.length, 1)
     assert.deepEqual(
       logs[0].items.map((i) => i.componentId),

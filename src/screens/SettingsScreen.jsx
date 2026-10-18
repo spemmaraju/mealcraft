@@ -5,10 +5,7 @@ import ByokSettings from '../components/ByokSettings.jsx'
 import TrackingSettings from '../components/TrackingSettings.jsx'
 import BackupNudge from '../components/BackupNudge.jsx'
 import SnapshotsPanel from '../components/SnapshotsPanel.jsx'
-
-function todayStamp() {
-  return new Date().toISOString().slice(0, 10)
-}
+import { todayISO } from '../dates.js'
 
 const SUMMARY_LABELS = {
   pantry: 'pantry items',
@@ -77,7 +74,7 @@ export default function SettingsScreen() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `mealcraft-export-${todayStamp()}.json`
+    a.download = `mealcraft-export-${todayISO()}.json`
     a.click()
     URL.revokeObjectURL(url)
     await storage.markExported()

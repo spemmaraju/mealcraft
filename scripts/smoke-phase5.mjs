@@ -1,14 +1,14 @@
 // Zero-dependency Node smoke test for Phase 5 (Tracker). Shims localStorage,
-// then exercises trackOps.js math, the logs/feedback storage round-trip, and
-// (Phase 7) that free-text WeeklyFeedback no longer reaches the compiled
-// prompt — no network. Run with:
+// then exercises trackOps.js math and the logs/feedback storage round-trip —
+// no network. Run with:
 //   node scripts/smoke-phase5.mjs
+// (Phase 17: checks for the removed WeekPlan/week-prompt code were dropped;
+// log fixtures are built with logOf() since buildLogFromCard went with it.)
 
 import assert from 'node:assert/strict'
 import * as schema from '../src/schema.js'
 import * as storage from '../src/storage.js'
 import * as trackOps from '../src/trackOps.js'
-import * as promptCompiler from '../src/promptCompiler.js'
 
 class MemoryStorage {
   constructor() {
@@ -41,6 +41,15 @@ function component(overrides) {
   return schema.createComponent(overrides)
 }
 
+// One component item per id, count 1 — the shape the old buildLogFromCard produced.
+function logOf(componentIds, date, meal = 'lunch') {
+  return schema.createLogEntry({
+    date,
+    meal,
+    items: componentIds.map((componentId) => ({ kind: 'component', componentId, count: 1 })),
+  })
+}
+
 try {
   // ==== trackOps.js: date helpers ====
 
@@ -66,28 +75,10 @@ try {
     assert.equal(trackOps.currentWeekSundayISO('2026-01-10'), '2026-01-04') // Saturday
   })
 
-  await check('currentWeek: latest weekOf <= date; falls back to latest overall; null when empty', () => {
-    const weeks = [schema.createWeekPlan({ weekOf: '2026-01-04' }), schema.createWeekPlan({ weekOf: '2026-01-11' })]
-    assert.equal(trackOps.currentWeek(weeks, '2026-01-09').weekOf, '2026-01-04')
-    assert.equal(trackOps.currentWeek(weeks, '2026-01-12').weekOf, '2026-01-11')
-    assert.equal(trackOps.currentWeek(weeks, '2025-12-01').weekOf, '2026-01-11', 'before any week: falls back to latest')
-    assert.equal(trackOps.currentWeek([], '2026-01-09'), null)
-  })
-
-  await check('assemblyCardForDate: matches by day, null when no week or no matching card', () => {
-    const week = schema.createWeekPlan({
-      weekOf: '2026-01-04',
-      assembly: [{ day: 'Mon', componentIds: ['c1'], note: '' }],
-    })
-    assert.deepEqual(trackOps.assemblyCardForDate(week, '2026-01-05'), { day: 'Mon', componentIds: ['c1'], note: '' })
-    assert.equal(trackOps.assemblyCardForDate(week, '2026-01-06'), null, 'Tuesday has no card')
-    assert.equal(trackOps.assemblyCardForDate(null, '2026-01-05'), null)
-  })
-
   // ==== trackOps.js: logging (Phase 15: items[] discriminated union) ====
 
-  await check('buildLogFromCard: defaults meal lunch, component items count 1, validates against LogEntry', () => {
-    const entry = trackOps.buildLogFromCard({ componentIds: ['c1', 'c2'] }, '2026-01-05')
+  await check('createLogEntry: defaults meal lunch, component items validate against LogEntry', () => {
+    const entry = logOf(['c1', 'c2'], '2026-01-05')
     assert.equal(entry.meal, 'lunch')
     assert.deepEqual(entry.items, [
       { kind: 'component', componentId: 'c1', count: 1 },
@@ -95,13 +86,13 @@ try {
     ])
     assert.deepEqual(schema.validate(entry, 'LogEntry'), [])
 
-    const snack = trackOps.buildLogFromCard({ componentIds: ['c3'] }, '2026-01-05', 'snack')
+    const snack = logOf(['c3'], '2026-01-05', 'snack')
     assert.equal(snack.meal, 'snack')
     assert.deepEqual(schema.validate(snack, 'LogEntry'), [])
   })
 
   await check('setItemCount: immutable, clamps below 0', () => {
-    const log = trackOps.buildLogFromCard({ componentIds: ['c1'] }, '2026-01-05')
+    const log = logOf(['c1'], '2026-01-05')
     const next = trackOps.setItemCount(log, 0, 1.5)
     assert.equal(next.items[0].count, 1.5)
     assert.equal(log.items[0].count, 1, 'original untouched')
@@ -109,7 +100,7 @@ try {
   })
 
   await check('mergeItems / setItemMeasure / removeItemAt: immutable item-list edits', () => {
-    const log = trackOps.buildLogFromCard({ componentIds: ['c1'] }, '2026-01-05')
+    const log = logOf(['c1'], '2026-01-05')
     const merged = trackOps.mergeItems(log, [{ kind: 'pantry', pantryId: 'p1', measure: '1 cup' }])
     assert.equal(merged.items.length, 2)
     assert.equal(log.items.length, 1, 'original untouched')
@@ -124,16 +115,16 @@ try {
   })
 
   await check('upsertLog: identity is (date, meal) for every meal — replaces, never appends', () => {
-    let logs = [trackOps.buildLogFromCard({ componentIds: ['c1'] }, '2026-01-05')]
-    const replacement = trackOps.buildLogFromCard({ componentIds: ['c1', 'c2'] }, '2026-01-05')
+    let logs = [logOf(['c1'], '2026-01-05')]
+    const replacement = logOf(['c1', 'c2'], '2026-01-05')
     logs = trackOps.upsertLog(logs, replacement)
     assert.equal(logs.length, 1)
     assert.deepEqual(logs[0], replacement)
 
-    logs = trackOps.upsertLog(logs, trackOps.buildLogFromCard({ componentIds: ['c3'] }, '2026-01-05', 'snack'))
+    logs = trackOps.upsertLog(logs, logOf(['c3'], '2026-01-05', 'snack'))
     assert.equal(logs.length, 2, 'a different meal on the same date is a distinct entry')
 
-    logs = trackOps.upsertLog(logs, trackOps.buildLogFromCard({ componentIds: ['c4'] }, '2026-01-05', 'snack'))
+    logs = trackOps.upsertLog(logs, logOf(['c4'], '2026-01-05', 'snack'))
     assert.equal(logs.length, 2, 'same (date, meal) replaces, does not append')
     assert.deepEqual(
       logs.find((l) => l.meal === 'snack').items.map((i) => i.componentId),
@@ -143,8 +134,8 @@ try {
 
   await check('removeLogAt / logFor: index-based remove and date+meal lookup', () => {
     const logs = [
-      trackOps.buildLogFromCard({ componentIds: ['c1'] }, '2026-01-05'),
-      trackOps.buildLogFromCard({ componentIds: ['c2'] }, '2026-01-06'),
+      logOf(['c1'], '2026-01-05'),
+      logOf(['c2'], '2026-01-06'),
     ]
     const found = trackOps.logFor(logs, '2026-01-06', 'lunch')
     assert.equal(found.index, 1)
@@ -155,10 +146,10 @@ try {
 
   await check('logsForWeek: only dates within that week\'s Mon-Fri', () => {
     const logs = [
-      trackOps.buildLogFromCard({ componentIds: [] }, '2026-01-05'), // Mon in week
-      trackOps.buildLogFromCard({ componentIds: [] }, '2026-01-09'), // Fri in week
-      trackOps.buildLogFromCard({ componentIds: [] }, '2026-01-10'), // Sat, out
-      trackOps.buildLogFromCard({ componentIds: [] }, '2026-01-12'), // next week
+      logOf([], '2026-01-05'), // Mon in week
+      logOf([], '2026-01-09'), // Fri in week
+      logOf([], '2026-01-10'), // Sat, out
+      logOf([], '2026-01-12'), // next week
     ]
     assert.equal(trackOps.logsForWeek(logs, '2026-01-04').length, 2)
   })
@@ -172,7 +163,7 @@ try {
   const gaugeComponents = [chickenBowl, riceBase, veg, mysteryPaste]
 
   await check('logMacros: 1.5x count sum, unknown-macro item counts as missing not zero', () => {
-    let log = trackOps.buildLogFromCard({ componentIds: ['chicken', 'rice', 'mystery'] }, '2026-01-05')
+    let log = logOf(['chicken', 'rice', 'mystery'], '2026-01-05')
     log = trackOps.setItemCount(log, 0, 1.5)
     const macros = trackOps.logMacros(log, gaugeComponents, [])
     assert.equal(macros.protein_g, 30 * 1.5 + 4 * 1)
@@ -218,9 +209,9 @@ try {
 
   await check('dayMacros: sums logMacros across every meal logged that day', () => {
     const logs = [
-      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-05', 'lunch'),
-      trackOps.buildLogFromCard({ componentIds: ['rice'] }, '2026-01-05', 'dinner'),
-      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-06', 'lunch'),
+      logOf(['chicken'], '2026-01-05', 'lunch'),
+      logOf(['rice'], '2026-01-05', 'dinner'),
+      logOf(['chicken'], '2026-01-06', 'lunch'),
     ]
     const macros = trackOps.dayMacros(logs, gaugeComponents, [], '2026-01-05')
     assert.equal(macros.kcal, 300 + 200)
@@ -229,8 +220,8 @@ try {
 
   await check('proteinByDay: per-day totals across ALL meals, logged flag, hasMissing flag', () => {
     let logs = [
-      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-05', 'lunch'),
-      trackOps.buildLogFromCard({ componentIds: ['mystery'] }, '2026-01-05', 'snack'),
+      logOf(['chicken'], '2026-01-05', 'lunch'),
+      logOf(['mystery'], '2026-01-05', 'snack'),
     ]
     const days = trackOps.proteinByDay(logs, gaugeComponents, [], '2026-01-04')
     assert.equal(days[0].day, 'Mon')
@@ -243,8 +234,8 @@ try {
 
   await check('plateMix: fractions sum to 1 across ALL meals, base->carbs / protein->protein / veg->veg / sauce->other', () => {
     const logs = [
-      trackOps.buildLogFromCard({ componentIds: ['chicken', 'rice'] }, '2026-01-05', 'lunch'),
-      trackOps.buildLogFromCard({ componentIds: ['veg', 'mystery'] }, '2026-01-05', 'dinner'),
+      logOf(['chicken', 'rice'], '2026-01-05', 'lunch'),
+      logOf(['veg', 'mystery'], '2026-01-05', 'dinner'),
     ]
     const mix = trackOps.plateMix(logs, gaugeComponents, [])
     assert.equal(mix.protein, 0.25)
@@ -267,13 +258,13 @@ try {
   await check('lunchStreak: consecutive weekdays, weekend does not break, unlogged today does not break', () => {
     // Mon 1/5 .. Thu 1/8 logged; Fri 1/9 unlogged (today).
     const partialWeek = ['2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08'].map((d) =>
-      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, d),
+      logOf(['chicken'], d),
     )
     assert.equal(trackOps.lunchStreak(partialWeek, '2026-01-09'), 4, 'unlogged today should not break the streak')
 
     // Mon 1/5 .. Fri 1/9 all logged; check spans the weekend into the next Monday.
     const fullWeek = ['2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08', '2026-01-09'].map((d) =>
-      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, d),
+      logOf(['chicken'], d),
     )
     assert.equal(trackOps.lunchStreak(fullWeek, '2026-01-10'), 5, 'checked on Saturday: weekend does not break it')
     assert.equal(trackOps.lunchStreak(fullWeek, '2026-01-12'), 5, 'checked on next unlogged Monday: still spans the weekend')
@@ -281,10 +272,10 @@ try {
 
   await check('lunchStreak: a missed weekday breaks it', () => {
     const logs = [
-      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-05'),
+      logOf(['chicken'], '2026-01-05'),
       // 1/6 missed
-      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-07'),
-      trackOps.buildLogFromCard({ componentIds: ['chicken'] }, '2026-01-08'),
+      logOf(['chicken'], '2026-01-07'),
+      logOf(['chicken'], '2026-01-08'),
     ]
     assert.equal(trackOps.lunchStreak(logs, '2026-01-08'), 2)
   })
@@ -292,9 +283,9 @@ try {
   await check('moneySaved: week vs all-time from lunch count x boughtLunchCost', () => {
     const settings = schema.createSettings({ boughtLunchCost: 12 })
     const logs = [
-      trackOps.buildLogFromCard({ componentIds: [] }, '2026-01-05'), // this week
-      trackOps.buildLogFromCard({ componentIds: [] }, '2026-01-06'), // this week
-      trackOps.buildLogFromCard({ componentIds: [] }, '2025-12-01'), // prior week
+      logOf([], '2026-01-05'), // this week
+      logOf([], '2026-01-06'), // this week
+      logOf([], '2025-12-01'), // prior week
     ]
     const result = trackOps.moneySaved(logs, settings, '2026-01-04')
     assert.equal(result.week, 24)
@@ -302,12 +293,12 @@ try {
   })
 
   await check('estimateFraction: threshold both sides of 50%, unknown-macro items excluded', () => {
-    const majorityEstimate = [trackOps.buildLogFromCard({ componentIds: ['chicken', 'veg', 'mystery'] }, '2026-01-05')]
+    const majorityEstimate = [logOf(['chicken', 'veg', 'mystery'], '2026-01-05')]
     const est = trackOps.estimateFraction(majorityEstimate, gaugeComponents, [])
     assert.equal(est.fraction, 1, 'both resolvable items are ai_estimate/seed_table')
     assert.equal(est.showHint, true)
 
-    const minorityEstimate = [trackOps.buildLogFromCard({ componentIds: ['chicken', 'rice'] }, '2026-01-05')]
+    const minorityEstimate = [logOf(['chicken', 'rice'], '2026-01-05')]
     const est2 = trackOps.estimateFraction(minorityEstimate, gaugeComponents, [])
     assert.equal(est2.fraction, 0.5)
     assert.equal(est2.showHint, false, 'exactly 50% does not trigger the hint')
@@ -350,7 +341,7 @@ try {
 
   await check('logs + feedback export -> reset -> import round-trip unchanged', async () => {
     await storage.resetState()
-    const log = trackOps.buildLogFromCard({ componentIds: ['c1'] }, '2026-01-05')
+    const log = logOf(['c1'], '2026-01-05')
     const fb = schema.createWeeklyFeedback({ weekOf: '2026-01-04', repeatWorthy: 'chicken bowl' })
     await storage.set('logs', [log])
     await storage.set('feedback', [fb])
@@ -361,30 +352,6 @@ try {
     assert.equal(result.ok, true, `unexpected errors: ${JSON.stringify(result.errors)}`)
     assert.deepEqual(await storage.get('logs'), [log])
     assert.deepEqual(await storage.get('feedback'), [fb])
-  })
-
-  // ==== Phase 7: free-text WeeklyFeedback no longer reaches the compiled prompt ====
-
-  await check('compileWeekPrompt ignores WeeklyFeedback free text; only component ratings appear', () => {
-    const settings = schema.createSettings()
-    const feedback = trackOps.upsertFeedback(
-      [],
-      schema.createWeeklyFeedback({
-        weekOf: '2026-01-04',
-        repeatWorthy: 'chicken bowl UNIQUE_MARKER_1',
-        diedUneaten: 'mystery paste UNIQUE_MARKER_2',
-        boredomNotes: 'too much rice UNIQUE_MARKER_3',
-      }),
-    )
-    const components = [component({ name: 'Mint chutney', rating: 'repeat' }), component({ name: 'Old chili', rating: 'never' })]
-    const prompt = promptCompiler.compileWeekPrompt(
-      { pantry: [], components, feedback, settings },
-      { servings: 5, cook: true, refresh: true, notes: '', weekOf: '2026-01-11' },
-    )
-    assert.ok(!prompt.includes('UNIQUE_MARKER'), 'free-text WeeklyFeedback must not leak into the prompt')
-    assert.ok(prompt.includes('## 3. Component ratings'))
-    assert.ok(prompt.includes('Repeat-worthy components: Mint chutney'))
-    assert.ok(prompt.includes('Never-repeat components: Old chili'))
   })
 
   console.log(`\n${passed} checks passed.`)

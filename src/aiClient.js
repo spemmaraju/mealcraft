@@ -9,7 +9,9 @@
 //        { type: 'text', text } | { type: 'image', mediaType, data }
 //   ] }]
 
-const ANTHROPIC_MODEL = 'claude-opus-4-8'
+// Phase 17: Sonnet 5.5 — fast and strong at structured extraction, which is
+// all this app asks of it. A Settings model picker arrives in Phase 18.
+const ANTHROPIC_MODEL = 'claude-sonnet-5-5'
 const GOOGLE_MODEL = 'gemini-2.5-flash'
 
 function toAnthropicBlock(block) {
@@ -32,6 +34,11 @@ export function buildAnthropicRequest(apiKey, messages, maxTokens) {
     body: {
       model: ANTHROPIC_MODEL,
       max_tokens: maxTokens,
+      // Sonnet 5.5 thinks by default and thinking tokens count against
+      // max_tokens — the 16-token key test and 500-token label reads would
+      // truncate. These are single-shot extractions with no tools, so
+      // 'between_tools' means no thinking: same behavior as before.
+      thinking: { type: 'between_tools' },
       messages: messages.map((m) => ({ role: m.role, content: m.content.map(toAnthropicBlock) })),
     },
   }
@@ -65,6 +72,7 @@ export function buildGoogleRequest(apiKey, messages, maxTokens) {
 /** @returns {{ok:true, text} | {ok:false, error}} */
 export function extractAnthropicText(json) {
   if (json?.stop_reason === 'max_tokens') return { ok: false, error: 'Response was cut off — try again.' }
+  if (json?.stop_reason === 'refusal') return { ok: false, error: 'Claude declined this request — try rewording it.' }
   const text = (json?.content || [])
     .filter((block) => block.type === 'text')
     .map((block) => block.text)

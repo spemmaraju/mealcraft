@@ -504,3 +504,127 @@ GATE:
 END OF PACK. After Phase 12, propose nothing new; ask the user what they
 felt was missing or still overcomplicated during real weekly use, and
 wait.
+
+---
+
+# Kitchen Loop Pack (Phases 17–21)
+
+Context (2026-10-18): Phases 13–16 and the undocumented "Rounds" turned the
+app into a strong food logger, while Plan P1 removed the week generator and
+run sheet. The user asked for the loop to be closed — **stock → cook → eat
+(home or out) → restock** — with AI parsing of free-form typed or dictated
+text. Design: `docs/kitchen-loop-plan.md`. Same rules as every pack:
+restate plan (≤10 bullets) + files, wait for approval, show GATE evidence,
+one phase at a time, `npm test` green.
+
+User decisions recorded for this pack:
+- BYOK key in use — use the AI extensively where it improves the experience;
+  keep a paste-mode fallback for every parse (CLAUDE.md §5).
+- Cook sessions: draft beforehand, then confirm what actually happened.
+- Pantry stock: exact quantity when the user states one ("10 carrots"),
+  otherwise a soft level. Never ask the user to count.
+- Leftovers go to a "Ready to eat" shelf the user picks from — never
+  auto-filled into future meals.
+- Eating out is logged too (free text → AI estimate), tagged "out".
+- Protein by meal: yes. Nudges/reminders: no.
+- Dictation is Wispr Flow through the system keyboard; no in-app speech API.
+
+---
+
+## PHASE 17 — Housekeeping
+
+Scope:
+- CLAUDE.md §1–§4 rewritten: kitchen-loop identity, stated-quantity rule,
+  real v12 schema, `npm test` gate, feature-removal-removes-its-checks rule.
+- `src/dates.js`: one local-date helper; snapshot date and export filename
+  stop using the UTC day.
+- `aiClient.js` default model → `claude-sonnet-5-5`, thinking off
+  (`between_tools`) so small max_tokens calls can't truncate; refusal
+  stop_reason surfaces a readable error.
+- Smoke suites repaired (7 were red on main, all testing code removed in
+  P1/Phase 15); `npm test` runner; deploy.yml runs it before building.
+
+GATE:
+1. `npm test` — every suite passes.
+2. phase17 suite: 11:30pm local in a UTC-negative zone stamps today, not
+   tomorrow; no `src/` file derives a calendar day from toISOString().
+3. `npm run build` succeeds.
+4. User reads and approves CLAUDE.md §1–§3.
+
+---
+
+## PHASE 18 — Free-text parser + review card ("Describe it")
+
+Scope (as approved 2026-10-18 — first consumer added so the parser ships
+testable; the model picker moved to Phase 19 to share its v13 bump):
+- `src/parseOps.js` (pure): compile a parse prompt (pantry names + text),
+  validate the JSON reply into items `{ name, measure, grams, pantryMatch,
+  estimate }`, build editable draft rows, rows -> LogEntry items[].
+  A pantryMatch not in the pantry is cleared (noted, not an error).
+- Matched pantry item with nutrition + convertible measure -> kind:pantry;
+  everything else -> kind:adhoc with an ai_estimate snapshot whose measure
+  resolves to exactly the estimate and scales when edited.
+- `byok.js` `parseTextViaApi` on the existing one-retry loop; paste mode
+  uses the same validator with copy-prompt / paste-reply / copy-fix-request.
+- `FreeTextParseSheet` (big autofocused dictation box) + `ParseReviewCard`
+  (edit amount, drop row, pantry vs estimate toggle, provenance, total).
+  Entry: "✎ Describe it" in the add-to-log sheet; adds to the chosen meal.
+- No schema change.
+
+GATE:
+1. A messy dictated meal parses into correct rows on first try (BYOK) and
+   logs into the chosen meal after review.
+2. The same flow works end-to-end in paste mode with zero network.
+3. A corrupt reply is rejected with a named field and a copy-ready fix request.
+4. `npm test` + `npm run build` green.
+
+---
+
+## PHASE 19 — Cook session + ready-to-eat shelf
+
+Scope:
+- Settings: Anthropic model picker (moved from Phase 18; shares the v13 bump).
+- Cook session record: draft (planned ingredients) → done (what actually
+  went in, servings made). Saving "done": creates/updates the dish, logs
+  the user's portion to the current meal, puts remaining servings on the
+  shelf with an eat-by date (from shelfLifeDays).
+- Macros per serving derived from pantry nutrition; partial coverage shows
+  "~N% of ingredients known" instead of failing the whole dish.
+- Track: "Ready to eat" shelf — one tap logs a serving and decrements it.
+
+GATE:
+1. Draft → edit → done produces a dish, a log entry, and a shelf entry.
+2. A dish with one unknown ingredient still shows macros with a coverage note.
+3. Logging from the shelf decrements servings; 0 removes it (with undo).
+
+---
+
+## PHASE 20 — Pantry stock + shopping haul
+
+Scope:
+- PantryItem stock: `{ qty, unit }` when stated, else level
+  plenty | some | low | out.
+- Shopping haul: free text → parser (mode: haul) → review → restock.
+- Cooking decrements stated quantities; unstated ones step the level down
+  and the review card offers a one-tap "still have X?" chip.
+- Low/out items appear in the advisory grocery list. No notifications.
+
+GATE:
+1. "10 carrots, a bag of spinach" restocks: carrots qty 10, spinach a level.
+2. Cooking with 3 carrots leaves 7; cooking with spinach offers the chip.
+3. An item reaching "out" shows on the grocery list; dismissing it changes nothing else.
+
+---
+
+## PHASE 21 — Eating out + home/out insights
+
+Scope:
+- LogEntry `where: home | packed | out` (guessed, one-tap editable).
+- "Ate out" free text → AI estimate → adhoc items, source ai_estimate.
+- Track: home vs total meals this week, cook sessions this week, protein
+  per meal (breakfast/lunch/dinner/snack), money saved across home meals.
+
+GATE:
+1. "Chipotle burrito bowl and a Coke" logs as an out meal with estimated macros.
+2. The week view shows home vs out counts and cook-session count.
+3. Protein per meal renders for a day with all four meals logged.

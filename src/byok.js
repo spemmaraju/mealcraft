@@ -1,11 +1,13 @@
 // BYOK call loops (Phase 6; full-week generateWeekViaApi removed Phase P1
-// with the AI week generator itself; Phase P2 adds generateIdeasViaApi).
+// with the AI week generator itself; Phase P2 adds generateIdeasViaApi;
+// Phase 18 adds parseTextViaApi).
 // Pure — `chatFn` is injectable (defaults to aiClient.chat) so this is
 // offline-testable with a stub. Reuses aiReplyOps' validators and its
 // generic buildFixRequest; zero new validation or retry logic per flow.
 
 import * as aiClient from './aiClient.js'
 import { validateComponentReply, validateIdeasReply, buildFixRequest } from './aiReplyOps.js'
+import { validateParseReply } from './parseOps.js'
 
 function userMessage(text) {
   return { role: 'user', content: [{ type: 'text', text }] }
@@ -54,4 +56,18 @@ export async function generateIdeasViaApi({ provider, apiKey, pantry, prompt, ch
   })
   if (!outcome.ok) return outcome
   return { ok: true, ideas: outcome.result.ideas, attempts: outcome.attempts }
+}
+
+/** Phase 18 free-text parse (mode 'meal'). @returns {Promise<{ok:true, items, attempts} | {ok:false, errors, rawText?, attempts}>} */
+export async function parseTextViaApi({ provider, apiKey, pantry, prompt, chatFn = aiClient.chat, onProgress }) {
+  const outcome = await chatWithOneRetry({
+    provider,
+    apiKey,
+    prompt,
+    chatFn,
+    onProgress,
+    validateFn: (text) => validateParseReply(text, { pantry }),
+  })
+  if (!outcome.ok) return outcome
+  return { ok: true, items: outcome.result.items, attempts: outcome.attempts }
 }
