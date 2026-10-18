@@ -636,13 +636,26 @@ GATE:
 
 ## PHASE 21 — Eating out + home/out insights
 
-Scope:
-- LogEntry `where: home | packed | out` (guessed, one-tap editable).
-- "Ate out" free text → AI estimate → adhoc items, source ai_estimate.
-- Track: home vs total meals this week, cook sessions this week, protein
-  per meal (breakfast/lunch/dinner/snack), money saved across home meals.
+Scope (as approved 2026-10-18 — A: past meals covered by the same guess; the
+money-saved gauge and Settings.boughtLunchCost were then dropped entirely):
+- LogEntry.where (home | packed | out | null) + CookSession.doneOn. Schema v15.
+- Only explicit choices are stored ("I ate out", the tag tap); otherwise
+  insightsOps.whereOf guesses at read time (own dishes/pantry -> home,
+  one-offs only -> untagged) — no write path had to learn about tags.
+- Describe it: "I ate out" switch -> restaurant-portion rule in the prompt,
+  meal tagged out.
+- Meal headers: protein next to kcal; Home/Packed/Out tag, one tap cycles.
+- Track "This week": home vs packed/out/untagged, cooks (by doneOn), average
+  protein per meal type. Directional, no targets.
 
 GATE:
-1. "Chipotle burrito bowl and a Coke" logs as an out meal with estimated macros.
-2. The week view shows home vs out counts and cook-session count.
-3. Protein per meal renders for a day with all four meals logged.
+1. "Chipotle burrito bowl and a Coke" with "I ate out" logs an out meal with estimates.
+2. The week card shows home/out counts and cook count.
+3. Protein shows per meal.
+4. The tag cycles with one tap and survives a reload.
+5. `npm test` + `npm run build` green; browser check at 390px.
+
+---
+
+END OF KITCHEN LOOP PACK. Next: propose nothing; ask the user what felt
+missing or clunky in real use, and wait.

@@ -9,6 +9,7 @@ import DayLog from '../components/DayLog.jsx'
 import TrackHero from '../components/TrackHero.jsx'
 import RecentLogsList from '../components/RecentLogsList.jsx'
 import ShelfSection from '../components/ShelfSection.jsx'
+import WeekInsights from '../components/WeekInsights.jsx'
 import { byokCredentials } from '../byok.js'
 
 export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
@@ -75,10 +76,19 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
     await storage.set('logs', trackOps.upsertLog(logs, log))
   }
 
-  async function handleAddItems(dateISO, meal, items) {
+  // opts.where (Phase 21): set when the add path knows where it was eaten
+  // ("I ate out"); otherwise the meal keeps its tag, or the read-time guess.
+  async function handleAddItems(dateISO, meal, items, opts = {}) {
     const existing = logOrNew(dateISO, meal)
-    const log = existing ? trackOps.mergeItems(existing, items) : createLogEntry({ date: dateISO, meal, items })
+    const merged = existing ? trackOps.mergeItems(existing, items) : createLogEntry({ date: dateISO, meal, items })
+    const log = opts.where ? { ...merged, where: opts.where } : merged
     await storage.set('logs', trackOps.upsertLog(logs, log))
+  }
+
+  async function handleSetWhere(dateISO, meal, where) {
+    const log = logOrNew(dateISO, meal)
+    if (!log) return
+    await storage.set('logs', trackOps.upsertLog(logs, { ...log, where }))
   }
 
   async function handleSetItemCount(dateISO, meal, index, count) {
@@ -238,6 +248,8 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
         onSelectDate={setSelectedDate}
       />
 
+      <WeekInsights logs={logs} components={components} pantry={pantry} dates={trackOps.weekDatesFull(weekOf).map((d) => d.date)} />
+
       <ShelfSection components={components} />
 
       <h2 className="track-section-head">Meals</h2>
@@ -256,6 +268,7 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
         onLogFromPlan={handleLogFromPlan}
         onAddItems={handleAddItems}
         onSetLog={handleSetLog}
+        onSetWhere={handleSetWhere}
         onSetItemCount={handleSetItemCount}
         onSetItemMeasure={handleSetItemMeasure}
         onRemoveItem={handleRemoveItem}

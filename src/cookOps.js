@@ -147,7 +147,7 @@ export function finishCook(state, { sessionId, name, text, rows, servingsMade, k
 
   const withDraft = saveDraft(state.cookSessions, { sessionId, name: component.name, text, rows, servings, now })
   const draftId = sessionId || withDraft[withDraft.length - 1].id
-  const cookSessions = withDraft.map((s) => (s.id === draftId ? { ...s, status: 'done', componentId: component.id } : s))
+  const cookSessions = withDraft.map((s) => (s.id === draftId ? { ...s, status: 'done', componentId: component.id, doneOn: today } : s))
 
   return { component, components, logs, shelf, cookSessions, shelfEntry }
 }

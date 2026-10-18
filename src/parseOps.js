@@ -46,8 +46,11 @@ const MODE_COPY = {
   },
 }
 
-/** Clipboard/BYOK-ready prompt. mode 'meal' (what I ate) or 'cook' (what goes into a dish). */
-export function compileParsePrompt({ text, pantry, mode = 'meal' }) {
+// Phase 21: an eaten-out meal (mode 'meal' + ateOut) gets one extra rule.
+const ATE_OUT_RULE = '\n- This meal was eaten OUT (restaurant, takeout or delivery). Estimate typical restaurant portions and preparation, which are usually larger and richer than home-cooked. Leave pantryMatch null unless the user clearly ate their own pantry item.'
+
+/** Clipboard/BYOK-ready prompt. mode 'meal' (what I ate; `ateOut` for restaurant meals) or 'cook' (what goes into a dish). */
+export function compileParsePrompt({ text, pantry, mode = 'meal', ateOut = false }) {
   const copy = MODE_COPY[mode] || MODE_COPY.meal
   const names = pantry.map((p) => p.name).filter(Boolean)
   const pantryList = names.length > 0 ? names.map((n) => `- ${n}`).join('\n') : '(none)'
@@ -63,7 +66,7 @@ ${pantryList}
 - One item per distinct food. Keep the user's own words for the amount in "measure" ("2 rotis", "a bowl", "a handful", "150 g"). If no amount was said, use "1 serving". Never invent precise amounts the user didn't say.
 - "pantryMatch": copy a pantry name EXACTLY from the list above only when the food IS that pantry item (e.g. "toor dal" -> "Toor dal (cooked)"). Do not match a dish to one of its ingredients (roti is not "Atta"). Otherwise null.
 - "grams": your best estimate of the weight, a positive number.
-- "estimate": ${copy.estimate}.${copy.extra}
+- "estimate": ${copy.estimate}.${copy.extra}${mode === 'meal' && ateOut ? ATE_OUT_RULE : ''}
 
 ## Output format
 Output ONLY one JSON object — no prose, no markdown fences:

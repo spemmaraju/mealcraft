@@ -72,12 +72,16 @@ export default function HelpSheet({ onClose }) {
             same food resolves offline next time. Or tap <strong>✎ Describe it</strong>{' '}
             and type or dictate the whole meal in plain English — it's split into
             items (matched to your pantry where it can be), and you check and edit
-            every row before anything is logged. The small tag under each macro
+            every row before anything is logged — tick <strong>I ate out</strong> for
+            restaurant or takeout meals. Each meal shows its protein and a small
+            Home / Packed / Out tag (tap to change; a dashed tag is a guess), and{' '}
+            <strong>This week</strong> sums up meals at home vs out, how often you
+            cooked, and average protein per meal. The small tag under each macro
             number shows where it came from — <strong>seed_table</strong>/
             <strong>ai_estimate</strong> are rough estimates,{' '}
             <strong>barcode</strong>/<strong>label_photo</strong>/
             <strong>online_search</strong>/<strong>manual</strong> are measured. The
-            gauges (protein band, plate mix, streak, money saved) are directional —
+            gauges (protein band, plate mix, streak) are directional —
             meant to build awareness, not to be a precise ledger. On Fridays you'll
             get a short 3-line weekly feedback prompt.
           </p>

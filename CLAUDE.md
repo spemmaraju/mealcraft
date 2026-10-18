@@ -45,7 +45,7 @@ If anything is ambiguous, STOP and ask the user before writing code.
 All modules communicate through these shapes (source of truth:
 `src/schema.js`). Changing a schema requires explicit user approval and a
 `SCHEMA_VERSION` bump in `src/storage.js` with a migration step (older
-exports must still import). Current: **v14**.
+exports must still import). Current: **v15**.
 
 ```
 State (localStorage key "mealcraft.v1") {
@@ -106,8 +106,9 @@ LogEntry {
   date,                            // LOCAL YYYY-MM-DD — always via src/dates.js todayISO()
   meal: "breakfast" | "lunch" | "dinner" | "snack",
   items: [LogItem],
-  quickRating: "repeat" | "fine" | "never" | null
-}
+  quickRating: "repeat" | "fine" | "never" | null,
+  where: "home" | "packed" | "out" | null   // v15; null = not set by the user — insightsOps.whereOf
+}                                           // guesses at read time (own dishes/pantry -> home)
 // Identity is (date, meal) — upsertLog replaces the matching entry.
 
 PlanSlot { date, meal, items: [LogItem] }    // an editable proposal for a future meal
@@ -117,7 +118,8 @@ Idea { id, name, line, uses: [string], buy: [string], starred: bool }   // "What
 CookSession {                      // 🍳 Cook: a draft, then what actually went in (v13)
   id, status: "draft" | "done", createdAt, name, text,
   rows: [ { name, measure, pantryId: string | null, nutrition: NutritionInfo | null, checked: bool } ],
-  servingsMade: number | null, componentId: string | null   // set when done
+  servingsMade: number | null, componentId: string | null,  // set when done
+  doneOn: string | null                                       // local YYYY-MM-DD the cook finished (v15)
 }
 ShelfEntry { id, componentId, servingsLeft, cookedOn, eatBy }   // ready-to-eat shelf (v13)
 WeeklyFeedback { weekOf, repeatWorthy, diedUneaten, boredomNotes }
@@ -125,7 +127,6 @@ WeeklyFeedback { weekOf, repeatWorthy, diedUneaten, boredomNotes }
 
 Settings {
   proteinBand: { low_g, high_g },  // DAILY band across all logged meals
-  boughtLunchCost: number,         // money-saved gauge (lunch-only today)
   apiMode: "paste" | "byok",
   provider: "anthropic" | "google",
   apiKey: string | null,           // nulled in exports
@@ -140,8 +141,7 @@ Settings {
 GroceryItem.forDish "running low" / "ran out" marks a stock-driven entry
 (Phase 20) and renders without "for".
 
-Planned (Phase 21, pending approval): a `where: home | packed | out` tag on
-log entries. See `docs/kitchen-loop-plan.md`.
+Kitchen Loop pack (Phases 17–21) is complete; see `docs/kitchen-loop-plan.md`.
 
 ## 4. Process rules (phase gating — engineering, not habit)
 

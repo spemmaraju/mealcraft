@@ -36,6 +36,7 @@ export default function DayLog({
   onLogFromPlan,
   onAddItems,
   onSetLog,
+  onSetWhere,
   onSetItemCount,
   onSetItemMeasure,
   onRemoveItem,
@@ -127,6 +128,7 @@ export default function DayLog({
             onSetItemMeasure={(index, measure) => onSetItemMeasure(selectedDate, meal, index, measure)}
             onRemoveItem={(index) => onRemoveItem(selectedDate, meal, index)}
             onRemoveLog={() => onRemoveLog(selectedDate, meal)}
+            onSetWhere={(where) => onSetWhere(selectedDate, meal, where)}
             onOpenAdd={() => setAddSheet({ meal })}
             onOpenSaveDish={() => setDishSheetMeal(meal)}
             onTeachMeasure={(item, index, unit) => setTeach({ date: selectedDate, meal, index, item, unit })}
@@ -148,8 +150,8 @@ export default function DayLog({
           today={today}
           existingComponentIds={existingComponentIds}
           onMealChange={(meal) => setAddSheet({ meal })}
-          onPick={(items) => {
-            onAddItems(selectedDate, addSheet.meal, items)
+          onPick={(items, opts) => {
+            onAddItems(selectedDate, addSheet.meal, items, opts)
             setAddSheet(null)
           }}
           onSaveToPantry={onSaveToPantry}
