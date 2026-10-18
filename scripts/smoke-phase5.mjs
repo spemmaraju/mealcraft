@@ -280,18 +280,6 @@ try {
     assert.equal(trackOps.lunchStreak(logs, '2026-01-08'), 2)
   })
 
-  await check('moneySaved: week vs all-time from lunch count x boughtLunchCost', () => {
-    const settings = schema.createSettings({ boughtLunchCost: 12 })
-    const logs = [
-      logOf([], '2026-01-05'), // this week
-      logOf([], '2026-01-06'), // this week
-      logOf([], '2025-12-01'), // prior week
-    ]
-    const result = trackOps.moneySaved(logs, settings, '2026-01-04')
-    assert.equal(result.week, 24)
-    assert.equal(result.allTime, 36)
-  })
-
   await check('estimateFraction: threshold both sides of 50%, unknown-macro items excluded', () => {
     const majorityEstimate = [logOf(['chicken', 'veg', 'mystery'], '2026-01-05')]
     const est = trackOps.estimateFraction(majorityEstimate, gaugeComponents, [])

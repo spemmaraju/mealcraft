@@ -7,7 +7,7 @@ const DONUT_C = 2 * Math.PI * DONUT_R
 // Track hero card (screens/track.html): day-strip + macro donut + protein
 // band + one quiet footer line. Replaces GaugesPanel's weekly bar-chart
 // layout — reuses its pure math (trackOps.dayMacros/estimateFraction/
-// lunchStreak/moneySaved) but the visual is the approved bundle's, not the
+// lunchStreak; money-saved was dropped in Phase 21) but the visual is the approved bundle's, not the
 // old per-weekday bars.
 //
 // Round 3.5 design sync: the day-strip is now the full Sun-Sat 7 days
@@ -34,7 +34,6 @@ export default function TrackHero({ logs, components, pantry, settings, today, w
   const weekLogs = trackOps.logsForWeek(logs, weekOf)
   const estimate = trackOps.estimateFraction(weekLogs, components, pantry)
   const streak = trackOps.loggingStreak(logs, today)
-  const money = trackOps.moneySaved(logs, settings, weekOf)
 
   const carbsArc = donut.carbsPct * DONUT_C
   const fatArc = donut.fatPct * DONUT_C
@@ -158,8 +157,7 @@ export default function TrackHero({ logs, components, pantry, settings, today, w
 
       <div className="track-hero__footerline">
         <StreakIcon size={15} />
-        {streak > 0 ? `${streak}-day logging streak` : 'No logging streak yet'} · ${money.allTime.toFixed(2)} saved vs.
-        bought lunch
+        {streak > 0 ? `${streak}-day logging streak` : 'No logging streak yet'}
       </div>
     </div>
   )

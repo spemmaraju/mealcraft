@@ -64,7 +64,7 @@ try {
     assert.equal(schema.createCookSession().doneOn, null)
   })
 
-  await check('migration v14 -> current: logs get where null; done cook sessions get doneOn from createdAt (local day)', () => {
+  await check('migration v14 -> current: logs get where null; doneOn from createdAt (local day); money-saved setting dropped', () => {
     const v14 = {
       schemaVersion: 14,
       logs: [{ date: '2026-10-18', meal: 'lunch', items: [], quickRating: null }],
@@ -72,13 +72,14 @@ try {
         { id: 'a', status: 'done', createdAt: new Date(2026, 9, 18, 23, 30).toISOString(), name: 'Dal', text: '', rows: [], servingsMade: 4, componentId: 'c' },
         { id: 'b', status: 'draft', createdAt: new Date(2026, 9, 19, 9).toISOString(), name: 'x', text: '', rows: [], servingsMade: null, componentId: null },
       ],
-      settings: schema.createSettings(),
+      settings: { ...schema.createSettings(), boughtLunchCost: 12 },
     }
     const out = migrate(JSON.parse(JSON.stringify(v14)))
     assert.equal(out.schemaVersion, SCHEMA_VERSION)
     assert.equal(out.logs[0].where, null)
     assert.equal(out.cookSessions[0].doneOn, '2026-10-18', 'local day, not the UTC day')
     assert.equal(out.cookSessions[1].doneOn, null)
+    assert.ok(!('boughtLunchCost' in out.settings), 'money-saved setting dropped')
     assert.deepEqual(migrate(JSON.parse(JSON.stringify(out))), out)
   })
 

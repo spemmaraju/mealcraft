@@ -127,7 +127,6 @@ WeeklyFeedback { weekOf, repeatWorthy, diedUneaten, boredomNotes }
 
 Settings {
   proteinBand: { low_g, high_g },  // DAILY band across all logged meals
-  boughtLunchCost: number,         // money-saved gauge (lunch-only today)
   apiMode: "paste" | "byok",
   provider: "anthropic" | "google",
   apiKey: string | null,           // nulled in exports

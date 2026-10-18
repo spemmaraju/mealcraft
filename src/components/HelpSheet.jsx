@@ -81,7 +81,7 @@ export default function HelpSheet({ onClose }) {
             <strong>ai_estimate</strong> are rough estimates,{' '}
             <strong>barcode</strong>/<strong>label_photo</strong>/
             <strong>online_search</strong>/<strong>manual</strong> are measured. The
-            gauges (protein band, plate mix, streak, money saved) are directional —
+            gauges (protein band, plate mix, streak) are directional —
             meant to build awareness, not to be a precise ledger. On Fridays you'll
             get a short 3-line weekly feedback prompt.
           </p>

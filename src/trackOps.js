@@ -383,12 +383,6 @@ export function relativeDayLabel(dateISO, todayISO) {
   return DAYS[dayOfWeekISO(dateISO)]
 }
 
-/** @returns {{week:number, allTime:number}} lunch count x boughtLunchCost. Deliberately still lunch-only. */
-export function moneySaved(logs, settings, weekOf) {
-  const allLunches = logs.filter((l) => l.meal === 'lunch').length
-  const weekLunches = logsForWeek(logs, weekOf).filter((l) => l.meal === 'lunch').length
-  return { week: weekLunches * settings.boughtLunchCost, allTime: allLunches * settings.boughtLunchCost }
-}
 
 /** Fraction of logged items (with known macros) whose source is ai_estimate/seed_table, across all meals/kinds. */
 export function estimateFraction(logs, components, pantry) {

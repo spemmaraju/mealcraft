@@ -636,8 +636,8 @@ GATE:
 
 ## PHASE 21 — Eating out + home/out insights
 
-Scope (as approved 2026-10-18 — A: past meals covered by the same guess; B:
-money saved left unchanged):
+Scope (as approved 2026-10-18 — A: past meals covered by the same guess; the
+money-saved gauge and Settings.boughtLunchCost were then dropped entirely):
 - LogEntry.where (home | packed | out | null) + CookSession.doneOn. Schema v15.
 - Only explicit choices are stored ("I ate out", the tag tap); otherwise
   insightsOps.whereOf guesses at read time (own dishes/pantry -> home,

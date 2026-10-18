@@ -257,8 +257,11 @@ export function migrate(state) {
   // null means "not set"; insightsOps.whereOf guesses at read time, so past
   // meals are covered without rewriting them) and CookSession.doneOn (the
   // local day a cook finished; backfilled from createdAt for done sessions).
+  // Also drops Settings.boughtLunchCost with the money-saved gauge.
   if (state.schemaVersion === 14) {
     for (const log of Array.isArray(state.logs) ? state.logs : []) log.where ??= null
+    // The money-saved gauge was dropped (user decision), and its setting with it.
+    if (state.settings) delete state.settings.boughtLunchCost
     for (const s of Array.isArray(state.cookSessions) ? state.cookSessions : []) {
       s.doneOn ??= s.status === 'done' && s.createdAt ? todayISO(new Date(s.createdAt)) : null
     }

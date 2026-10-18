@@ -74,7 +74,7 @@ try {
   await check('export -> wipe -> import restores identical state (deep equal)', async () => {
     await storage.set('pantry', [schema.createPantryItem({ name: 'Paneer', category: 'Dairy', onHand: true })])
     await storage.set('components', [schema.createComponent({ name: 'Basmati Rice' })])
-    await storage.set('settings', schema.createSettings({ boughtLunchCost: 14 }))
+    await storage.set('settings', schema.createSettings({ proteinBand: { low_g: 70, high_g: 100 } }))
 
     const before = await storage.getFullState()
     const exported = await storage.exportState()

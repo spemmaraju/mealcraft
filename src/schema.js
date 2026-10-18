@@ -241,7 +241,6 @@ export function createWeeklyFeedback(overrides = {}) {
 export function createSettings(overrides = {}) {
   return {
     proteinBand: { low_g: 60, high_g: 90 }, // daily band (Phase 15) — was per-lunch 20/35
-    boughtLunchCost: 12,
     apiMode: 'paste',
     provider: 'anthropic',
     apiKey: null,
@@ -371,7 +370,6 @@ const SHAPES = {
   },
   Settings: {
     proteinBand: T.obj({ low_g: T.num(), high_g: T.num() }),
-    boughtLunchCost: T.num(),
     apiMode: T.enumOf(API_MODES),
     provider: T.enumOf(PROVIDERS),
     apiKey: T.str({ nullable: true }),
