@@ -41,17 +41,20 @@ export default function HelpSheet({ onClose }) {
         <section className="help-section">
           <h3>📅 Plan</h3>
           <p>
-            Tap <strong>+ Prep a dish</strong> to build one from pantry ingredients:
-            pick what's going in, see live per-meal calories/macros as you set how
-            many meals the batch covers, then split it across your next few
-            lunches/dinners. <strong>+ Add saved dish</strong> does the same with
-            anything already in your Library. Any off-hand ingredient you used
+            Tap <strong>🍳 Cook</strong> when you make something: add ingredients from
+            the pantry or tap <strong>✎ Describe ingredients</strong> and say them in
+            plain English, and see live per-serving macros (ingredients we can't
+            convert are listed, not guessed). <strong>Save draft</strong> before you
+            start; when it's done, say how many servings it made and how many you're
+            eating now — the rest goes on the <strong>Ready to eat</strong> shelf on
+            Track, one tap per serving. <strong>+ Add saved dish</strong> puts
+            anything in your Library onto upcoming meals. Any off-hand ingredient you used
             lands in an advisory <strong>grocery ideas</strong> card — dismiss
             anything you don't need. Each upcoming slot can be logged to Track with
             one tap once it has something in it. <strong>What can I make?</strong> asks
             AI for a dozen dish ideas from what's on hand — no recipes, just names and
             a one-liner; ★ an idea to keep it around, or tap <strong>Prep →</strong> to
-            open Prep a dish already filled in with its ingredients.
+            open Cook already filled in with its ingredients.
           </p>
         </section>
 

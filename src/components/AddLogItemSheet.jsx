@@ -12,6 +12,7 @@ import BarcodeScanner from './BarcodeScanner.jsx'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 import PhotoCaptureSheet from './PhotoCaptureSheet.jsx'
 import FreeTextParseSheet from './FreeTextParseSheet.jsx'
+import { rowsToLogItems } from '../parseOps.js'
 
 // Round 2: one always-focused search box across TODAY'S PLAN, RECENT,
 // PANTRY, COMMON FOODS (seed table), and MY DISHES, replacing the old
@@ -331,10 +332,10 @@ export default function AddLogItemSheet({
             byok={byok}
             pantry={pantry}
             components={components}
-            mealLabel={label}
-            onLog={(items) => {
+            confirmLabel={`Add to ${label || 'log'}`}
+            onConfirm={(rows) => {
               setDescribeOpen(false)
-              onPick(items)
+              onPick(rowsToLogItems(rows))
             }}
             onCancel={() => setDescribeOpen(false)}
           />

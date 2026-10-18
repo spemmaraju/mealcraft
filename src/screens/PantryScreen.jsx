@@ -6,6 +6,7 @@ import PantryItemRow from '../components/PantryItemRow.jsx'
 import PantryItemEditor from '../components/PantryItemEditor.jsx'
 import CategoryManager from '../components/CategoryManager.jsx'
 import { SearchIcon } from '../components/Icons.jsx'
+import { byokCredentials } from '../byok.js'
 
 export default function PantryScreen() {
   const [pantry, setPantry] = useState([])
@@ -158,7 +159,7 @@ export default function PantryScreen() {
   const known = new Set(categories)
   const otherItems = filtered.filter((item) => !known.has(item.category))
   const editingItem = editingItemId ? pantry.find((i) => i.id === editingItemId) : null
-  const byok = settings?.apiMode === 'byok' && settings.apiKey ? { provider: settings.provider, apiKey: settings.apiKey } : null
+  const byok = byokCredentials(settings)
 
   function renderSection(category, items) {
     // While searching, sections auto-expand and empty ones drop out entirely

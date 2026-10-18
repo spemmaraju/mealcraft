@@ -169,10 +169,11 @@ export function dedupeSearchResults(items) {
  * BYOK label-photo lookup, same {ok, nutrition} contract as lookupBarcode.
  * @returns {Promise<{ok:true, nutrition: NutritionInfo} | {ok:false}>}
  */
-export async function lookupLabelPhoto({ provider, apiKey, mediaType, data }) {
+export async function lookupLabelPhoto({ provider, apiKey, model, mediaType, data }) {
   const result = await chat({
     provider,
     apiKey,
+    model,
     messages: [
       {
         role: 'user',
@@ -196,10 +197,11 @@ export async function lookupLabelPhoto({ provider, apiKey, mediaType, data }) {
  * @param {{provider, apiKey, images: {mediaType: string, data: string}[]}} args
  * @returns {Promise<{ok:true, name: string|null, nutrition: NutritionInfo} | {ok:false}>}
  */
-export async function lookupFoodPhotos({ provider, apiKey, images }) {
+export async function lookupFoodPhotos({ provider, apiKey, model, images }) {
   const result = await chat({
     provider,
     apiKey,
+    model,
     messages: [
       {
         role: 'user',

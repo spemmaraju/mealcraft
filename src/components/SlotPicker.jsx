@@ -8,8 +8,8 @@ function itemName(item, components, pantry) {
 
 /**
  * Chip picker over the upcoming meal slots (Phase P1) — shared by
- * PrepSheet's step 2 (exact-count picker) and AddDishToPlanSheet's slot step
- * (any-count picker). Purely presentational: `selected`/`onToggle` and any
+ * AddDishToPlanSheet's slot step (any-count picker; P1's PrepSheet exact-count
+ * step was replaced by Phase 19's shelf). Purely presentational: `selected`/`onToggle` and any
  * count rule are owned by the caller. A chip whose real planSlot already has
  * items shows what's there as a second line; selecting it anyway is allowed,
  * with an inline warning that the meal will be shared.

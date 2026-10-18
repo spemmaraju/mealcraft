@@ -216,9 +216,9 @@ try {
 
   await check('migration v11->v12: running migrate() twice on the same object is stable (idempotent)', () => {
     const once = migrate(v11State())
-    assert.equal(once.schemaVersion, 12)
+    assert.equal(once.schemaVersion, SCHEMA_VERSION)
     const twice = migrate(JSON.parse(JSON.stringify(once)))
-    assert.equal(twice.schemaVersion, 12)
+    assert.equal(twice.schemaVersion, SCHEMA_VERSION)
     assert.deepEqual(twice.pantry[0].nutrition, once.pantry[0].nutrition)
     assert.deepEqual(twice.logs[0].items[0].nutrition, once.logs[0].items[0].nutrition)
   })

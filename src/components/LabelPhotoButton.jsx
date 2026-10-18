@@ -15,7 +15,7 @@ export default function LabelPhotoButton({ byok, onResult }) {
     setBusy(true)
     try {
       const data = await downscaleToBase64(file)
-      const result = await lookupLabelPhoto({ provider: byok.provider, apiKey: byok.apiKey, mediaType: 'image/jpeg', data })
+      const result = await lookupLabelPhoto({ provider: byok.provider, apiKey: byok.apiKey, model: byok.model, mediaType: 'image/jpeg', data })
       onResult(result)
     } catch {
       onResult({ ok: false })

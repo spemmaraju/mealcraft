@@ -10,3 +10,10 @@ export function todayISO(now = new Date()) {
   const d = String(now.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
+
+/** @param {string} dateISO YYYY-MM-DD @param {number} days @returns {string} YYYY-MM-DD, pure calendar math (no timezone shift) */
+export function addDaysISO(dateISO, days) {
+  const [y, m, d] = dateISO.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d + days))
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`
+}

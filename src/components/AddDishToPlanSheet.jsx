@@ -4,8 +4,8 @@ import SlotPicker from './SlotPicker.jsx'
 
 // "＋ Add saved dish" (Phase P1): pick a component (reuses ComponentPickerSheet
 // as-is), then pick which upcoming meal slots it lands on — any
-// number >= 1, no exact-count rule (PrepSheet's step 2 is the one with an
-// exact-N requirement, since it's splitting one freshly-cooked batch).
+// number >= 1, no exact-count rule. (P1's PrepSheet had an exact-N step;
+// Phase 19's Cook sends leftovers to the shelf instead.)
 // Nothing is written until Add — the caller (PlanScreen) owns
 // planOps.addItemsToSlot for each picked slot.
 export default function AddDishToPlanSheet({ components, pantry, planSlots, upcoming, onConfirm, onClose }) {

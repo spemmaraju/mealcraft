@@ -78,7 +78,7 @@ export default function PhotoCaptureSheet({ byok, onUse, onCancel }) {
     try {
       const images = [{ mediaType: 'image/jpeg', data: await downscaleToBase64(labelPhoto.file) }]
       if (frontPhoto) images.push({ mediaType: 'image/jpeg', data: await downscaleToBase64(frontPhoto.file) })
-      const res = await lookupFoodPhotos({ provider: byok.provider, apiKey: byok.apiKey, images })
+      const res = await lookupFoodPhotos({ provider: byok.provider, apiKey: byok.apiKey, model: byok.model, images })
       if (!res.ok) {
         setError("Couldn't read the label — try a clearer, well-lit photo.")
         return

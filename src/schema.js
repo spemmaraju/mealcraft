@@ -14,6 +14,8 @@ export const SHAPE_NAMES = [
   'WeeklyFeedback',
   'Settings',
   'Idea',
+  'CookSession',
+  'ShelfEntry',
 ]
 
 // Maps storage.js collection keys to the shape each record must satisfy.
@@ -25,6 +27,8 @@ export const COLLECTION_SHAPES = {
   feedback: 'WeeklyFeedback',
   grocery: 'GroceryItem',
   ideas: 'Idea',
+  cookSessions: 'CookSession',
+  shelf: 'ShelfEntry',
 }
 
 export const NUTRITION_SOURCES = ['barcode', 'label_photo', 'seed_table', 'ai_estimate', 'manual', 'online_search']
@@ -66,6 +70,14 @@ export const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Di
 export const LOG_ITEM_KINDS = ['component', 'pantry', 'adhoc']
 export const API_MODES = ['paste', 'byok']
 export const PROVIDERS = ['anthropic', 'google']
+// Phase 19: Settings model picker. First entry is the default.
+export const ANTHROPIC_MODELS = ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-5']
+export const ANTHROPIC_MODEL_LABELS = {
+  'claude-sonnet-5-5': 'Sonnet 5.5 (recommended)',
+  'claude-opus-5-5': 'Opus 5.5 (most capable, slower)',
+  'claude-haiku-5-5': 'Haiku 5.5 (fastest, cheapest)',
+}
+export const COOK_STATUSES = ['draft', 'done']
 export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const REFRESH_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 export const DAY_NAMES = {
@@ -178,6 +190,34 @@ export function createIdea(overrides = {}) {
   }
 }
 
+// Phase 19: a cook session — a draft ingredient list before cooking, then
+// what actually went in once it's done. rows mirror the Cook sheet's rows.
+export function createCookSession(overrides = {}) {
+  return {
+    id: genId('cook'),
+    status: 'draft',
+    createdAt: '',
+    name: '',
+    text: '',
+    rows: [],
+    servingsMade: null,
+    componentId: null,
+    ...overrides,
+  }
+}
+
+// Phase 19: one cooked batch on the ready-to-eat shelf.
+export function createShelfEntry(overrides = {}) {
+  return {
+    id: genId('shelf'),
+    componentId: '',
+    servingsLeft: 0,
+    cookedOn: '',
+    eatBy: '',
+    ...overrides,
+  }
+}
+
 export function createWeeklyFeedback(overrides = {}) {
   return {
     weekOf: '',
@@ -199,6 +239,7 @@ export function createSettings(overrides = {}) {
     lastExportAt: null,
     cookDay: 'Sun',
     refreshDay: 'Wed', // null = no midweek refresh
+    anthropicModel: ANTHROPIC_MODELS[0],
     ...overrides,
   }
 }
@@ -244,7 +285,8 @@ const SHAPES = {
     id: T.str(),
     name: T.str(),
     type: T.enumOf(COMPONENT_TYPES),
-    ingredients: T.arrayOf(T.obj({ name: T.str(), measure: T.str() })),
+    // nutrition (Phase 19): optional snapshot used when no pantry item resolves the ingredient.
+    ingredients: T.arrayOf(T.obj({ name: T.str(), measure: T.str(), nutrition: T.optional(T.obj(nutritionInfoFields, { nullable: true })) })),
     steps: T.strArray(),
     shelfLifeDays: T.num(),
     storage: T.str(),
@@ -289,6 +331,31 @@ const SHAPES = {
     buy: T.strArray(),
     starred: T.bool(),
   },
+  CookSession: {
+    id: T.str(),
+    status: T.enumOf(COOK_STATUSES),
+    createdAt: T.str(),
+    name: T.str(),
+    text: T.str(),
+    rows: T.arrayOf(
+      T.obj({
+        name: T.str(),
+        measure: T.str(),
+        pantryId: T.str({ nullable: true }),
+        nutrition: T.obj(nutritionInfoFields, { nullable: true }),
+        checked: T.bool(),
+      }),
+    ),
+    servingsMade: T.num({ nullable: true }),
+    componentId: T.str({ nullable: true }),
+  },
+  ShelfEntry: {
+    id: T.str(),
+    componentId: T.str(),
+    servingsLeft: T.num(),
+    cookedOn: T.str(),
+    eatBy: T.str(),
+  },
   Settings: {
     proteinBand: T.obj({ low_g: T.num(), high_g: T.num() }),
     boughtLunchCost: T.num(),
@@ -299,6 +366,7 @@ const SHAPES = {
     lastExportAt: T.str({ nullable: true }),
     cookDay: T.enumOf(DAYS),
     refreshDay: T.enumOf(REFRESH_DAYS, { nullable: true }),
+    anthropicModel: T.enumOf(ANTHROPIC_MODELS),
   },
 }
 

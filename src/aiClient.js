@@ -9,9 +9,26 @@
 //        { type: 'text', text } | { type: 'image', mediaType, data }
 //   ] }]
 
-// Phase 17: Sonnet 5.5 — fast and strong at structured extraction, which is
-// all this app asks of it. A Settings model picker arrives in Phase 18.
-const ANTHROPIC_MODEL = 'claude-sonnet-5-5'
+import { ANTHROPIC_MODELS } from './schema.js'
+
+// Phase 19: the model comes from Settings.anthropicModel (passed in by the
+// caller like the key — never read from storage here). Anything unknown
+// falls back to the default, Sonnet 5.5.
+function anthropicModel(model) {
+  return ANTHROPIC_MODELS.includes(model) ? model : ANTHROPIC_MODELS[0]
+}
+
+// Per-model "no thinking" request fields. Sonnet 5.5 rejects
+// {type:'disabled'} but takes 'between_tools'; Haiku 5.5 takes 'disabled' at
+// its default effort; Opus 5.5 can't disable thinking at all, so it gets low
+// effort plus a max_tokens floor (thinking tokens count against the cap).
+const OPUS_MIN_MAX_TOKENS = 4000
+function thinkingOff(model) {
+  if (model === 'claude-opus-5-5') return { output_config: { effort: 'low' } }
+  if (model === 'claude-haiku-5-5') return { thinking: { type: 'disabled' } }
+  return { thinking: { type: 'between_tools' } }
+}
+
 const GOOGLE_MODEL = 'gemini-2.5-flash'
 
 function toAnthropicBlock(block) {
@@ -22,7 +39,8 @@ function toAnthropicBlock(block) {
 }
 
 /** @returns {{url, headers, body}} — never fetches; pure and offline-testable. */
-export function buildAnthropicRequest(apiKey, messages, maxTokens) {
+export function buildAnthropicRequest(apiKey, messages, maxTokens, model) {
+  const resolved = anthropicModel(model)
   return {
     url: 'https://api.anthropic.com/v1/messages',
     headers: {
@@ -32,13 +50,12 @@ export function buildAnthropicRequest(apiKey, messages, maxTokens) {
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: {
-      model: ANTHROPIC_MODEL,
-      max_tokens: maxTokens,
-      // Sonnet 5.5 thinks by default and thinking tokens count against
-      // max_tokens — the 16-token key test and 500-token label reads would
-      // truncate. These are single-shot extractions with no tools, so
-      // 'between_tools' means no thinking: same behavior as before.
-      thinking: { type: 'between_tools' },
+      model: resolved,
+      max_tokens: resolved === 'claude-opus-5-5' ? Math.max(maxTokens, OPUS_MIN_MAX_TOKENS) : maxTokens,
+      // Single-shot extractions with no tools — thinking off (or as low as
+      // the model allows) so the 16-token key test and 500-token label reads
+      // can't be truncated by thinking tokens.
+      ...thinkingOff(resolved),
       messages: messages.map((m) => ({ role: m.role, content: m.content.map(toAnthropicBlock) })),
     },
   }
@@ -113,9 +130,9 @@ async function acquireWakeLock() {
  * resolve to {ok:false, error}, and the error string never includes the key.
  * @returns {Promise<{ok:true, text} | {ok:false, error}>}
  */
-export async function chat({ provider, apiKey, messages, maxTokens = 16000 }) {
+export async function chat({ provider, apiKey, model, messages, maxTokens = 16000 }) {
   const { url, headers, body } =
-    provider === 'google' ? buildGoogleRequest(apiKey, messages, maxTokens) : buildAnthropicRequest(apiKey, messages, maxTokens)
+    provider === 'google' ? buildGoogleRequest(apiKey, messages, maxTokens) : buildAnthropicRequest(apiKey, messages, maxTokens, model)
 
   const wakeLock = await acquireWakeLock()
   try {
@@ -144,10 +161,11 @@ export async function chat({ provider, apiKey, messages, maxTokens = 16000 }) {
 }
 
 /** @returns {Promise<{ok:true, text} | {ok:false, error}>} */
-export async function testConnection({ provider, apiKey }) {
+export async function testConnection({ provider, apiKey, model }) {
   return chat({
     provider,
     apiKey,
+    model,
     messages: [{ role: 'user', content: [{ type: 'text', text: 'Reply with OK' }] }],
     maxTokens: 16,
   })

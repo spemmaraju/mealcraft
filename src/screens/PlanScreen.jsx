@@ -2,21 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import * as storage from '../storage.js'
 import * as trackOps from '../trackOps.js'
 import * as planOps from '../planOps.js'
-import * as componentOps from '../componentOps.js'
 import * as pantryOps from '../pantryOps.js'
 import * as ideaOps from '../ideaOps.js'
-import { createComponent, createGroceryItem, createLogEntry, MEAL_LABELS } from '../schema.js'
+import { createLogEntry, MEAL_LABELS } from '../schema.js'
 import PlanSlotList from '../components/PlanSlotList.jsx'
-import PrepSheet from '../components/PrepSheet.jsx'
+import CookSheet from '../components/CookSheet.jsx'
+import CookDraftList from '../components/CookDraftList.jsx'
+import * as cookOps from '../cookOps.js'
 import AddDishToPlanSheet from '../components/AddDishToPlanSheet.jsx'
 import GroceryCard from '../components/GroceryCard.jsx'
 import IdeasSection from '../components/IdeasSection.jsx'
 import AddLogItemSheet from '../components/AddLogItemSheet.jsx'
+import { byokCredentials } from '../byok.js'
 
 // Phase P1: replaces the AI full-week generator (run sheet / assembly cards
-// / week import) with a slot-based flow — prep a dish from pantry
-// ingredients, split it across N upcoming meal slots, log any slot
-// to Track with one tap. Phase P2 adds one small, optional AI round trip
+// / week import) with a slot-based flow — log any slot to Track with one
+// tap. Phase 19: "🍳 Cook" (drafts, then done -> eat now + shelf) replaces
+// P1's prep-and-split-across-slots. Phase P2 adds one small, optional AI round trip
 // back: "What can I make?" dish ideas (IdeasSection) — everything else on
 // this screen stays AI-free.
 export default function PlanScreen({ onGoToSettings }) {
@@ -28,11 +30,13 @@ export default function PlanScreen({ onGoToSettings }) {
   const [ideas, setIdeas] = useState([])
   const [categories, setCategories] = useState([])
   const [settings, setSettings] = useState(null)
+  const [cookSessions, setCookSessions] = useState([])
+  const [shelf, setShelf] = useState([])
 
-  // null = closed; {} = blank "+ Prep a dish"; {initialName, initialRows,
-  // buy} = seeded from an idea's "Prep →" (buy carries idea.buy through to
-  // handlePrepConfirm, which isn't itself a PrepSheet field).
-  const [prepSeed, setPrepSeed] = useState(null)
+  // null = closed; else CookSheet's `seed`: {} = blank cook; {initialName,
+  // initialRows, buy} = from an idea's "Prep →" (buy rides through to
+  // handleCookDone's grocery additions); {session} = resuming a draft.
+  const [cookSeed, setCookSeed] = useState(null)
   const [addingSavedDish, setAddingSavedDish] = useState(false)
   // { date, meal } | null — the slot whose "+ Add extra" opened the shared
   // AddLogItemSheet (card: null, per the prep-flow spec — this sheet is
@@ -47,7 +51,7 @@ export default function PlanScreen({ onGoToSettings }) {
   const toastTimerRef = useRef(null)
 
   async function reload() {
-    const [p, c, ps, l, g, i, cat, s] = await Promise.all([
+    const [p, c, ps, l, g, i, cat, s, cs, sh] = await Promise.all([
       storage.get('pantry'),
       storage.get('components'),
       storage.get('planSlots'),
@@ -56,6 +60,8 @@ export default function PlanScreen({ onGoToSettings }) {
       storage.get('ideas'),
       storage.get('categories'),
       storage.get('settings'),
+      storage.get('cookSessions'),
+      storage.get('shelf'),
     ])
     setPantry(p)
     setComponents(c)
@@ -65,6 +71,8 @@ export default function PlanScreen({ onGoToSettings }) {
     setIdeas(i)
     setCategories(cat)
     setSettings(s)
+    setCookSessions(cs)
+    setShelf(sh)
   }
 
   useEffect(() => {
@@ -120,45 +128,42 @@ export default function PlanScreen({ onGoToSettings }) {
     setExtraSheet(null)
   }
 
-  // PrepSheet already decided WHAT to persist (ingredients, macros, which
-  // slots) — this is the only place any of it is actually written: the new
-  // dish Component, its slot placements, and any off-hand ingredients (plus,
-  // Phase P2, the seeding idea's `buy` list) added to the advisory grocery
-  // list (existing names skipped, case/whitespace insensitive; the two
-  // sources are also deduped against each other).
-  async function handlePrepConfirm({ name, ingredients, macrosPerServing, servings, offHandIngredients, pickedSlots }) {
-    const dish = createComponent({ name, type: 'dish', ingredients, steps: [], servings, macrosPerServing, macroSource: 'derived' })
-    await storage.set('components', componentOps.upsertComponent(components, dish))
-
-    let nextSlots = planSlots
-    for (const { date, meal } of pickedSlots) {
-      nextSlots = planOps.addItemsToSlot(nextSlots, date, meal, [{ kind: 'component', componentId: dish.id, count: 1 }])
-    }
-    await storage.set('planSlots', nextSlots)
-
-    const existingNames = new Set(grocery.map((g) => g.name.trim().toLowerCase()))
-    const candidateNames = [...offHandIngredients.map((ing) => ing.name), ...(prepSeed?.buy || [])]
-    const seen = new Set()
-    const newItems = []
-    for (const candidate of candidateNames) {
-      const key = candidate.trim().toLowerCase()
-      if (existingNames.has(key) || seen.has(key)) continue
-      seen.add(key)
-      newItems.push(createGroceryItem({ name: candidate, forDish: name }))
-    }
-    if (newItems.length > 0) await storage.set('grocery', [...grocery, ...newItems])
-
-    setPrepSeed(null)
-    showToast(`${name} slotted into your week`)
+  // Phase 19: 🍳 Cook replaces P1's slot-filling prep. Drafts persist as
+  // cook sessions; finishing writes the dish, the portion eaten now (if
+  // any), the rest to the shelf, and off-hand ingredients (+ an idea's
+  // `buy` list) to the advisory grocery list. cookOps decides; this writes.
+  async function handleSaveDraft({ sessionId, name, text, rows, servings }) {
+    await storage.set('cookSessions', cookOps.saveDraft(cookSessions, { sessionId, name, text, rows, servings, now: new Date().toISOString() }))
+    setCookSeed(null)
+    showToast(`Draft saved${name ? ` — ${name}` : ''}`)
   }
 
-  // Phase P2 "Prep →" on an idea card: pre-seed PrepSheet with the idea's
-  // name and its `uses` resolved to pantry rows; unmatched uses are just not
-  // pre-seeded (search-add covers that). The idea's `buy` list rides along
-  // in prepSeed for handlePrepConfirm to fold into the grocery list.
+  async function handleCookDone(payload) {
+    const out = cookOps.finishCook({ components, logs, shelf, cookSessions }, { ...payload, today: trackOps.todayISO(), now: new Date().toISOString(), pantry })
+    await storage.set('components', out.components)
+    await storage.set('logs', out.logs)
+    await storage.set('shelf', out.shelf)
+    await storage.set('cookSessions', out.cookSessions)
+    const names = [...cookOps.offHandRows(payload.rows, pantry).map((r) => r.name), ...(cookSeed?.buy || [])]
+    const additions = cookOps.groceryAdditions(grocery, names, out.component.name)
+    if (additions.length > 0) await storage.set('grocery', [...grocery, ...additions])
+    setCookSeed(null)
+    const eaten = payload.eatNow ? `${payload.eatNow.count} logged to ${MEAL_LABELS[payload.eatNow.meal].toLowerCase()}` : null
+    const kept = out.shelfEntry ? `${out.shelfEntry.servingsLeft} on the shelf` : null
+    showToast([out.component.name, [eaten, kept].filter(Boolean).join(' · ')].filter(Boolean).join(': '))
+  }
+
+  async function handleDeleteDraft(id) {
+    await storage.set('cookSessions', cookSessions.filter((s) => s.id !== id))
+  }
+
+  // Phase P2 "Prep →" on an idea card: pre-seed the Cook sheet with the
+  // idea's name and its `uses` resolved to pantry rows; unmatched uses are
+  // just not pre-seeded (search-add covers that). The idea's `buy` list
+  // rides along in cookSeed for handleCookDone's grocery additions.
   function handlePrepIdea(idea) {
     const { pantryIds } = ideaOps.prepSeedForIdea(idea, pantry)
-    setPrepSeed({ initialName: idea.name, initialRows: pantryIds.map((pantryId) => ({ pantryId })), buy: idea.buy })
+    setCookSeed({ initialName: idea.name, initialRows: pantryIds.map((pantryId) => ({ pantryId })), buy: idea.buy })
   }
 
   async function handleIdeasRefreshed(fresh) {
@@ -194,7 +199,7 @@ export default function PlanScreen({ onGoToSettings }) {
 
   if (!settings) return null
 
-  const byok = settings.apiMode === 'byok' && settings.apiKey ? { provider: settings.provider, apiKey: settings.apiKey } : null
+  const byok = byokCredentials(settings)
   const today = trackOps.todayISO()
   // Lunch/dinner over the next 4 days (8 slots) for the prep/add pickers;
   // the home list below shows only the first 6 — both per the approved
@@ -210,13 +215,15 @@ export default function PlanScreen({ onGoToSettings }) {
       {toast && <div className="message message--success">{toast}</div>}
 
       <div className="button-row">
-        <button type="button" className="btn btn--primary" onClick={() => setPrepSeed({})}>
-          ＋ Prep a dish
+        <button type="button" className="btn btn--primary" onClick={() => setCookSeed({})}>
+          🍳 Cook
         </button>
         <button type="button" className="btn" onClick={() => setAddingSavedDish(true)}>
           ＋ Add saved dish
         </button>
       </div>
+
+      <CookDraftList drafts={cookSessions.filter((s) => s.status === 'draft')} onResume={(session) => setCookSeed({ session })} onDelete={handleDeleteDraft} />
 
       <PlanSlotList
         upcoming={upcoming.slice(0, 6)}
@@ -243,16 +250,15 @@ export default function PlanScreen({ onGoToSettings }) {
         onPrepIdea={handlePrepIdea}
       />
 
-      {prepSeed && (
-        <PrepSheet
+      {cookSeed && (
+        <CookSheet
+          seed={cookSeed}
           pantry={pantry}
           components={components}
-          planSlots={planSlots}
-          upcoming={upcoming}
-          initialName={prepSeed.initialName || ''}
-          initialRows={prepSeed.initialRows || []}
-          onConfirm={handlePrepConfirm}
-          onClose={() => setPrepSeed(null)}
+          byok={byok}
+          onSaveDraft={handleSaveDraft}
+          onDone={handleCookDone}
+          onClose={() => setCookSeed(null)}
         />
       )}
 

@@ -72,9 +72,14 @@ export default function MacroSectionEditor({
       </div>
       <p className="field-caption">Uses your pantry items&rsquo; nutrition data, matched by ingredient name.</p>
 
+      {/* Phase 19: derivation is partial — `partial` means the numbers above
+          were filled from the ingredients that DID resolve. */}
       {deriveError && (
-        <div className="message message--error">
-          Couldn&rsquo;t derive — {deriveError.map((u) => `${u.name} (${u.reason})`).join(', ')}
+        <div className={`message message--${deriveError.partial ? 'warning' : 'error'}`}>
+          {deriveError.partial
+            ? `Counted ${deriveError.coverage.counted} of ${deriveError.coverage.total} ingredients — not counted: `
+            : 'Couldn’t derive — '}
+          {deriveError.unresolved.map((u) => `${u.name} (${u.reason})`).join(', ')}
         </div>
       )}
     </div>
