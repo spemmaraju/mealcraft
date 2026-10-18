@@ -11,6 +11,7 @@ import { ERROR_TEXT as ONLINE_ERROR_TEXT } from './FoodSearchSheet.jsx'
 import BarcodeScanner from './BarcodeScanner.jsx'
 import NutritionInfoEditor from './NutritionInfoEditor.jsx'
 import PhotoCaptureSheet from './PhotoCaptureSheet.jsx'
+import FreeTextParseSheet from './FreeTextParseSheet.jsx'
 
 // Round 2: one always-focused search box across TODAY'S PLAN, RECENT,
 // PANTRY, COMMON FOODS (seed table), and MY DISHES, replacing the old
@@ -52,6 +53,8 @@ export default function AddLogItemSheet({
   const [scanError, setScanError] = useState(null)
   const [manualEntry, setManualEntry] = useState(false)
   const [photoOpen, setPhotoOpen] = useState(false)
+  // Phase 18: "Describe it" — free text -> AI parse -> review -> onPick.
+  const [describeOpen, setDescribeOpen] = useState(false)
   // Set only when "Take photo" is tapped without a BYOK key configured —
   // rendered exactly like scanError, with a link into Settings alongside it.
   const [photoKeyWarning, setPhotoKeyWarning] = useState(false)
@@ -248,6 +251,10 @@ export default function AddLogItemSheet({
         {/* Round 6: "Search online" is gone — ONLINE is now just another
             group in AddSheetResults below, fed by the same box. */}
         <div className="actiongrid">
+          <button type="button" className="actionbtn" onClick={() => setDescribeOpen(true)}>
+            <span className="actionbtn__glyph" aria-hidden="true">✎</span>
+            <span className="actionbtn__label">Describe it</span>
+          </button>
           <button
             type="button"
             className="actionbtn"
@@ -318,6 +325,20 @@ export default function AddLogItemSheet({
         {scanning && <BarcodeScanner onCode={handleScanned} onCancel={() => setScanning(false)} />}
 
         {photoOpen && <PhotoCaptureSheet byok={byok} onUse={handlePhotoUse} onCancel={() => setPhotoOpen(false)} />}
+
+        {describeOpen && (
+          <FreeTextParseSheet
+            byok={byok}
+            pantry={pantry}
+            components={components}
+            mealLabel={label}
+            onLog={(items) => {
+              setDescribeOpen(false)
+              onPick(items)
+            }}
+            onCancel={() => setDescribeOpen(false)}
+          />
+        )}
 
         {pending && (
           <AddItemAmountStep

@@ -553,29 +553,37 @@ GATE:
 
 ---
 
-## PHASE 18 — Free-text parser + review card
+## PHASE 18 — Free-text parser + review card ("Describe it")
 
-Scope:
-- `src/parseOps.js` (pure): compile a parse prompt (pantry names + text +
-  mode: cook | haul | meal) and validate the JSON reply into draft line
-  items `{ name, qty, unit, measure, pantryId?, confidence }`.
-- `byok.js`: `parseViaApi` on the existing one-retry loop. Paste mode:
-  copy prompt / paste reply, same validator.
-- `ReviewCard` component: editable rows, unmatched rows flagged, nothing
-  saved until Confirm. Large autofocused textarea for dictation.
-- Settings: Anthropic model picker (Sonnet 5.5 default). Schema change →
-  v13 if a settings field is added.
+Scope (as approved 2026-10-18 — first consumer added so the parser ships
+testable; the model picker moved to Phase 19 to share its v13 bump):
+- `src/parseOps.js` (pure): compile a parse prompt (pantry names + text),
+  validate the JSON reply into items `{ name, measure, grams, pantryMatch,
+  estimate }`, build editable draft rows, rows -> LogEntry items[].
+  A pantryMatch not in the pantry is cleared (noted, not an error).
+- Matched pantry item with nutrition + convertible measure -> kind:pantry;
+  everything else -> kind:adhoc with an ai_estimate snapshot whose measure
+  resolves to exactly the estimate and scales when edited.
+- `byok.js` `parseTextViaApi` on the existing one-retry loop; paste mode
+  uses the same validator with copy-prompt / paste-reply / copy-fix-request.
+- `FreeTextParseSheet` (big autofocused dictation box) + `ParseReviewCard`
+  (edit amount, drop row, pantry vs estimate toggle, provenance, total).
+  Entry: "✎ Describe it" in the add-to-log sheet; adds to the chosen meal.
+- No schema change.
 
 GATE:
-1. A messy dictated paragraph parses into correct rows on first try (BYOK).
+1. A messy dictated meal parses into correct rows on first try (BYOK) and
+   logs into the chosen meal after review.
 2. The same flow works end-to-end in paste mode with zero network.
 3. A corrupt reply is rejected with a named field and a copy-ready fix request.
+4. `npm test` + `npm run build` green.
 
 ---
 
 ## PHASE 19 — Cook session + ready-to-eat shelf
 
 Scope:
+- Settings: Anthropic model picker (moved from Phase 18; shares the v13 bump).
 - Cook session record: draft (planned ingredients) → done (what actually
   went in, servings made). Saving "done": creates/updates the dish, logs
   the user's portion to the current meal, puts remaining servings on the

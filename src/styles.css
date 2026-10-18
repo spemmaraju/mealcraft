@@ -2513,3 +2513,109 @@ select {
 .snapshot-row:first-of-type {
   border-top: none;
 }
+
+/* ---- Free-text parse + review (Phase 18: FreeTextParseSheet, ParseReviewCard) ---- */
+
+.actionbtn__glyph {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--brand);
+}
+
+/* Big and forgiving: dictated (Wispr Flow) run-on text lands here. */
+.dictation-box {
+  width: 100%;
+  min-height: 140px;
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  margin: 8px 0 12px;
+  resize: vertical;
+}
+
+.parse-review__title {
+  font-size: var(--fs-section);
+  margin: 0 0 8px;
+}
+
+.parse-review__list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parse-row {
+  background: var(--surface-3);
+  border-radius: var(--radius-row);
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+}
+
+.parse-row--estimate {
+  border-left-color: var(--amber);
+}
+
+.parse-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.parse-row__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.parse-row__remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.parse-row__measure {
+  width: 100%;
+  margin: 4px 0 6px;
+}
+
+.parse-row__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: var(--fs-sub);
+  color: var(--text-muted);
+}
+
+.parse-row__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: var(--fs-sub);
+}
+
+.parse-review__total {
+  font-size: var(--fs-sub);
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+/* Selectable copy-from-here box shown when the clipboard API is unavailable
+   (IdeasSection, FreeTextParseSheet). Had no rule of its own before Phase 18
+   and rendered at the browser's default textarea width. */
+.prompt-fallback {
+  width: 100%;
+  min-height: 120px;
+  font-size: var(--fs-micro);
+  margin: 6px 0 10px;
+}
+
+.parse-row .field-caption {
+  margin-top: 6px;
+}
