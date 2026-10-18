@@ -5,6 +5,7 @@ import { validate, createSettings, COLLECTION_SHAPES } from './schema.js'
 import { DEFAULT_CATEGORIES, seedPantryItems } from './seeds.js'
 import { findSeedForName, enrichWithVolumeAnchor } from './nutritionOps.js'
 import { hasSnapshotForDate, rotateSnapshots } from './backupOps.js'
+import { todayISO } from './dates.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
 export const SCHEMA_VERSION = 12
@@ -394,7 +395,7 @@ function writeSnapshots(snapshots) {
 // boot, so this fails silently rather than surfacing anywhere.
 export async function captureSnapshotIfNeeded() {
   try {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayISO()
     const existing = readSnapshots()
     if (hasSnapshotForDate(existing, today)) return
     const state = readRaw()

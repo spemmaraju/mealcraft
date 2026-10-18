@@ -46,8 +46,11 @@ try {
     assert.deepEqual(schema.validate(c, 'Component'), [])
   })
 
-  await check('createWeekPlan / createLogEntry / createWeeklyFeedback / createSettings are all valid', () => {
-    assert.deepEqual(schema.validate(schema.createWeekPlan(), 'WeekPlan'), [])
+  // Phase 17: WeekPlan was replaced by PlanSlot/GroceryItem/Idea in v10-v11.
+  await check('createPlanSlot / createGroceryItem / createIdea / createLogEntry / createWeeklyFeedback / createSettings are all valid', () => {
+    assert.deepEqual(schema.validate(schema.createPlanSlot({ date: '2026-01-05' }), 'PlanSlot'), [])
+    assert.deepEqual(schema.validate(schema.createGroceryItem({ name: 'Spinach' }), 'GroceryItem'), [])
+    assert.deepEqual(schema.validate(schema.createIdea({ name: 'Chana masala' }), 'Idea'), [])
     assert.deepEqual(schema.validate(schema.createLogEntry(), 'LogEntry'), [])
     assert.deepEqual(schema.validate(schema.createWeeklyFeedback(), 'WeeklyFeedback'), [])
     assert.deepEqual(schema.validate(schema.createSettings(), 'Settings'), [])
