@@ -51,7 +51,7 @@ export default function AddSheetResults({ groups, query, onPick, hasQuery, onGro
             <div className="add-sheet__plan-empty">
               <p className="placeholder">No plan for today yet.</p>
               <button type="button" className="btn" onClick={planCta.onGoToPlan}>
-                Set up this week's plan →
+                Set up this week's plan (Kitchen → Cook & plan) →
               </button>
             </div>
           ) : (

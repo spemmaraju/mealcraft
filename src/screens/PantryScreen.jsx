@@ -9,7 +9,7 @@ import { SearchIcon } from '../components/Icons.jsx'
 import { byokCredentials } from '../byok.js'
 import RestockSheet from '../components/RestockSheet.jsx'
 
-export default function PantryScreen() {
+export default function PantryScreen({ embedded = false }) {
   const [pantry, setPantry] = useState([])
   const [categories, setCategories] = useState([])
   const [components, setComponents] = useState([])
@@ -226,7 +226,7 @@ export default function PantryScreen() {
 
   return (
     <div className="screen">
-      <h1>Pantry</h1>
+      {!embedded && <h1>Pantry</h1>}
 
       <div className="button-row">
         <button type="button" className="btn btn--primary" onClick={() => setRestocking(true)}>

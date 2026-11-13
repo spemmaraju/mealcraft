@@ -26,7 +26,7 @@ function summaryLine(summary) {
     .join(', ')
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ embedded = false }) {
   const [exportMsg, setExportMsg] = useState(null)
   const [importText, setImportText] = useState('')
   const [preview, setPreview] = useState(null)
@@ -135,7 +135,9 @@ export default function SettingsScreen() {
 
   return (
     <div className="screen">
-      <h1>Settings</h1>
+      {!embedded && <h1>Settings</h1>}
+
+      <TrackingSettings />
 
       <section className="settings-section">
         <h2>Export</h2>
@@ -245,8 +247,6 @@ export default function SettingsScreen() {
             {refreshDay ? `, refresh on ${DAY_NAMES[refreshDay]}` : ', no midweek refresh'}. Lunches stay Monday–Friday.
           </p>
         </section>
-
-        <TrackingSettings />
 
         <ByokSettings />
 

@@ -12,26 +12,36 @@ export default function HelpSheet({ onClose }) {
             MealCraft is local-first: there's no account and no server — everything
             you enter lives only in this browser, on this device. That means it's
             private, but it also means <strong>you</strong> are responsible for backing
-            it up. Use Export in Settings regularly, especially before clearing
+            it up. Use Export (Me tab) regularly, especially before clearing
             browser data or switching devices.
           </p>
         </section>
 
         <section className="help-section">
-          <h3>🥫 Pantry</h3>
+          <h3>Finding your way around</h3>
+          <p>
+            Three tabs: <strong>Today</strong> (log what you eat),{' '}
+            <strong>Kitchen</strong> (the <strong>Pantry</strong>, <strong>Cook &amp; plan</strong>{' '}
+            and <strong>Recipes</strong> sections) and <strong>Me</strong> (this week's
+            summary, targets and settings).
+          </p>
+        </section>
+
+        <section className="help-section">
+          <h3>🥫 Pantry (Kitchen)</h3>
           <p>
             Track what you actually have on hand. After shopping, tap{' '}
             <strong>🛒 Restock from shopping</strong> and say what you bought — amounts
             you mention (“10 carrots”) are kept and go down as you cook; anything
             without an amount is just marked <strong>plenty</strong>. Nothing is
             counted for you that you didn’t say. Toggle on-hand any time; an item
-            that runs out lands on Plan’s grocery ideas. Categories are yours to
+            that runs out lands on the grocery ideas under Cook & plan. Categories are yours to
             rename or add to, and you can scan a barcode for nutrition facts.
           </p>
         </section>
 
         <section className="help-section">
-          <h3>📖 Library</h3>
+          <h3>📖 Recipes (Kitchen)</h3>
           <p>
             Your reusable meal building blocks — bases, proteins, veg, sauces,
             finishers — plus full dishes made of them. Rate anything{' '}
@@ -42,7 +52,7 @@ export default function HelpSheet({ onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>📅 Plan</h3>
+          <h3>📅 Cook &amp; plan (Kitchen)</h3>
           <p>
             Tap <strong>🍳 Cook</strong> when you make something: add ingredients from
             the pantry or tap <strong>✎ Describe ingredients</strong> and say them in
@@ -50,10 +60,10 @@ export default function HelpSheet({ onClose }) {
             convert are listed, not guessed). <strong>Save draft</strong> before you
             start; when it's done, say how many servings it made and how many you're
             eating now — the rest goes on the <strong>Ready to eat</strong> shelf on
-            Track, one tap per serving. <strong>+ Add saved dish</strong> puts
-            anything in your Library onto upcoming meals. Any off-hand ingredient you used
+            Today, one tap per serving. <strong>+ Add saved dish</strong> puts
+            anything in your Recipes onto upcoming meals. Any off-hand ingredient you used
             lands in an advisory <strong>grocery ideas</strong> card — dismiss
-            anything you don't need. Each upcoming slot can be logged to Track with
+            anything you don't need. Each upcoming slot can be logged to Today with
             one tap once it has something in it. <strong>What can I make?</strong> asks
             AI for a dozen dish ideas from what's on hand — no recipes, just names and
             a one-liner; ★ an idea to keep it around, or tap <strong>Prep →</strong> to
@@ -80,7 +90,7 @@ export default function HelpSheet({ onClose }) {
             every row before anything is logged — tick <strong>I ate out</strong> for
             restaurant or takeout meals. Each meal shows its protein and a small
             Home / Packed / Out tag (tap to change; a dashed tag is a guess), and{' '}
-            <strong>This week</strong> sums up meals at home vs out, how often you
+            <strong>This week</strong> (on the Me tab) sums up meals at home vs out, how often you
             cooked, and average protein per meal. The small tag under each macro
             number shows where it came from — <strong>seed_table</strong>/
             <strong>ai_estimate</strong> are rough estimates,{' '}
@@ -93,13 +103,13 @@ export default function HelpSheet({ onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>⚙️ Settings</h3>
+          <h3>⚙️ Me → Settings</h3>
           <p>
             <strong>Export / Import</strong> is your backup and the only way to move
             data to another device — use it often. You can also add a free USDA
             FoodData Central key for nutrition lookups, and set up BYOK (your own
             Anthropic or Google API key) to enable AI micro-actions — regenerate or
-            substitute a Library component, and photo-based nutrition capture.
+            substitute a recipe component, and photo-based nutrition capture.
           </p>
         </section>
 

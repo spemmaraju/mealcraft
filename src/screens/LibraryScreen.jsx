@@ -13,7 +13,7 @@ const RATING_CHIPS = [
   { label: 'Never', value: 'never' },
 ]
 
-export default function LibraryScreen() {
+export default function LibraryScreen({ embedded = false }) {
   const [components, setComponents] = useState([])
   const [pantry, setPantry] = useState([])
   const [settings, setSettings] = useState(null)
@@ -107,7 +107,7 @@ export default function LibraryScreen() {
 
   return (
     <div className="screen">
-      <h1>Library</h1>
+      {!embedded && <h1>Library</h1>}
       <button type="button" className="btn btn--primary" onClick={handleOpenNew}>
         ＋ New component
       </button>
@@ -180,7 +180,7 @@ export default function LibraryScreen() {
 
       {components.length === 0 ? (
         <p className="library-empty">
-          Nothing saved yet. Save a dish and a sauce to get started — your Library builds up as you cook.
+          Nothing saved yet. Save a dish and a sauce to get started — your recipes build up as you cook.
         </p>
       ) : filtered.length === 0 ? (
         <p className="library-empty">No components match these filters.</p>

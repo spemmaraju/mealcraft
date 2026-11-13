@@ -6,22 +6,19 @@ import TabBar from './components/TabBar.jsx'
 import AppHeader from './components/AppHeader.jsx'
 import HelpSheet from './components/HelpSheet.jsx'
 import InstallHint from './components/InstallHint.jsx'
-import PantryScreen from './screens/PantryScreen.jsx'
-import LibraryScreen from './screens/LibraryScreen.jsx'
-import PlanScreen from './screens/PlanScreen.jsx'
 import TrackScreen from './screens/TrackScreen.jsx'
-import SettingsScreen from './screens/SettingsScreen.jsx'
+import KitchenScreen from './screens/KitchenScreen.jsx'
+import MeScreen from './screens/MeScreen.jsx'
 
 const SCREENS = {
-  pantry: PantryScreen,
-  library: LibraryScreen,
-  plan: PlanScreen,
   track: TrackScreen,
-  settings: SettingsScreen,
+  kitchen: KitchenScreen,
+  me: MeScreen,
 }
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('track')
+  const [kitchenSection, setKitchenSection] = useState('pantry')
   const [showHelp, setShowHelp] = useState(false)
   const [fabSignal, setFabSignal] = useState(null)
   const [backupOverdue, setBackupOverdue] = useState(false)
@@ -43,7 +40,7 @@ export default function App() {
 
   // Round 2.6 §5: BackupNudge no longer lives in the global top bar — it's
   // a card at the bottom of Settings — but the tab bar still needs a light
-  // signal (a dot on the Settings icon) that it's overdue.
+  // signal (a dot on the Me icon) that it's overdue.
   useEffect(() => {
     async function check() {
       const [components, planSlots, logs, settings] = await Promise.all([
@@ -72,8 +69,13 @@ export default function App() {
       <InstallHint />
       <main className="app-content">
         <Screen
-          onGoToSettings={() => setActiveTab('settings')}
-          onGoToPlan={() => setActiveTab('plan')}
+          onGoToSettings={() => setActiveTab('me')}
+          onGoToPlan={() => {
+            setKitchenSection('plan')
+            setActiveTab('kitchen')
+          }}
+          section={kitchenSection}
+          onSectionChange={setKitchenSection}
           fabSignal={activeTab === 'track' ? fabSignal : null}
         />
       </main>

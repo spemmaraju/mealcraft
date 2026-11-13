@@ -95,7 +95,7 @@ export default function PlanSlotList({
             <div className="meal-section__actions">
               {date === today && items.length > 0 && (
                 <button type="button" className="pill-primary" onClick={() => onLogToTrack(date, meal)}>
-                  ✓ Log to Track
+                  ✓ Log to Today
                 </button>
               )}
               <button type="button" className="pill-quiet" onClick={() => onAddExtra(date, meal)}>

@@ -78,7 +78,7 @@ export default function IdeasSection({ ideas, pantry, components, settings, onId
               {generating ? busyMsg : ideas.length > 0 ? '↻ Refresh ideas' : '✨ Get ideas from my pantry'}
             </button>
           </div>
-          {!byokActive && <p className="field-caption">Add your API key in Settings to enable this.</p>}
+          {!byokActive && <p className="field-caption">Add your API key under Me to enable this.</p>}
         </>
       ) : (
         <>
