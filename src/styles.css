@@ -2863,3 +2863,38 @@ select {
   padding: 12px 0 calc(20px + env(safe-area-inset-bottom, 0px));
   background: var(--bg);
 }
+
+/* Kitchen: 3-way segmented control (Pantry | Cook & plan | Recipes) */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 16px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+}
+
+.segmented__btn {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: calc(var(--radius-btn) - 3px);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sub);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.segmented__btn--active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Embedded screens (inside Kitchen / Me) are plain wrappers. */
+.screen .screen {
+  padding: 0;
+}

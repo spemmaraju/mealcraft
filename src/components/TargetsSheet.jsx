@@ -150,7 +150,7 @@ export default function TargetsSheet({ settings, onClose }) {
         ) : (
           <p className="field-caption">Fill in age, height and weight to see your targets.</p>
         )}
-        <p className="field-caption">Rough, directional targets — not medical advice. Edit any time in Settings.</p>
+        <p className="field-caption">Rough, directional targets — not medical advice. Edit any time under Me.</p>
 
         <div className="button-row">
           <button type="button" className="btn btn--primary" disabled={!canSave} onClick={handleSave}>

@@ -22,7 +22,7 @@ import { byokCredentials } from '../byok.js'
 // P1's prep-and-split-across-slots. Phase P2 adds one small, optional AI round trip
 // back: "What can I make?" dish ideas (IdeasSection) — everything else on
 // this screen stays AI-free.
-export default function PlanScreen({ onGoToSettings }) {
+export default function PlanScreen({ onGoToSettings, embedded = false }) {
   const [pantry, setPantry] = useState([])
   const [components, setComponents] = useState([])
   const [planSlots, setPlanSlots] = useState([])
@@ -119,7 +119,7 @@ export default function PlanScreen({ onGoToSettings }) {
     const existing = trackOps.logFor(logs, date, meal)
     const log = existing && existing.log.items.length > 0 ? trackOps.mergeItems(existing.log, items) : createLogEntry({ date, meal, items })
     await storage.set('logs', trackOps.upsertLog(logs, log))
-    showToast('Logged to Track')
+    showToast('Logged to Today')
   }
 
   async function handleAddExtraPick(items) {
@@ -215,7 +215,7 @@ export default function PlanScreen({ onGoToSettings }) {
 
   return (
     <div className="screen">
-      <h1>Plan</h1>
+      {!embedded && <h1>Plan</h1>}
 
       {toast && <div className="message message--success">{toast}</div>}
 

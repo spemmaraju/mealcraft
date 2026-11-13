@@ -1,11 +1,9 @@
 import { NAV_ICONS, FabPlusIcon } from './Icons.jsx'
 
 const TABS = [
-  { id: 'pantry', label: 'Pantry' },
-  { id: 'library', label: 'Library' },
-  { id: 'plan', label: 'Plan' },
   { id: 'track', label: 'Today' },
-  { id: 'settings', label: 'Settings' },
+  { id: 'kitchen', label: 'Kitchen' },
+  { id: 'me', label: 'Me' },
 ]
 
 // components/nav.html: a floating pill nav (line-icon SVGs, not emoji) plus
@@ -26,7 +24,7 @@ export default function TabBar({ active, onChange, onFab, backupOverdue }) {
               >
                 <Icon size={24} />
                 <span className="tab-bar__label">{tab.label}</span>
-                {tab.id === 'settings' && backupOverdue && <span className="tab-bar__badge" aria-label="Backup overdue" />}
+                {tab.id === 'me' && backupOverdue && <span className="tab-bar__badge" aria-label="Backup overdue" />}
               </button>
             )
           })}

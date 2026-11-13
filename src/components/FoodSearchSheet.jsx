@@ -27,7 +27,7 @@ export const ERROR_TEXT = {
 // Round 2.5 §6: results are already ranked/deduped by nutritionLookup's
 // searchFoods (FDC above OFF when a key is set); this component just
 // reports the source mix ("12 results · USDA + Open Food Facts") and, when
-// no key is set, nudges toward Settings — never logging the query or key.
+// no key is set, nudges toward Me — never logging the query or key.
 //
 // Round 4.7: the query the user already typed into AddLogItemSheet's search
 // box arrives as `initialQuery` and fires automatically on mount — no more
@@ -130,7 +130,7 @@ export default function FoodSearchSheet({ initialQuery, fdcKey, onSaveAndStage, 
             <>
               {' — '}
               <button type="button" className="link-btn" onClick={onGoToSettings}>
-                Settings
+                Open Me
               </button>
             </>
           ) : (

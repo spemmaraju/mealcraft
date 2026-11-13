@@ -107,7 +107,7 @@ export function extractGoogleText(json) {
 /** Human-readable HTTP-status error. Never includes the key or headers. */
 export function describeHttpError(provider, status) {
   const name = provider === 'google' ? 'Gemini' : 'Claude'
-  if (status === 401 || status === 403) return `${name} key rejected — check it in Settings.`
+  if (status === 401 || status === 403) return `${name} key rejected — check it under Me → Settings.`
   if (status === 429) return `${name} rate limited — wait a moment and try again.`
   if (status === 500 || status === 503 || status === 529) return `${name} is overloaded — try again.`
   return `${name} request failed (HTTP ${status}).`

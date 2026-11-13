@@ -10,7 +10,6 @@ import TodayDescribe from '../components/TodayDescribe.jsx'
 import TrackHero from '../components/TrackHero.jsx'
 import RecentLogsList from '../components/RecentLogsList.jsx'
 import ShelfSection from '../components/ShelfSection.jsx'
-import WeekInsights from '../components/WeekInsights.jsx'
 import { byokCredentials } from '../byok.js'
 
 export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
@@ -250,8 +249,6 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
       />
-
-      <WeekInsights logs={logs} components={components} pantry={pantry} dates={trackOps.weekDatesFull(weekOf).map((d) => d.date)} />
 
       <ShelfSection components={components} />
 

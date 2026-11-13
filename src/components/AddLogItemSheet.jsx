@@ -57,7 +57,7 @@ export default function AddLogItemSheet({
   // Phase 18: "Describe it" — free text -> AI parse -> review -> onPick.
   const [describeOpen, setDescribeOpen] = useState(false)
   // Set only when "Take photo" is tapped without a BYOK key configured —
-  // rendered exactly like scanError, with a link into Settings alongside it.
+  // rendered exactly like scanError, with a link to Me alongside it.
   const [photoKeyWarning, setPhotoKeyWarning] = useState(false)
   // "From plan" (action grid) scrolls to the TODAY'S PLAN group rather than
   // filtering to it — AddSheetResults registers each group's DOM node here
@@ -309,7 +309,7 @@ export default function AddLogItemSheet({
         {scanError && <p className="inline-warning">{scanError}</p>}
         {photoKeyWarning && (
           <p className="inline-warning">
-            Add a Claude or Gemini API key in Settings to read photos.{' '}
+            Add a Claude or Gemini API key under Me to read photos.{' '}
             <button
               type="button"
               className="link-btn"
@@ -318,7 +318,7 @@ export default function AddLogItemSheet({
                 onClose()
               }}
             >
-              Open Settings
+              Go to Me
             </button>
           </p>
         )}
