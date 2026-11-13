@@ -1,11 +1,11 @@
+import { useState } from 'react'
 import * as trackOps from '../trackOps.js'
+import { dayFiber, todayHint } from '../todayOps.js'
+import TargetsSheet from './TargetsSheet.jsx'
 import { CheckIcon, StreakIcon } from './Icons.jsx'
 
-const DONUT_R = 15.5
-const DONUT_C = 2 * Math.PI * DONUT_R
-
-// Track hero card (screens/track.html): day-strip + macro donut + protein
-// band + one quiet footer line. Replaces GaugesPanel's weekly bar-chart
+// Today hero card: day-strip + three eaten-vs-target bars (kcal, protein,
+// fibre) + one hint line + one quiet footer line. Replaces GaugesPanel's weekly bar-chart
 // layout — reuses its pure math (trackOps.dayMacros/estimateFraction/
 // lunchStreak; money-saved was dropped in Phase 21) but the visual is the approved bundle's, not the
 // old per-weekday bars.
@@ -21,23 +21,41 @@ const DONUT_C = 2 * Math.PI * DONUT_R
 // bar. It's a different axis (food-group mix) than the donut (macro-kcal
 // split) and doesn't fit the footer either — CLAUDE.md §4.5 says report and
 // drop rather than force a fit.
+const fmt = (n) => Math.round(n).toLocaleString('en-US')
+
+// One bar: shaded target zone (optional) + fill + marker, scaled so the zone
+// sits in the left ~75% of the track. Directional, never a pass/fail.
+function Bar({ label, eaten, text, low, high, target, caption }) {
+  const zoneHigh = high ?? target
+  const scaleMax = Math.max(zoneHigh * 1.3, eaten, 1)
+  const fill = Math.min(100, (eaten / scaleMax) * 100)
+  return (
+    <div className="track-hero__bandwrap">
+      <div className="track-hero__bandhead">
+        <span>{label}</span>
+        <b>{text}</b>
+      </div>
+      <div className="track-hero__bandtrack">
+        {low != null && <div className="track-hero__bandzone" style={{ left: `${(low / scaleMax) * 100}%`, width: `${((high - low) / scaleMax) * 100}%` }} />}
+        <div className="track-hero__bandfill" style={{ width: `${fill}%` }} />
+        <div className="track-hero__bandmarker" style={{ left: `${fill}%` }} />
+      </div>
+      {caption && <p className="track-hero__bandcaption">{caption}</p>}
+    </div>
+  )
+}
+
 export default function TrackHero({ logs, components, pantry, settings, today, weekOf, selectedDate, onSelectDate }) {
+  const [targetsOpen, setTargetsOpen] = useState(false)
   const macros = trackOps.dayMacros(logs, components, pantry, today)
-  const donut = trackOps.macroDonut(macros)
+  const fiber = dayFiber(logs, components, pantry, today)
   const { low_g, high_g } = settings.proteinBand
-  const proteinG = macros.protein_g
-  const scaleMax = Math.max(high_g * 1.3, proteinG, 1)
-  const bandZoneLeft = (low_g / scaleMax) * 100
-  const bandZoneWidth = ((high_g - low_g) / scaleMax) * 100
-  const bandFillWidth = Math.min(100, (proteinG / scaleMax) * 100)
+  const { kcalBand, fiberTarget_g } = settings
+  const hint = todayHint({ macros, fiber_g: fiber, settings, hour: new Date().getHours() })
 
   const weekLogs = trackOps.logsForWeek(logs, weekOf)
   const estimate = trackOps.estimateFraction(weekLogs, components, pantry)
   const streak = trackOps.loggingStreak(logs, today)
-
-  const carbsArc = donut.carbsPct * DONUT_C
-  const fatArc = donut.fatPct * DONUT_C
-  const proteinArc = donut.proteinPct * DONUT_C
 
   return (
     <div className="track-hero">
@@ -66,94 +84,37 @@ export default function TrackHero({ logs, components, pantry, settings, today, w
         })}
       </div>
 
-      <div className="track-hero__herotop">
-        <svg className="track-hero__donut" viewBox="0 0 36 36">
-          <circle cx="18" cy="18" r={DONUT_R} fill="none" stroke="var(--surface-3)" strokeWidth="4" />
-          {donut.hasData && (
-            <>
-              <circle
-                cx="18"
-                cy="18"
-                r={DONUT_R}
-                fill="none"
-                stroke="var(--donut-carbs)"
-                strokeWidth="4"
-                strokeDasharray={`${carbsArc} ${DONUT_C}`}
-                strokeLinecap="round"
-                transform="rotate(-90 18 18)"
-              />
-              <circle
-                cx="18"
-                cy="18"
-                r={DONUT_R}
-                fill="none"
-                stroke="var(--donut-fat)"
-                strokeWidth="4"
-                strokeDasharray={`${fatArc} ${DONUT_C}`}
-                strokeDashoffset={-carbsArc}
-                strokeLinecap="round"
-                transform="rotate(-90 18 18)"
-              />
-              <circle
-                cx="18"
-                cy="18"
-                r={DONUT_R}
-                fill="none"
-                stroke="var(--donut-protein)"
-                strokeWidth="4"
-                strokeDasharray={`${proteinArc} ${DONUT_C}`}
-                strokeDashoffset={-(carbsArc + fatArc)}
-                strokeLinecap="round"
-                transform="rotate(-90 18 18)"
-              />
-            </>
-          )}
-          <text x="18" y="16.5" textAnchor="middle" fontSize="8" fontWeight="700" fill="var(--text)">
-            {Math.round(macros.kcal)}
-          </text>
-          <text x="18" y="23" textAnchor="middle" fontSize="4.2" fill="var(--text-muted)">
-            kcal
-          </text>
-        </svg>
-        <div className="track-hero__macros">
-          <div className="track-hero__macro">
-            <div className="track-hero__macro-pct" style={{ color: 'var(--donut-carbs)' }}>
-              {Math.round(donut.carbsPct * 100)}%
-            </div>
-            <div className="track-hero__macro-g">{Math.round(macros.carbs_g)}g</div>
-            <div className="track-hero__macro-lbl">Carbs</div>
-          </div>
-          <div className="track-hero__macro">
-            <div className="track-hero__macro-pct" style={{ color: 'var(--donut-fat)' }}>
-              {Math.round(donut.fatPct * 100)}%
-            </div>
-            <div className="track-hero__macro-g">{Math.round(macros.fat_g)}g</div>
-            <div className="track-hero__macro-lbl">Fat</div>
-          </div>
-          <div className="track-hero__macro">
-            <div className="track-hero__macro-pct" style={{ color: 'var(--donut-protein)' }}>
-              {Math.round(donut.proteinPct * 100)}%
-            </div>
-            <div className="track-hero__macro-g">{Math.round(macros.protein_g)}g</div>
-            <div className="track-hero__macro-lbl">Protein</div>
-          </div>
-        </div>
-      </div>
+      {kcalBand && (
+        <Bar label="Calories" eaten={macros.kcal} text={`${fmt(macros.kcal)} of ${fmt(kcalBand.low)}–${fmt(kcalBand.high)} kcal`} low={kcalBand.low} high={kcalBand.high} />
+      )}
+      <Bar
+        label="Protein"
+        eaten={macros.protein_g}
+        text={`${fmt(macros.protein_g)} of ${low_g}–${high_g} g`}
+        low={low_g}
+        high={high_g}
+        caption={kcalBand ? null : 'Shaded zone is your target band, not a number to hit exactly.'}
+      />
+      {kcalBand && fiberTarget_g != null && (
+        <Bar label="Fibre" eaten={fiber} text={`${fmt(fiber)} of ${fmt(fiberTarget_g)} g`} target={fiberTarget_g} caption="counted where fibre is known" />
+      )}
 
+      {hint && <p className="track-hero__hint">{hint}</p>}
+      {kcalBand ? (
+        <p className="track-hero__quiet">
+          Carbs {fmt(macros.carbs_g)} g · Fat {fmt(macros.fat_g)} g ·{' '}
+          <button type="button" className="track-hero__link" onClick={() => setTargetsOpen(true)}>
+            Edit targets
+          </button>
+        </p>
+      ) : (
+        <button type="button" className="targets-cta" onClick={() => setTargetsOpen(true)}>
+          <b>Set your daily targets</b>
+          <span>A rough calorie, protein and fibre goal from your details</span>
+        </button>
+      )}
       {estimate.showHint && <p className="track-hero__estimate-hint">Mostly estimates — treat as directional.</p>}
-
-      <div className="track-hero__bandwrap">
-        <div className="track-hero__bandhead">
-          <span>Protein today</span>
-          <b>{Math.round(proteinG)}g logged</b>
-        </div>
-        <div className="track-hero__bandtrack">
-          <div className="track-hero__bandzone" style={{ left: `${bandZoneLeft}%`, width: `${bandZoneWidth}%` }} />
-          <div className="track-hero__bandfill" style={{ width: `${bandFillWidth}%` }} />
-          <div className="track-hero__bandmarker" style={{ left: `${bandFillWidth}%` }} />
-        </div>
-        <p className="track-hero__bandcaption">Shaded zone is your target band, not a number to hit exactly.</p>
-      </div>
+      {targetsOpen && <TargetsSheet settings={settings} onClose={() => setTargetsOpen(false)} />}
 
       <div className="track-hero__footerline">
         <StreakIcon size={15} />

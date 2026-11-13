@@ -62,8 +62,13 @@ export default function HelpSheet({ onClose }) {
         </section>
 
         <section className="help-section">
-          <h3>📈 Track</h3>
+          <h3>📈 Today</h3>
           <p>
+            Tap <strong>What did you eat?</strong> at the top and type or dictate
+            a meal or your whole day, eating out included — you review one card, then
+            it's logged into the right meals (with an Undo). Set your daily targets
+            once from your details; the three bars show calories, protein and fibre
+            eaten against them, with a short hint on what's left.{' '}
             Log breakfast, lunch, dinner, and snacks separately — any meal with a
             planned slot for that day keeps a one-tap "log from plan" shortcut. For
             anything else, tap <strong>+ Add</strong> and pick a source: today's
@@ -81,7 +86,7 @@ export default function HelpSheet({ onClose }) {
             <strong>ai_estimate</strong> are rough estimates,{' '}
             <strong>barcode</strong>/<strong>label_photo</strong>/
             <strong>online_search</strong>/<strong>manual</strong> are measured. The
-            gauges (protein band, plate mix, streak) are directional —
+            bars and streak are directional —
             meant to build awareness, not to be a precise ledger. On Fridays you'll
             get a short 3-line weekly feedback prompt.
           </p>

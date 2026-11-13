@@ -6,6 +6,7 @@ import * as pantryOps from '../pantryOps.js'
 import * as componentOps from '../componentOps.js'
 import { createLogEntry } from '../schema.js'
 import DayLog from '../components/DayLog.jsx'
+import TodayDescribe from '../components/TodayDescribe.jsx'
 import TrackHero from '../components/TrackHero.jsx'
 import RecentLogsList from '../components/RecentLogsList.jsx'
 import ShelfSection from '../components/ShelfSection.jsx'
@@ -235,7 +236,9 @@ export default function TrackScreen({ onGoToSettings, onGoToPlan, fabSignal }) {
 
   return (
     <div className="screen">
-      <h1>Track</h1>
+      <h1>Today</h1>
+
+      <TodayDescribe logs={logs} components={components} pantry={pantry} byok={byok} dateISO={selectedDate} />
 
       <TrackHero
         logs={logs}

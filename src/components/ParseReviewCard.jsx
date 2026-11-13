@@ -2,6 +2,7 @@ import { itemMacros } from '../trackOps.js'
 import { rowLogItem, setRowMeasure } from '../parseOps.js'
 import ProvenanceTag from './ProvenanceTag.jsx'
 import { TrashIcon } from './Icons.jsx'
+import { MEALS, MEAL_LABELS } from '../schema.js'
 
 const round = (n) => Math.round(n)
 
@@ -10,7 +11,7 @@ const round = (n) => Math.round(n)
 // parseOps draft rows; measure edits and the pantry/estimate toggle are
 // pure parseOps transforms, and macros are recomputed with the same
 // trackOps.itemMacros the Track screen uses, so what you see is what logs.
-export default function ParseReviewCard({ rows, components, pantry, confirmLabel, onRowsChange, onConfirm, onBack }) {
+export default function ParseReviewCard({ rows, components, pantry, confirmLabel, showMeal = false, defaultMeal = 'lunch', onRowsChange, onConfirm, onBack }) {
   const resolved = rows.map((row) => itemMacros(rowLogItem(row), components, pantry))
   const total = resolved.reduce(
     (acc, m) => (m ? { kcal: acc.kcal + m.kcal, protein_g: acc.protein_g + m.protein_g, carbs_g: acc.carbs_g + m.carbs_g, fat_g: acc.fat_g + m.fat_g } : acc),
@@ -43,6 +44,19 @@ export default function ParseReviewCard({ rows, components, pantry, confirmLabel
                   <TrashIcon size={16} />
                 </button>
               </div>
+              {showMeal && (
+                <div className="parse-row__chips">
+                  <button
+                    type="button"
+                    className="parse-row__chip"
+                    aria-label={`Meal for ${row.name}: ${MEAL_LABELS[row.meal || defaultMeal]}. Tap to change`}
+                    onClick={() => update(i, { ...row, meal: MEALS[(MEALS.indexOf(row.meal || defaultMeal) + 1) % MEALS.length] })}
+                  >
+                    {MEAL_LABELS[row.meal || defaultMeal]}
+                  </button>
+                  {row.ateOut && <span className="parse-row__out">out</span>}
+                </div>
+              )}
               <input
                 type="text"
                 className="parse-row__measure"
@@ -73,7 +87,7 @@ export default function ParseReviewCard({ rows, components, pantry, confirmLabel
         </p>
       )}
 
-      <div className="button-row">
+      <div className="button-row parse-review__actions">
         <button type="button" className="btn btn--primary" disabled={rows.length === 0} onClick={onConfirm}>
           {confirmLabel}
         </button>

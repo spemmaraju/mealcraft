@@ -8,7 +8,7 @@ import { hasSnapshotForDate, rotateSnapshots } from './backupOps.js'
 import { todayISO } from './dates.js'
 
 const STORAGE_KEY = 'mealcraft.v1'
-export const SCHEMA_VERSION = 15
+export const SCHEMA_VERSION = 16
 const COLLECTIONS = ['pantry', 'components', 'planSlots', 'logs', 'feedback', 'grocery', 'ideas', 'cookSessions', 'shelf']
 
 // Daily auto-snapshots live under their OWN localStorage key, entirely
@@ -266,6 +266,16 @@ export function migrate(state) {
       s.doneOn ??= s.status === 'done' && s.createdAt ? todayISO(new Date(s.createdAt)) : null
     }
     state.schemaVersion = 15
+  }
+  // v15 -> v16: Today screen adds Settings.profile / kcalBand / fiberTarget_g
+  // (all null until the user sets daily targets). proteinBand is unchanged.
+  if (state.schemaVersion === 15) {
+    if (state.settings) {
+      state.settings.profile ??= null
+      state.settings.kcalBand ??= null
+      state.settings.fiberTarget_g ??= null
+    }
+    state.schemaVersion = 16
   }
   return state
 }
