@@ -3,6 +3,7 @@ import { compileParsePrompt, validateParseReply, buildDraftRows, compileHaulProm
 import { buildFixRequest } from '../aiReplyOps.js'
 import { parseTextViaApi, parseHaulViaApi } from '../byok.js'
 import ParseReviewCard from './ParseReviewCard.jsx'
+import { mealForTime } from '../trackOps.js'
 import HaulReviewCard from './HaulReviewCard.jsx'
 
 const busyAskingFor = (provider) => `Asking ${provider === 'google' ? 'Gemini' : 'Claude'}…`
@@ -11,6 +12,7 @@ const BUSY_RETRYING = 'Reply had validation issues — asking for a fix…'
 const MODE_TEXT = {
   meal: { title: 'Describe what you ate', label: 'What you ate', placeholder: 'e.g. two rotis with a bowl of toor dal, some raita and a handful of almonds' },
   cook: { title: 'Describe the ingredients', label: 'What goes into the dish', placeholder: 'e.g. two cups toor dal, two tomatoes, an onion, a tablespoon of ghee — makes about four servings' },
+  day: { title: 'What did you eat?', label: 'What you ate', placeholder: 'e.g. two idlis and sambar for breakfast, a chicken burrito bowl at Chipotle for lunch, an apple and a handful of almonds' },
   haul: { title: 'What did you buy?', label: 'What you bought', placeholder: 'e.g. ten carrots, a bag of spinach, five kilos of rice, two blocks of paneer' },
 }
 
@@ -26,7 +28,7 @@ const DESCRIBE = { compile: compileParsePrompt, validate: validateParseReply, ro
 // `categories`). onConfirm(rows, meta, text) gets the reviewed rows,
 // meta {dishName, servings} hints (cook mode) / {ateOut} (meal mode, Phase
 // 21), and the typed text.
-export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, categories = [], components, confirmLabel, onConfirm, onCancel }) {
+export default function FreeTextParseSheet({ mode = 'meal', defaultMeal = mealForTime(), byok, pantry, categories = [], components, confirmLabel, onConfirm, onCancel }) {
   const copyText = MODE_TEXT[mode] || MODE_TEXT.meal
   const ops = mode === 'haul' ? HAUL : DESCRIBE
   const [text, setText] = useState('')
@@ -102,6 +104,8 @@ export default function FreeTextParseSheet({ mode = 'meal', byok, pantry, catego
               components={components}
               pantry={pantry}
               confirmLabel={confirmLabel}
+              showMeal={mode === 'day'}
+              defaultMeal={defaultMeal}
               onRowsChange={setRows}
               onConfirm={() => onConfirm(rows, { ...meta, ateOut }, text)}
               onBack={() => setRows(null)}

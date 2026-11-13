@@ -45,7 +45,7 @@ If anything is ambiguous, STOP and ask the user before writing code.
 All modules communicate through these shapes (source of truth:
 `src/schema.js`). Changing a schema requires explicit user approval and a
 `SCHEMA_VERSION` bump in `src/storage.js` with a migration step (older
-exports must still import). Current: **v15**.
+exports must still import). Current: **v16**.
 
 ```
 State (localStorage key "mealcraft.v1") {
@@ -134,7 +134,11 @@ Settings {
   lastExportAt: string | null,     // ISO timestamp, drives the backup nudge
   cookDay: "Sun".."Sat",
   refreshDay: "Mon".."Fri" | null,
-  anthropicModel: "claude-sonnet-5-5" | "claude-opus-5-5" | "claude-haiku-5-5"   // v13
+  anthropicModel: "claude-sonnet-5-5" | "claude-opus-5-5" | "claude-haiku-5-5",  // v13
+  profile: { sex: "male"|"female"|null, age, heightCm, weightKg,
+             activity: "low"|"moderate"|"high", goal: "lose"|"maintain" } | null,   // v16
+  kcalBand: { low, high } | null,   // v16: daily kcal band; null = targets not set
+  fiberTarget_g: number | null      // v16
 }
 ```
 

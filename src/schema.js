@@ -249,6 +249,9 @@ export function createSettings(overrides = {}) {
     cookDay: 'Sun',
     refreshDay: 'Wed', // null = no midweek refresh
     anthropicModel: ANTHROPIC_MODELS[0],
+    profile: null, // v16: body details the daily targets were computed from
+    kcalBand: null, // v16: { low, high } daily kcal band; null = targets not set yet
+    fiberTarget_g: null, // v16
     ...overrides,
   }
 }
@@ -378,6 +381,19 @@ const SHAPES = {
     cookDay: T.enumOf(DAYS),
     refreshDay: T.enumOf(REFRESH_DAYS, { nullable: true }),
     anthropicModel: T.enumOf(ANTHROPIC_MODELS),
+    profile: T.obj(
+      {
+        sex: T.enumOf(['male', 'female'], { nullable: true }),
+        age: T.num(),
+        heightCm: T.num(),
+        weightKg: T.num(),
+        activity: T.enumOf(['low', 'moderate', 'high']),
+        goal: T.enumOf(['lose', 'maintain']),
+      },
+      { nullable: true },
+    ),
+    kcalBand: T.obj({ low: T.num(), high: T.num() }, { nullable: true }),
+    fiberTarget_g: T.num({ nullable: true }),
   },
 }
 

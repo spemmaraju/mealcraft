@@ -12,6 +12,7 @@ import { extractJson } from './aiReplyOps.js'
 import { measureToServings, parseMeasure, stripLeadingQty } from './measures.js'
 
 const MAX_ITEMS = 30
+const MEAL_VALUES = ['breakfast', 'lunch', 'dinner', 'snack']
 
 function describe(v) {
   if (v === undefined) return 'undefined'
@@ -44,12 +45,21 @@ const MODE_COPY = {
     estimate: 'your best estimate of the macros for the whole amount of that ingredient used (not per 100 g)',
     extra: '\n- Optional top-level "dishName" (string) if the dish was named, and "servings" (number) if the user said how many servings it makes. Omit them otherwise.',
   },
+  day: {
+    intro: 'You are reading a food log entry that was typed or dictated (it may be run-on speech, with filler words). It may cover one meal or several meals across the day, home-cooked or eaten out. Split it into the individual foods that were eaten.',
+    heading: 'What was eaten',
+    estimate: 'your best estimate of the macros for the whole amount eaten (not per 100 g)',
+    extra:
+      '\n- "meal": "breakfast", "lunch", "dinner" or "snack" when the user said or clearly implied it, otherwise null.' +
+      '\n- "ateOut": true for items eaten at a restaurant, takeout or delivery, otherwise false. For those, estimate typical restaurant portions and preparation, which are usually larger and richer than home-cooked, and leave pantryMatch null.',
+  },
 }
+const FIBER_RULE = '\n- Optional "fiber_g" inside "estimate": your best estimate of the dietary fibre in grams for the whole amount eaten. Omit it if unsure.'
 
 // Phase 21: an eaten-out meal (mode 'meal' + ateOut) gets one extra rule.
 const ATE_OUT_RULE = '\n- This meal was eaten OUT (restaurant, takeout or delivery). Estimate typical restaurant portions and preparation, which are usually larger and richer than home-cooked. Leave pantryMatch null unless the user clearly ate their own pantry item.'
 
-/** Clipboard/BYOK-ready prompt. mode 'meal' (what I ate; `ateOut` for restaurant meals) or 'cook' (what goes into a dish). */
+/** Clipboard/BYOK-ready prompt. mode 'meal' (what I ate; `ateOut` for restaurant meals), 'day' (a meal or a whole day, per-item meal + ateOut) or 'cook' (what goes into a dish). */
 export function compileParsePrompt({ text, pantry, mode = 'meal', ateOut = false }) {
   const copy = MODE_COPY[mode] || MODE_COPY.meal
   const names = pantry.map((p) => p.name).filter(Boolean)
@@ -66,12 +76,17 @@ ${pantryList}
 - One item per distinct food. Keep the user's own words for the amount in "measure" ("2 rotis", "a bowl", "a handful", "150 g"). If no amount was said, use "1 serving". Never invent precise amounts the user didn't say.
 - "pantryMatch": copy a pantry name EXACTLY from the list above only when the food IS that pantry item (e.g. "toor dal" -> "Toor dal (cooked)"). Do not match a dish to one of its ingredients (roti is not "Atta"). Otherwise null.
 - "grams": your best estimate of the weight, a positive number.
-- "estimate": ${copy.estimate}.${copy.extra}${mode === 'meal' && ateOut ? ATE_OUT_RULE : ''}
+- "estimate": ${copy.estimate}.${copy.extra}${FIBER_RULE}${mode === 'meal' && ateOut ? ATE_OUT_RULE : ''}
 
 ## Output format
 Output ONLY one JSON object — no prose, no markdown fences:
-{"items": [{"name": "Roti", "measure": "2 rotis", "grams": 80, "pantryMatch": null, "estimate": {"kcal": 240, "protein_g": 8, "carbs_g": 44, "fat_g": 4}}]}`
+${mode === 'day' ? DAY_EXAMPLE : EXAMPLE}`
 }
+
+const EXAMPLE = '{"items": [{"name": "Roti", "measure": "2 rotis", "grams": 80, "pantryMatch": null, "estimate": {"kcal": 240, "protein_g": 8, "carbs_g": 44, "fat_g": 4, "fiber_g": 4}}]}'
+const DAY_EXAMPLE =
+  '{"items": [{"name": "Roti", "measure": "2 rotis", "grams": 80, "meal": "breakfast", "ateOut": false, "pantryMatch": null, "estimate": {"kcal": 240, "protein_g": 8, "carbs_g": 44, "fat_g": 4, "fiber_g": 4}}, ' +
+  '{"name": "Chicken burrito bowl", "measure": "1 bowl", "grams": 600, "meal": "lunch", "ateOut": true, "pantryMatch": null, "estimate": {"kcal": 900, "protein_g": 40, "carbs_g": 100, "fat_g": 30, "fiber_g": 12}}]}'
 
 /**
  * Validates a parse reply (either mode — same item shape). Structural problems are named errors (the
@@ -131,6 +146,7 @@ export function validateParseReply(rawText, { pantry }) {
       return
     }
 
+    const fiber_g = isNonNegativeNumber(est.fiber_g) ? est.fiber_g : undefined
     const suggested = typeof raw.pantryMatch === 'string' ? raw.pantryMatch.trim() : ''
     const match = suggested ? pantryByName.get(suggested.toLowerCase()) : null
     items.push({
@@ -139,7 +155,9 @@ export function validateParseReply(rawText, { pantry }) {
       grams: raw.grams ?? null,
       pantryId: match ? match.id : null,
       suggestedMatch: suggested && !match ? suggested : null,
-      estimate: { kcal: est.kcal, protein_g: est.protein_g, carbs_g: est.carbs_g, fat_g: est.fat_g },
+      estimate: { kcal: est.kcal, protein_g: est.protein_g, carbs_g: est.carbs_g, fat_g: est.fat_g, ...(fiber_g !== undefined ? { fiber_g } : {}) },
+      meal: MEAL_VALUES.includes(raw.meal) ? raw.meal : null,
+      ateOut: raw.ateOut === true,
     })
   })
 
@@ -214,6 +232,8 @@ export function buildDraftRows(items, pantry) {
       pantryItem: pantryLogItem,
       aiItem,
       note,
+      meal: item.meal ?? null, // 'day' mode only; null for other modes
+      ateOut: item.ateOut === true,
     }
   })
 }
